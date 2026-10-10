@@ -23,6 +23,9 @@ logging:
     root: INFO
     com.camellia: INFO
     net.snowflake: WARN
+    # The 4.x driver probes cloud metadata endpoints (AWS/Azure/GCP) at startup; on a laptop those probes fail
+    # harmlessly and log as ERROR. Real connection failures still surface as exceptions with diagnostics.
+    net.snowflake.client.internal.jdbc.RestRequest: "OFF"
     com.zaxxer.hikari: WARN
 
 camellia:
@@ -56,6 +59,12 @@ camellia:
     # Upper bound on characters of source-record context sent per request (retrieval budget).
     max-context-chars: ${GEMINI_MAX_CONTEXT_CHARS:28000}
     max-history-turns: 8
+    # Used only when the primary model is overloaded (503) or rate limited (429) after retries.
+    # The UI always shows which model actually answered. Blank disables the fallback.
+    fallback-model: ${GEMINI_FALLBACK_MODEL:gemini-3.5-flash-lite}
+    # minimal | low | medium | high | blank (model default). Lower = faster answers.
+    thinking-level: ${GEMINI_THINKING_LEVEL:low}
+    max-retries: ${GEMINI_MAX_RETRIES:2}
 
   demo:
     # Synthetic dates are stored relative to this anchor. Blank = the date the demo data is seeded.

@@ -77,6 +77,9 @@ public final class Prompts {
             - matchMode "ANY" when concepts/keywords are alternatives (usual); "ALL" only when every term must appear in the same record.
             - Set obstetricOnly for pregnant/obstetric populations; upcomingDeliveryOnly when the request is about patients with an upcoming
               delivery or delivery-related encounter; multipleOrganizationsOnly for "records from more than one hospital/organization".
+            - Requests about patients who "may need anesthesia to know", "need advance planning", "high-risk" or "complex" histories
+              before an upcoming delivery are about DOCUMENTED CONCERNS, not routine anesthesia mentions: set upcomingDeliveryOnly and
+              openFlagsOnly, and use concern concepts (LOW_PLATELETS, HEMATOLOGY, CARDIAC, ONCOLOGY, SPINE, ANESTHESIA) with matchMode ANY.
             - minMatchesPerPatient: 2 or 3 for "repeated", "recurring", "multiple" requests (counts distinct record dates), otherwise 1.
             - recordTypes only when the request asks for a specific kind of record (e.g. medications, lab results, notes).
             - Use patientId only when a specific patient is named or the request is scoped to the current patient.

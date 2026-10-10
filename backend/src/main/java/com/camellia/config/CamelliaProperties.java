@@ -87,6 +87,16 @@ public class CamelliaProperties {
         private int timeoutSeconds = 60;
         private int maxContextChars = 28000;
         private int maxHistoryTurns = 8;
+        private String fallbackModel = "";
+        private String thinkingLevel = "low";
+        private int maxRetries = 2;
+
+        public String getFallbackModel() { return fallbackModel; }
+        public void setFallbackModel(String fallbackModel) { this.fallbackModel = fallbackModel; }
+        public String getThinkingLevel() { return thinkingLevel; }
+        public void setThinkingLevel(String thinkingLevel) { this.thinkingLevel = thinkingLevel; }
+        public int getMaxRetries() { return maxRetries; }
+        public void setMaxRetries(int maxRetries) { this.maxRetries = maxRetries; }
 
         public String getApiKey() { return apiKey; }
         public void setApiKey(String apiKey) { this.apiKey = apiKey; }

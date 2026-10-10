@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -31,6 +32,9 @@ public class GoogleGenAiGateway implements GeminiGateway {
     private volatile LocalDateTime lastSuccessAt;
     private volatile String lastError;
     private volatile String lastOperation;
+    private static final long PRIMARY_COOLDOWN_MS = 180_000;
+    private volatile long primaryCooldownUntil;
+    private final java.util.Set<String> thinkingUnsupported = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     public GoogleGenAiGateway(CamelliaProperties props) {
         this.cfg = props.getGemini();
@@ -51,6 +55,10 @@ public class GoogleGenAiGateway implements GeminiGateway {
         return cfg.getModel();
     }
 
+    public String fallbackModel() {
+        return cfg.getFallbackModel();
+    }
+
     public record Stats(boolean configured, String model, long calls, long failures, LocalDateTime lastSuccessAt,
                         String lastError, String lastOperation) {}
 
@@ -66,7 +74,9 @@ public class GoogleGenAiGateway implements GeminiGateway {
                 if (client == null) {
                     client = Client.builder()
                             .apiKey(cfg.getApiKey().trim())
-                            .httpOptions(HttpOptions.builder().timeout(cfg.getTimeoutSeconds() * 1000).build())
+                            // Retries are handled here (with model fallback), so the SDK's own retry loop is disabled.
+                            .httpOptions(HttpOptions.builder().timeout(cfg.getTimeoutSeconds() * 1000)
+                                    .retryOptions(HttpRetryOptions.builder().attempts(1).build()).build())
                             .build();
                 }
                 c = client;
@@ -81,17 +91,52 @@ public class GoogleGenAiGateway implements GeminiGateway {
         List<Content> contents = request.turns().stream()
                 .map(t -> Content.builder().role(t.role()).parts(Part.fromText(t.text())).build())
                 .toList();
-        GenerateContentConfig config = GenerateContentConfig.builder()
+        List<String> models = new ArrayList<>(List.of(cfg.getModel()));
+        String fallback = cfg.getFallbackModel();
+        if (fallback != null && !fallback.isBlank() && !fallback.trim().equals(cfg.getModel())) models.add(fallback.trim());
+
+        lastOperation = request.operation();
+        if (models.size() > 1 && System.currentTimeMillis() < primaryCooldownUntil) {
+            models.removeFirst();   // primary recently overloaded / rate limited: go straight to the fallback
+        }
+        GeminiException last = null;
+        for (String model : models) {
+            for (int attempt = 0; attempt <= Math.max(0, cfg.getMaxRetries()); attempt++) {
+                try {
+                    return callOnce(c, model, contents, request);
+                } catch (GeminiException e) {
+                    last = e;
+                    recordFailure(e.getMessage());
+                    if (!isTransient(e)) throw e;
+                    if (attempt < cfg.getMaxRetries()) {
+                        long backoff = 1500L * (1L << attempt);
+                        log.warn("Gemini {} on {} ({}); retrying in {} ms", request.operation(), model, e.code(), backoff);
+                        sleep(backoff);
+                    }
+                }
+            }
+            if (models.size() > 1 && model.equals(cfg.getModel())) {
+                primaryCooldownUntil = System.currentTimeMillis() + PRIMARY_COOLDOWN_MS;
+                log.warn("Gemini model {} unavailable after retries; using fallback model {} for the next {} s",
+                        model, models.getLast(), PRIMARY_COOLDOWN_MS / 1000);
+            }
+        }
+        throw last;
+    }
+
+    private Reply callOnce(Client c, String model, List<Content> contents, Request request) {
+        GenerateContentConfig.Builder builder = GenerateContentConfig.builder()
                 .systemInstruction(Content.fromParts(Part.fromText(request.systemInstruction())))
                 .responseMimeType("application/json")
                 .responseJsonSchema(request.jsonSchema())
-                .candidateCount(1)
-                .build();
+                .candidateCount(1);
+        String level = cfg.getThinkingLevel();
+        boolean useThinking = level != null && !level.isBlank() && !thinkingUnsupported.contains(model);
+        if (useThinking) builder.thinkingConfig(ThinkingConfig.builder().thinkingLevel(level.trim().toUpperCase(java.util.Locale.ROOT)).build());
         long start = System.currentTimeMillis();
         calls.incrementAndGet();
-        lastOperation = request.operation();
         try {
-            GenerateContentResponse response = c.models.generateContent(cfg.getModel(), contents, config);
+            GenerateContentResponse response = c.models.generateContent(model, contents, builder.build());
             String text = response.text();
             if (text == null || text.isBlank()) {
                 throw new GeminiException(HttpStatus.BAD_GATEWAY, "GEMINI_EMPTY_RESPONSE",
@@ -102,27 +147,43 @@ public class GoogleGenAiGateway implements GeminiGateway {
             long latency = System.currentTimeMillis() - start;
             lastSuccessAt = LocalDateTime.now();
             lastError = null;
-            log.info("Gemini {} ok in {} ms (model {}, tokens in/out {}/{})", request.operation(), latency, cfg.getModel(), in, out);
-            return new Reply(text, cfg.getModel(), in, out, latency);
-        } catch (GeminiException e) {
-            recordFailure(e.getMessage());
-            throw e;
+            log.info("Gemini {} ok in {} ms (model {}, tokens in/out {}/{})", request.operation(), latency, model, in, out);
+            return new Reply(text, model, in, out, latency);
         } catch (ApiException e) {
-            GeminiException mapped = map(e);
-            recordFailure(mapped.getMessage());
-            throw mapped;
+            if (useThinking && e.code() == 400 && String.valueOf(e.message()).toLowerCase(java.util.Locale.ROOT).contains("thinking")) {
+                log.warn("Model {} rejected thinking level '{}'; retrying without it", model, level);
+                thinkingUnsupported.add(model);
+                return callOnce(c, model, contents, request);
+            }
+            throw map(e, model);
         } catch (GenAiIOException e) {
-            recordFailure("Network/timeout: " + e.getMessage());
             throw new GeminiException(HttpStatus.GATEWAY_TIMEOUT, "GEMINI_UNREACHABLE",
                     "Could not reach Gemini within " + cfg.getTimeoutSeconds() + " s. Check network access and try again.", e);
+        } catch (GeminiException e) {
+            throw e;
         } catch (RuntimeException e) {
-            recordFailure(e.getClass().getSimpleName() + ": " + e.getMessage());
             throw new GeminiException(HttpStatus.BAD_GATEWAY, "GEMINI_ERROR", "Gemini request failed: " + e.getMessage(), e);
         }
     }
 
-    private GeminiException map(ApiException e) {
+    static boolean isTransient(GeminiException e) {
+        return e.code().equals("GEMINI_RATE_LIMITED") || e.code().equals("GEMINI_OVERLOADED");
+    }
+
+    private static void sleep(long ms) {
+        try {
+            Thread.sleep(ms);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private GeminiException map(ApiException e, String model) {
         int code = e.code();
+        if (code == 503 || code == 500) {
+            return new GeminiException(HttpStatus.SERVICE_UNAVAILABLE, "GEMINI_OVERLOADED",
+                    "Gemini (" + model + ") is temporarily overloaded. Please retry in a moment.", e);
+        }
         if (code == 429) {
             return new GeminiException(HttpStatus.TOO_MANY_REQUESTS, "GEMINI_RATE_LIMITED",
                     "Gemini rate limit or quota reached. Wait a moment and retry.", e);
@@ -133,7 +194,7 @@ public class GoogleGenAiGateway implements GeminiGateway {
         }
         if (code == 404) {
             return new GeminiException(HttpStatus.BAD_GATEWAY, "GEMINI_MODEL_NOT_FOUND",
-                    "Gemini model '" + cfg.getModel() + "' is not available to this key. Set GEMINI_MODEL to a supported model.", e);
+                    "Gemini model '" + model + "' is not available to this key. Set GEMINI_MODEL to a supported model.", e);
         }
         if (code == 400) {
             return new GeminiException(HttpStatus.BAD_GATEWAY, "GEMINI_BAD_REQUEST", "Gemini rejected the request: " + e.message(), e);

@@ -185,6 +185,8 @@ quotes. **Use forward slashes in file paths, even on Windows** (for example `C:/
 |---|---|
 | `GEMINI_API_KEY` | Google AI Studio API key (server-side only) |
 | `GEMINI_MODEL` | Default `gemini-3.8-flash` |
+| `GEMINI_FALLBACK_MODEL` | Default `gemini-3.5-flash-lite`; used when the primary model is overloaded or rate limited |
+| `GEMINI_THINKING_LEVEL` | Default `low`, for faster answers |
 | `SNOWFLAKE_ACCOUNT` | Account identifier, `orgname-accountname` |
 | `SNOWFLAKE_USER` | User with the registered RSA public key |
 | `SNOWFLAKE_PRIVATE_KEY_FILE` | Path to the PKCS#8 `.p8` private key (keep it outside the repo) |
