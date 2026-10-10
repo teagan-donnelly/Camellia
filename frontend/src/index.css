@@ -1,0 +1,90 @@
+@import "tailwindcss";
+
+/*
+ * Camellia design tokens — derived from the logo:
+ *   coral petals  -> brand / primary actions
+ *   deep navy     -> structure, navigation, primary text
+ *   sage          -> documented / verified information, success
+ *   amber         -> warnings and items needing attention
+ *   red           -> reserved for critical states only
+ */
+@theme {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-brand: "Quicksand", "Inter Variable", ui-sans-serif, sans-serif;
+
+  --color-coral-50: #fff5f5;
+  --color-coral-100: #fde8e9;
+  --color-coral-200: #fbd0d2;
+  --color-coral-300: #f8aeb2;
+  --color-coral-400: #f48b91;
+  --color-coral-500: #ee6b72;
+  --color-coral-600: #d9505a;
+  --color-coral-700: #b93c47;
+  --color-coral-800: #93323b;
+
+  --color-navy-50: #f3f6fa;
+  --color-navy-100: #e4eaf2;
+  --color-navy-200: #c8d3e3;
+  --color-navy-300: #9eb0c9;
+  --color-navy-400: #6d84a6;
+  --color-navy-500: #4c6488;
+  --color-navy-600: #3a4f6f;
+  --color-navy-700: #2c3e5a;
+  --color-navy-800: #1d2c45;
+  --color-navy-900: #142136;
+  --color-navy-950: #0d1727;
+
+  --color-sage-50: #f1f8f6;
+  --color-sage-100: #e0f0eb;
+  --color-sage-200: #c2e0d7;
+  --color-sage-500: #4f9488;
+  --color-sage-600: #3d7a6f;
+  --color-sage-700: #31635a;
+
+  --color-amber-50: #fff8ec;
+  --color-amber-100: #fdefd3;
+  --color-amber-200: #f8dca4;
+  --color-amber-500: #d4911f;
+  --color-amber-600: #b1760f;
+  --color-amber-700: #8a5a0b;
+
+  --color-critical-50: #fef3f2;
+  --color-critical-100: #fee4e2;
+  --color-critical-600: #b42318;
+  --color-critical-700: #912018;
+
+  --color-canvas: #faf8f6;
+  --color-line: #e9e4df;
+  --color-line-strong: #d9d2cb;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-navy-900);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "cv11", "ss01";
+}
+
+::selection {
+  background: var(--color-coral-200);
+}
+
+*:focus-visible {
+  outline: 2px solid var(--color-coral-500);
+  outline-offset: 2px;
+}
+
+.scroll-thin::-webkit-scrollbar { width: 8px; height: 8px; }
+.scroll-thin::-webkit-scrollbar-thumb { background: var(--color-line-strong); border-radius: 8px; }
+.scroll-thin::-webkit-scrollbar-track { background: transparent; }
+
+@keyframes petal-spin { to { transform: rotate(360deg); } }
+.animate-petal { animation: petal-spin 6s linear infinite; transform-origin: 50% 50%; }
+
+@keyframes fade-up { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.animate-fade-up { animation: fade-up .25s ease-out both; }
