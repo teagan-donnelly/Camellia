@@ -310,6 +310,9 @@ export interface Dashboard {
   databaseMode: string
   geminiConfigured: boolean
   geminiModel: string
+  /** False for roles without the Anesthesia OB workflow: OB metrics are always zero and should be hidden. */
+  anesthesiaAccess: boolean
+  upcomingEncounters: { patientId: string; patientName?: string; displayId?: string; appointment: AppointmentDto }[]
 }
 
 export interface SearchCriteria {
@@ -330,7 +333,10 @@ export interface SearchCriteria {
 }
 
 export interface Interpretation {
+  /** RECORDS = clinical record search; FLAGS = clinical alert (flag) search using flagCriteria. */
+  target: 'RECORDS' | 'FLAGS'
   criteria: SearchCriteria
+  flagCriteria?: FlagSearchCriteria
   source: 'GEMINI' | 'RULE_BASED'
   model?: string
   explanation?: string
@@ -391,11 +397,77 @@ export interface RunResult {
   outcomes: { patientId: string; patientName: string; ruleId: string; flagId: string; alertId?: string; result: string }[]
 }
 
-export interface DemoUser {
+export type Permission =
+  | 'VIEW_PATIENTS' | 'CLINICAL_SEARCH' | 'CLINICAL_ALERTS' | 'REVIEW_FLAGS' | 'GEMINI_ASSISTANT'
+  | 'ANESTHESIA_OB_ALERTS' | 'UPDATE_COORDINATION' | 'ADD_COORDINATION_NOTES'
+
+export type NavItem = 'DASHBOARD' | 'PATIENTS' | 'CLINICAL_SEARCH' | 'CLINICAL_ALERTS' | 'ANESTHESIA_OB_ALERTS'
+
+/** A SIMULATED demo identity (not an authenticated user). */
+export interface SessionUser {
   id: string
   name: string
   role: string
-  team: string
+  roleLabel: string
+  department: string
+  practices: { practiceId: string; name: string }[]
+  patientScope: string
+}
+
+export interface Session {
+  user: SessionUser
+  permissions: Permission[]
+  navigation: NavItem[]
+  simulated: boolean
+  notice: string
+}
+
+export interface FlagSearchCriteria {
+  text?: string | null
+  categories?: string[]
+  statusGroup?: 'OPEN' | 'CLOSED' | 'ANY'
+  statuses?: string[]
+  priorities?: string[]
+  specialties?: string[]
+  concepts?: string[]
+  patientId?: string | null
+}
+
+export interface FlagHit {
+  flagId: string
+  patientId: string
+  patientName: string
+  displayId: string
+  title: string
+  ruleId: string
+  category: string
+  status: FlagDto['status']
+  alertId?: string
+  alertStatus?: AlertStatus
+  unresolved: boolean
+  reviewPriority: 'EXPEDITED' | 'STANDARD'
+  evidenceCount: number
+  specialties: string[]
+  sourceRecords: { recordId: string; title: string; orgName: string; recordDate?: string; role: string }[]
+  detectionReason: string
+  updatedAt: string
+  link: string
+}
+
+export interface FlagSearchResult {
+  criteria: FlagSearchCriteria
+  results: FlagHit[]
+  totalFlags: number
+  totalPatients: number
+  warnings: string[]
+  notice?: string
+}
+
+export interface Facets {
+  categories: Record<string, string>
+  statuses: string[]
+  priorities: string[]
+  specialties: string[]
 }
 
 export interface Organization {
@@ -409,7 +481,7 @@ export interface Organization {
 }
 
 export interface Meta {
-  users: DemoUser[]
+  users: { id: string; name: string; role: string }[]
   alertStatuses: AlertStatus[]
   contactStatuses: string[]
   noteTypes: string[]
@@ -427,7 +499,6 @@ export interface IntegrationStatus {
     isSnowflake: boolean
     connected: boolean
     session?: Record<string, unknown>
-    patientCount?: number
     error?: string
   }
   gemini: {

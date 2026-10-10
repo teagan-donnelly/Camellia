@@ -47,7 +47,6 @@ public class IntegrationService {
         try {
             db.put("session", sessionInfo());
             db.put("connected", true);
-            db.put("patientCount", patients.count());
         } catch (RuntimeException e) {
             db.put("connected", false);
             db.put("error", rootMessage(e));
@@ -76,11 +75,11 @@ public class IntegrationService {
         out.put("label", mode.label());
         long start = System.currentTimeMillis();
         out.put("session", sessionInfo());
+        // The read check uses non-patient reference data so this endpoint never discloses patient information.
         Map<String, Object> read = jdbc.queryForMap("""
-                SELECT p.PATIENT_ID, p.FIRST_NAME, p.LAST_NAME, COUNT(r.RECORD_ID) AS RECORD_COUNT
-                FROM PATIENTS p LEFT JOIN CLINICAL_RECORDS r ON r.PATIENT_ID = p.PATIENT_ID
-                WHERE p.PATIENT_ID = 'CAM-P-1001' GROUP BY p.PATIENT_ID, p.FIRST_NAME, p.LAST_NAME""");
-        out.put("readCheck", Map.of("query", "Patient CAM-P-1001 with record count", "result", read));
+                SELECT COUNT(DISTINCT o.ORG_ID) AS ORGANIZATIONS, COUNT(DISTINCT pr.PRACTICE_ID) AS PRACTICES
+                FROM HEALTHCARE_ORGANIZATIONS o LEFT JOIN PRACTICES pr ON pr.ORG_ID = o.ORG_ID""");
+        out.put("readCheck", Map.of("query", "JOIN of HEALTHCARE_ORGANIZATIONS and PRACTICES (reference data)", "result", read));
         String checkId = SupportRepository.newId("CHK");
         String detail = "Integration write check at " + LocalDateTime.now();
         support.insertIntegrationCheck(checkId, "WRITE", detail);

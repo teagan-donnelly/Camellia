@@ -24,7 +24,7 @@ export default function SystemStatus() {
 
   return (
     <div>
-      <PageHeader eyebrow="Sponsor integrations" title="System & integrations"
+      <PageHeader eyebrow="Sponsor integrations" title="Demo & integrations"
         subtitle="Live connectivity checks for Snowflake and Google Gemini, plus demo data controls. Every check below performs a real request." />
       {isLoading && <Loading />}
       {error && <ErrorBox error={error} title="Backend unreachable" />}
@@ -44,7 +44,6 @@ export default function SystemStatus() {
               <KeyValue label="Mode">{data.database.label}</KeyValue>
               <KeyValue label="Connected">{data.database.connected ? 'Yes' : 'No'}</KeyValue>
               {data.database.session && Object.entries(data.database.session).map(([k, v]) => <KeyValue key={k} label={k.replace(/_/g, ' ')}>{String(v ?? '—')}</KeyValue>)}
-              <KeyValue label="Patients stored">{data.database.patientCount ?? '—'}</KeyValue>
             </div>
             {data.database.error && <div className="mt-3"><ErrorBox error={data.database.error} title="Connection error" /></div>}
             <div className="mt-4 border-t border-line pt-4">
@@ -120,7 +119,7 @@ export default function SystemStatus() {
             <CardHeader icon={<ShieldAlert className="h-4 w-4" />} title="Safety & access" />
             <ul className="list-disc space-y-1.5 pl-5 text-[13px] text-navy-700">
               <li>{data.syntheticDataNotice}</li>
-              <li>Users and teams are simulated; there is no authentication. Never use this prototype with real patient data.</li>
+              <li>Users are simulated demo identities chosen from the user menu; there is no real authentication. Role-based access is enforced by the backend for demonstration only. Never use this prototype with real patient data.</li>
               <li>Not HIPAA compliant, not clinically validated, and not connected to Epic or any production EHR.</li>
               <li>Screening thresholds are configurable prototype heuristics in <code className="rounded bg-canvas px-1">application.yml</code>.</li>
               <li>Gemini answers are advisory, cite verified source records, and can never change clinical data or workflow status.</li>

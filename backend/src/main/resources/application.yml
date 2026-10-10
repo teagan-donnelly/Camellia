@@ -69,6 +69,8 @@ camellia:
   demo:
     # Synthetic dates are stored relative to this anchor. Blank = the date the demo data is seeded.
     anchor-date: ${CAMELLIA_DEMO_ANCHOR_DATE:}
+    # Signs the SIMULATED demo-identity cookie. Blank = random per startup (users re-select after a restart).
+    session-secret: ${CAMELLIA_DEMO_SESSION_SECRET:}
 
   # ---------------------------------------------------------------------------
   # PROTOTYPE SCREENING HEURISTICS — NOT VALIDATED CLINICAL THRESHOLDS.

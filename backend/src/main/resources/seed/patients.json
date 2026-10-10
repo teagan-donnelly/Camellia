@@ -10,12 +10,27 @@
     "estimatedDueDate": "@D+19",
     "gestationalNote": "G2P1",
     "primaryOrgId": "BWHA",
+    "practices": [
+      {
+        "practiceId": "PRAC-B",
+        "relationship": "Registered patient"
+      }
+    ],
     "demoScenario": "A — Obstetric patient with low platelet results",
     "summary": "Synthetic obstetric patient with a scheduled induction of labor. Platelet counts documented by the reference laboratory have trended below the laboratory reference range during pregnancy.",
     "identifiers": [
-      { "orgId": "BWHA", "mrn": "BW-77120" },
-      { "orgId": "NDL", "mrn": "NDL-550812" },
-      { "orgId": "LRMC", "mrn": "LR-301144" }
+      {
+        "orgId": "BWHA",
+        "mrn": "BW-77120"
+      },
+      {
+        "orgId": "NDL",
+        "mrn": "NDL-550812"
+      },
+      {
+        "orgId": "LRMC",
+        "mrn": "LR-301144"
+      }
     ]
   },
   {
@@ -29,13 +44,31 @@
     "estimatedDueDate": "@D+30",
     "gestationalNote": "G1P0",
     "primaryOrgId": "BWHA",
+    "practices": [
+      {
+        "practiceId": "PRAC-B",
+        "relationship": "Registered patient"
+      }
+    ],
     "demoScenario": "B — Complex obstetric patient (cardio-oncology history)",
     "summary": "Synthetic obstetric patient with a history of Hodgkin lymphoma treated with chemotherapy and mediastinal radiation, a documented cardiomyopathy followed by cardiology, and prophylactic anticoagulation. Scheduled cesarean delivery.",
     "identifiers": [
-      { "orgId": "BWHA", "mrn": "BW-80455" },
-      { "orgId": "LRMC", "mrn": "LR-288731" },
-      { "orgId": "CHCH", "mrn": "CH-4471002" },
-      { "orgId": "NDL", "mrn": "NDL-601177" }
+      {
+        "orgId": "BWHA",
+        "mrn": "BW-80455"
+      },
+      {
+        "orgId": "LRMC",
+        "mrn": "LR-288731"
+      },
+      {
+        "orgId": "CHCH",
+        "mrn": "CH-4471002"
+      },
+      {
+        "orgId": "NDL",
+        "mrn": "NDL-601177"
+      }
     ]
   },
   {
@@ -47,13 +80,31 @@
     "sex": "M",
     "obstetric": false,
     "primaryOrgId": "LRMC",
+    "practices": [
+      {
+        "practiceId": "PRAC-A",
+        "relationship": "Registered patient"
+      }
+    ],
     "demoScenario": "C — Recurring fractures across organizations",
     "summary": "Synthetic patient with fracture-related encounters documented at three different organizations over several years.",
     "identifiers": [
-      { "orgId": "LRMC", "mrn": "LR-190023" },
-      { "orgId": "CHCH", "mrn": "CH-3390128" },
-      { "orgId": "RUC", "mrn": "RUC-30019" },
-      { "orgId": "NDL", "mrn": "NDL-498230" }
+      {
+        "orgId": "LRMC",
+        "mrn": "LR-190023"
+      },
+      {
+        "orgId": "CHCH",
+        "mrn": "CH-3390128"
+      },
+      {
+        "orgId": "RUC",
+        "mrn": "RUC-30019"
+      },
+      {
+        "orgId": "NDL",
+        "mrn": "NDL-498230"
+      }
     ]
   },
   {
@@ -65,12 +116,27 @@
     "sex": "F",
     "obstetric": false,
     "primaryOrgId": "LRMC",
+    "practices": [
+      {
+        "practiceId": "PRAC-A",
+        "relationship": "Registered patient"
+      }
+    ],
     "demoScenario": "D — Repeated out-of-range laboratory results",
     "summary": "Synthetic patient with serum calcium results above the reporting laboratory's reference range on several occasions, from two organizations.",
     "identifiers": [
-      { "orgId": "LRMC", "mrn": "LR-210556" },
-      { "orgId": "NDL", "mrn": "NDL-512276" },
-      { "orgId": "CHCH", "mrn": "CH-3871190" }
+      {
+        "orgId": "LRMC",
+        "mrn": "LR-210556"
+      },
+      {
+        "orgId": "NDL",
+        "mrn": "NDL-512276"
+      },
+      {
+        "orgId": "CHCH",
+        "mrn": "CH-3871190"
+      }
     ]
   },
   {
@@ -82,12 +148,27 @@
     "sex": "M",
     "obstetric": false,
     "primaryOrgId": "LRMC",
+    "practices": [
+      {
+        "practiceId": "PRAC-A",
+        "relationship": "Registered patient"
+      }
+    ],
     "demoScenario": "E — Repeated encounters for the same symptom",
     "summary": "Synthetic patient seen repeatedly for headache at an urgent care clinic and an emergency department over the past year.",
     "identifiers": [
-      { "orgId": "RUC", "mrn": "RUC-41207" },
-      { "orgId": "CHCH", "mrn": "CH-4012655" },
-      { "orgId": "LRMC", "mrn": "LR-260114" }
+      {
+        "orgId": "RUC",
+        "mrn": "RUC-41207"
+      },
+      {
+        "orgId": "CHCH",
+        "mrn": "CH-4012655"
+      },
+      {
+        "orgId": "LRMC",
+        "mrn": "LR-260114"
+      }
     ]
   },
   {
@@ -99,11 +180,23 @@
     "sex": "F",
     "obstetric": false,
     "primaryOrgId": "LRMC",
+    "practices": [
+      {
+        "practiceId": "PRAC-A",
+        "relationship": "Registered patient"
+      }
+    ],
     "demoScenario": "F — Complex history without a screening match",
     "summary": "Synthetic patient with several chronic conditions and detailed records. No current prototype screening rule matches.",
     "identifiers": [
-      { "orgId": "LRMC", "mrn": "LR-115870" },
-      { "orgId": "NDL", "mrn": "NDL-430019" }
+      {
+        "orgId": "LRMC",
+        "mrn": "LR-115870"
+      },
+      {
+        "orgId": "NDL",
+        "mrn": "NDL-430019"
+      }
     ]
   },
   {
@@ -117,12 +210,27 @@
     "estimatedDueDate": "@D+38",
     "gestationalNote": "G1P0",
     "primaryOrgId": "BWHA",
+    "practices": [
+      {
+        "practiceId": "PRAC-B",
+        "relationship": "Registered patient"
+      }
+    ],
     "demoScenario": "G — Routine obstetric patient",
     "summary": "Synthetic obstetric patient with routine prenatal care and laboratory results within reference ranges.",
     "identifiers": [
-      { "orgId": "BWHA", "mrn": "BW-81902" },
-      { "orgId": "NDL", "mrn": "NDL-622340" },
-      { "orgId": "LRMC", "mrn": "LR-305512" }
+      {
+        "orgId": "BWHA",
+        "mrn": "BW-81902"
+      },
+      {
+        "orgId": "NDL",
+        "mrn": "NDL-622340"
+      },
+      {
+        "orgId": "LRMC",
+        "mrn": "LR-305512"
+      }
     ]
   },
   {
@@ -134,11 +242,23 @@
     "sex": "M",
     "obstetric": false,
     "primaryOrgId": "LRMC",
+    "practices": [
+      {
+        "practiceId": "PRAC-A",
+        "relationship": "Registered patient"
+      }
+    ],
     "demoScenario": "H — Routine general patient",
     "summary": "Synthetic patient with a minimal, routine history.",
     "identifiers": [
-      { "orgId": "LRMC", "mrn": "LR-330981" },
-      { "orgId": "NDL", "mrn": "NDL-640021" }
+      {
+        "orgId": "LRMC",
+        "mrn": "LR-330981"
+      },
+      {
+        "orgId": "NDL",
+        "mrn": "NDL-640021"
+      }
     ]
   },
   {
@@ -152,13 +272,31 @@
     "estimatedDueDate": "@D+52",
     "gestationalNote": "G2P1",
     "primaryOrgId": "BWHA",
+    "practices": [
+      {
+        "practiceId": "PRAC-B",
+        "relationship": "Registered patient"
+      }
+    ],
     "demoScenario": "I — Obstetric patient whose prior anesthesia history lives at another hospital",
     "summary": "Synthetic obstetric patient with a spinal fusion and a documented failed labor epidural during a prior delivery at a different hospital. Scheduled repeat cesarean delivery.",
     "identifiers": [
-      { "orgId": "BWHA", "mrn": "BW-79388" },
-      { "orgId": "CHCH", "mrn": "CH-4120876" },
-      { "orgId": "LRMC", "mrn": "LR-297640" },
-      { "orgId": "NDL", "mrn": "NDL-587713" }
+      {
+        "orgId": "BWHA",
+        "mrn": "BW-79388"
+      },
+      {
+        "orgId": "CHCH",
+        "mrn": "CH-4120876"
+      },
+      {
+        "orgId": "LRMC",
+        "mrn": "LR-297640"
+      },
+      {
+        "orgId": "NDL",
+        "mrn": "NDL-587713"
+      }
     ]
   }
 ]

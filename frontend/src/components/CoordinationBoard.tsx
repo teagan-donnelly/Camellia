@@ -1,31 +1,30 @@
 import { ArrowRight, CircleCheck, ClipboardList, FileText, NotebookPen, Sparkles, Workflow } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useAlert, useAlerts } from '../api/hooks'
-import type { AlertStatus } from '../api/types'
-import { AiAnswerView } from '../components/ai'
-import { CitationChip } from '../components/records'
-import { AlertStatusBadge } from '../components/status'
-import { Badge, Card, EmptyState, ErrorBox, Loading, PageHeader } from '../components/ui'
+import { useAlert } from '../api/hooks'
+import type { AlertStatus, AlertSummary } from '../api/types'
+import { AiAnswerView } from './ai'
+import { CitationChip } from './records'
+import { AlertStatusBadge } from './status'
+import { Badge, Card, EmptyState, ErrorBox, Loading } from './ui'
 import { ALERT_STATUS_LABEL, CONTACT_LABEL, NOTE_TYPE_LABEL, cx, daysLabel, fmtDate, fmtDateTime, relative } from '../lib/format'
 
 const COLUMNS: AlertStatus[] = ['NEW', 'UNDER_REVIEW', 'COORDINATION_NEEDED', 'PLAN_DOCUMENTED', 'RESOLVED']
 
-export default function CareCoordination() {
-  const { data, isLoading, error } = useAlerts()
+/**
+ * Coordination board (formerly the standalone Care Coordination page), shown as a tab of Anesthesia OB Alerts.
+ * Keeps documented facts, AI observations, human follow-up notes and planning status visibly separate.
+ */
+export function CoordinationBoard({ data }: { data: AlertSummary[] }) {
   const [selected, setSelected] = useState<string | null>(null)
   useEffect(() => {
-    if (!selected && data?.length) setSelected(data[0].alertId)
+    if (!selected && data.length) setSelected(data[0].alertId)
   }, [data, selected])
 
   return (
     <div>
-      <PageHeader eyebrow="Shared planning status" title="Care Coordination"
-        subtitle="A coordination summary visible to the simulated authorized care team. It keeps documented facts, AI observations, human follow-up notes and planning status visibly separate." />
-      {isLoading && <Loading />}
-      {error && <ErrorBox error={error} />}
-      {data && data.length === 0 && <Card><EmptyState title="No coordination alerts" /></Card>}
-      {data && data.length > 0 && (
+      {data.length === 0 && <Card><EmptyState title="No coordination alerts" /></Card>}
+      {data.length > 0 && (
         <>
           <div className="scroll-thin mb-6 grid auto-cols-[minmax(220px,1fr)] grid-flow-col gap-3 overflow-x-auto pb-2">
             {COLUMNS.map((s) => {

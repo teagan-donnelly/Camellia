@@ -21,6 +21,27 @@ public final class RuleBasedQueryInterpreter {
 
     private RuleBasedQueryInterpreter() {}
 
+    /** Returns flag criteria when the query is about flags/alerts, otherwise null. Categories are re-checked against permissions later. */
+    public static FlagSearchCriteria interpretFlags(String query, String scopedPatientId) {
+        String q = query == null ? "" : query.toLowerCase(Locale.ROOT);
+        if (!(q.contains("flag") || q.contains("alert"))) return null;
+        List<String> cats = new ArrayList<>();
+        if (q.contains("anesthesia") || q.contains("obstetric") || q.contains(" ob ")) cats.add("OB_ANESTHESIA_REVIEW");
+        if (q.contains("fracture")) cats.add("RECURRENT_FRACTURE");
+        if (q.contains("abnormal lab") || q.contains("lab")) cats.add("REPEATED_ABNORMAL_LAB");
+        if (q.contains("symptom") || q.contains("headache")) cats.add("REPEATED_SYMPTOM");
+        String group = q.contains("unresolved") || q.contains("open") || q.contains("active") || q.contains("pending") ? "OPEN"
+                : q.contains("resolved") || q.contains("closed") || q.contains("dismissed") ? "CLOSED" : "ANY";
+        Set<String> concepts = new LinkedHashSet<>(ClinicalTagger.concepts(q));
+        concepts.removeAll(Set.of("OBSTETRIC", "DELIVERY", "ANESTHESIA", "FRACTURE"));
+        if (q.contains("low platelet")) {
+            concepts.remove("PLATELET");
+            concepts.add("LOW_PLATELETS");
+        }
+        List<String> priorities = q.contains("expedited") || q.contains("urgent") ? List.of("EXPEDITED") : List.of();
+        return new FlagSearchCriteria(null, cats, group, List.of(), priorities, List.of(), new ArrayList<>(concepts), scopedPatientId);
+    }
+
     public static SearchCriteria interpret(String query, List<Patient> patients, String scopedPatientId) {
         String q = query == null ? "" : query.toLowerCase(Locale.ROOT);
         Set<String> concepts = new LinkedHashSet<>(ClinicalTagger.concepts(q));

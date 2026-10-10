@@ -8,8 +8,13 @@ import com.camellia.integration.gemini.GeminiGateway;
 import com.camellia.integration.gemini.GeminiGateway.Turn;
 import com.camellia.model.*;
 import com.camellia.repository.*;
+import com.camellia.search.FlagSearchCriteria;
 import com.camellia.search.RuleBasedQueryInterpreter;
 import com.camellia.search.SearchCriteria;
+import com.camellia.security.AuthorizationService;
+import com.camellia.security.AuthorizationService.AccessScope;
+import com.camellia.security.DemoUser;
+import com.camellia.security.Permission;
 import com.camellia.web.ApiException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,6 +33,9 @@ import java.util.stream.Collectors;
  * All Gemini-backed features. Pattern for every call:
  * retrieve relevant records from the database → pack a bounded context → call Gemini with a JSON schema →
  * parse → validate every citation against the records that were actually sent → return with AI labeling.
+ *
+ * <p>Authorization happens BEFORE retrieval: the active demo user's scope decides which patients, flags and alerts may
+ * be read, so restricted records are never loaded into a prompt.</p>
  */
 @Service
 public class ClinicalAiService {
@@ -44,10 +52,13 @@ public class ClinicalAiService {
     private final OrganizationRepository organizations;
     private final SupportRepository support;
     private final CamelliaProperties.Gemini cfg;
+    private final AuthorizationService auth;
 
     public ClinicalAiService(GeminiGateway gemini, ConversationStore conversations, PatientRepository patients,
                              ClinicalDataRepository clinical, FlagRepository flags, AlertRepository alerts,
-                             OrganizationRepository organizations, SupportRepository support, CamelliaProperties props) {
+                             OrganizationRepository organizations, SupportRepository support, CamelliaProperties props,
+                             AuthorizationService auth) {
+        this.auth = auth;
         this.gemini = gemini;
         this.conversations = conversations;
         this.patients = patients;
@@ -67,11 +78,13 @@ public class ClinicalAiService {
     // Capability 3: interactive assistant (patient / flag / alert / search contexts)
     // =====================================================================================================
 
-    public AiAnswer chat(ChatRequest req, String actor) {
+    public AiAnswer chat(ChatRequest req, DemoUser user) {
+        auth.requirePermission(user, Permission.GEMINI_ASSISTANT);
         if (req.message() == null || req.message().isBlank()) throw ApiException.badRequest("message is required");
         if (req.message().length() > 2000) throw ApiException.badRequest("message must be 2000 characters or fewer");
-        Context ctx = resolveContext(req.contextType(), req.contextId(), req.recordIds());
-        ConversationStore.Conversation conv = conversations.getOrCreate(req.conversationId(), ctx.key());
+        Context ctx = resolveContext(req.contextType(), req.contextId(), req.recordIds(), user);
+        // Conversations are bound to user + context, so history never crosses users or patients.
+        ConversationStore.Conversation conv = conversations.getOrCreate(req.conversationId(), user.id() + "@" + ctx.key());
 
         EvidencePacker.Packed packed = EvidencePacker.pack(ctx.candidates(), req.message(), ctx.priorityRoles(), orgNames(),
                 cfg.getMaxContextChars(), LocalDateTime.now());
@@ -96,7 +109,7 @@ public class ClinicalAiService {
         conv.append(Turn.user("(Earlier question) " + req.message().trim()), Turn.model(answer.answer()));
         support.logActivity("AI", ctx.contextId(), ctx.patientId(), "AI_CHAT",
                 "Gemini answered a question in %s context (%d records provided, %d citations)".formatted(
-                        ctx.type(), packed.included().size(), answer.citations().size()), actor);
+                        ctx.type(), packed.included().size(), answer.citations().size()), user.name());
         return answer;
     }
 
@@ -104,8 +117,10 @@ public class ClinicalAiService {
     // Capability 2: evidence-grounded flag explanation (cached on the flag)
     // =====================================================================================================
 
-    public AiAnswer explainFlag(String flagId, boolean refresh, String actor) {
-        ClinicalFlag flag = flags.findById(flagId).orElseThrow(() -> ApiException.notFound("Flag", flagId));
+    public AiAnswer explainFlag(String flagId, boolean refresh, DemoUser user) {
+        ClinicalFlag flag = flags.findById(flagId).orElse(null);
+        auth.requireFlag(user, flag);
+        String actor = user.name();
         if (!refresh && flag.aiExplanationJson() != null) {
             try {
                 return Json.MAPPER.readValue(flag.aiExplanationJson(), AiAnswer.class);
@@ -147,34 +162,44 @@ public class ClinicalAiService {
     // Capability 4: natural-language search interpretation (Gemini → validated criteria; backend runs approved SQL)
     // =====================================================================================================
 
-    public record Interpretation(SearchCriteria criteria, String source, String model, String explanation, Long latencyMs,
-                                 String notice) {}
+    /**
+     * @param target       RECORDS (clinical record search) or FLAGS (clinical flag / alert search)
+     * @param flagCriteria populated when target is FLAGS
+     */
+    public record Interpretation(String target, SearchCriteria criteria, FlagSearchCriteria flagCriteria, String source,
+                                 String model, String explanation, Long latencyMs, String notice) {}
 
-    public Interpretation interpretSearch(String query, String scopedPatientId) {
+    public Interpretation interpretSearch(String query, String requestedPatientId, DemoUser user) {
+        auth.requirePermission(user, Permission.CLINICAL_SEARCH);
         if (query == null || query.isBlank()) throw ApiException.badRequest("query is required");
         if (query.length() > 500) throw ApiException.badRequest("query must be 500 characters or fewer");
-        List<Patient> all = patients.findAll();
+        AccessScope scope = auth.scope(user);
+        // Only patients the user may see are ever named to the model (or to the rule-based interpreter).
+        List<Patient> all = patients.findAll().stream().filter(p -> scope.allowsPatient(p.patientId())).toList();
+        String scopedPatientId = requestedPatientId != null && scope.allowsPatient(requestedPatientId) ? requestedPatientId : null;
+        List<String> flagCategories = FlagSearchCriteria.categoriesFor(scope.anesthesia());
         if (!gemini.isConfigured()) {
-            return new Interpretation(RuleBasedQueryInterpreter.interpret(query, all, scopedPatientId), "RULE_BASED", null,
-                    "Keyword/concept rules (Gemini not configured).", null,
+            return ruleBased(query, all, scopedPatientId, scope, "Keyword/concept rules (Gemini not configured).",
                     "Rule-based interpretation — Gemini is not configured. Set GEMINI_API_KEY for AI query interpretation.");
         }
         List<Organization> orgs = organizations.findAll();
         String prompt = """
                 Today's date: %s
                 Organizations (id: name): %s
-                Patients in the synthetic directory (id: name): %s
+                Patients this clinician may access (id: name): %s
+                Clinical flag categories available to this clinician (id: name): %s
                 %s
                 Clinician search request: %s
                 """.formatted(LocalDate.now(),
                 orgs.stream().map(o -> o.orgId() + ": " + o.name()).collect(Collectors.joining("; ")),
-                all.stream().map(p -> p.patientId() + ": " + p.fullName()).collect(Collectors.joining("; ")),
+                all.isEmpty() ? "(none)" : all.stream().map(p -> p.patientId() + ": " + p.fullName()).collect(Collectors.joining("; ")),
+                flagCategories.stream().map(c -> c + ": " + FlagSearchCriteria.CATEGORY_LABELS.get(c)).collect(Collectors.joining("; ")),
                 scopedPatientId == null ? "" : "The request is scoped to the currently open patient: " + scopedPatientId,
                 query.trim());
         try {
             GeminiGateway.Reply reply = gemini.generateJson(new GeminiGateway.Request("interpret-search", Prompts.INTERPRET_SEARCH,
                     List.of(Turn.user(prompt)), AiSchemas.searchCriteria(SearchCriteria.CONCEPTS, SearchCriteria.RECORD_TYPES,
-                    orgs.stream().map(Organization::orgId).toList(), all.stream().map(Patient::patientId).toList())));
+                    orgs.stream().map(Organization::orgId).toList(), all.stream().map(Patient::patientId).toList(), flagCategories)));
             Map<String, Object> raw = parseObject(reply.text());
             SearchCriteria c = new SearchCriteria(query, strings(raw.get("keywords")), strings(raw.get("concepts")),
                     strings(raw.get("recordTypes")), strings(raw.get("organizationIds")),
@@ -183,18 +208,39 @@ public class ClinicalAiService {
                     bool(raw.get("multipleOrganizationsOnly")), bool(raw.get("openFlagsOnly")),
                     raw.get("minMatchesPerPatient") instanceof Number n ? n.intValue() : 1,
                     raw.get("matchMode") == null ? "ANY" : raw.get("matchMode").toString());
-            return new Interpretation(c, "GEMINI", reply.model(), String.valueOf(raw.getOrDefault("explanation", "")), reply.latencyMs(), null);
+            String target = "FLAGS".equals(String.valueOf(raw.get("searchTarget"))) ? "FLAGS" : "RECORDS";
+            FlagSearchCriteria fc = null;
+            if (target.equals("FLAGS")) {
+                fc = new FlagSearchCriteria(String.join(" ", strings(raw.get("keywords"))), strings(raw.get("flagCategories")),
+                        raw.get("flagStatusGroup") == null ? "ANY" : raw.get("flagStatusGroup").toString(), List.of(),
+                        strings(raw.get("flagPriorities")), strings(raw.get("flagSpecialties")), strings(raw.get("concepts")),
+                        blankToNull(raw.get("patientId"), scopedPatientId));
+            }
+            return new Interpretation(target, c, fc, "GEMINI", reply.model(), String.valueOf(raw.getOrDefault("explanation", "")),
+                    reply.latencyMs(), null);
         } catch (GeminiException e) {
             log.warn("Gemini search interpretation failed ({}); using labeled rule-based fallback", e.getMessage());
-            return new Interpretation(RuleBasedQueryInterpreter.interpret(query, all, scopedPatientId), "RULE_BASED", null,
-                    "Keyword/concept rules.", null, "Gemini request failed (" + e.getMessage() + "). Showing a rule-based interpretation instead.");
+            return ruleBased(query, all, scopedPatientId, scope, "Keyword/concept rules.",
+                    "Gemini request failed (" + e.getMessage() + "). Showing a rule-based interpretation instead.");
         }
     }
 
-    public AiAnswer summarizeSearch(String query, List<String> recordIds, String actor) {
+    private Interpretation ruleBased(String query, List<Patient> visible, String scopedPatientId, AccessScope scope,
+                                     String explanation, String notice) {
+        FlagSearchCriteria fc = RuleBasedQueryInterpreter.interpretFlags(query, scopedPatientId);
+        SearchCriteria rc = RuleBasedQueryInterpreter.interpret(query, visible, scopedPatientId);
+        return new Interpretation(fc != null ? "FLAGS" : "RECORDS", rc, fc, "RULE_BASED", null, explanation, null, notice);
+    }
+
+    public AiAnswer summarizeSearch(String query, List<String> recordIds, DemoUser user) {
+        auth.requirePermission(user, Permission.CLINICAL_SEARCH);
         if (recordIds == null || recordIds.isEmpty()) throw ApiException.badRequest("recordIds are required");
+        String actor = user.name();
+        AccessScope scope = auth.scope(user);
         List<String> ids = recordIds.stream().distinct().limit(40).toList();
-        List<ClinicalRecord> records = clinical.findRecords(ids);
+        // Records of patients outside the user's scope are dropped before anything is sent to Gemini.
+        List<ClinicalRecord> records = clinical.findRecords(ids).stream().filter(r -> scope.allowsPatient(r.patientId())).toList();
+        if (records.isEmpty()) throw AuthorizationService.denied(null);
         if (!gemini.isConfigured()) {
             return retrievalOnly(records, null, "Gemini is not configured, so the results were not summarized.");
         }
@@ -222,7 +268,10 @@ public class ClinicalAiService {
     // Capability 1: clinical document interpretation (structured extraction, quote-verified, stored)
     // =====================================================================================================
 
-    public ExtractionResult extract(String patientId, String actor) {
+    public ExtractionResult extract(String patientId, DemoUser user) {
+        auth.requirePermission(user, Permission.GEMINI_ASSISTANT);
+        auth.requirePatient(user, patientId);
+        String actor = user.name();
         Patient p = patients.findById(patientId).orElseThrow(() -> ApiException.notFound("Patient", patientId));
         if (!gemini.isConfigured()) throw GeminiException.notConfigured();
         List<ClinicalRecord> docs = clinical.recordsForPatient(patientId).stream()
@@ -309,15 +358,18 @@ public class ClinicalAiService {
         }
     }
 
-    Context resolveContext(String type, String id, List<String> recordIds) {
+    /** Authorizes the context for the user, then retrieves only that context's records. */
+    Context resolveContext(String type, String id, List<String> recordIds, DemoUser user) {
         String t = type == null ? "" : type.trim().toUpperCase(Locale.ROOT);
         switch (t) {
             case "PATIENT" -> {
+                auth.requirePatient(user, id);
                 Patient p = patients.findById(id).orElseThrow(() -> ApiException.notFound("Patient", id));
                 return new Context(t, id, id, patientHeader(p), clinical.recordsForPatient(id), Map.of());
             }
             case "FLAG" -> {
-                ClinicalFlag f = flags.findById(id).orElseThrow(() -> ApiException.notFound("Flag", id));
+                ClinicalFlag f = flags.findById(id).orElse(null);
+                auth.requireFlag(user, f);
                 Patient p = patients.findById(f.patientId()).orElseThrow();
                 Map<String, String> roles = flags.evidence(id).stream()
                         .collect(Collectors.toMap(EvidenceLink::recordId, EvidenceLink::role, (a, b) -> a));
@@ -327,7 +379,8 @@ public class ClinicalAiService {
                 return new Context(t, id, p.patientId(), header, clinical.recordsForPatient(p.patientId()), roles);
             }
             case "ALERT" -> {
-                CoordinationAlert a = alerts.findById(id).orElseThrow(() -> ApiException.notFound("Alert", id));
+                CoordinationAlert a = alerts.findById(id).orElse(null);
+                auth.requireAlert(user, a);
                 Patient p = patients.findById(a.patientId()).orElseThrow();
                 Map<String, String> roles = alerts.evidence(id).stream()
                         .collect(Collectors.toMap(EvidenceLink::recordId, EvidenceLink::role, (x, y) -> x));
@@ -344,9 +397,11 @@ public class ClinicalAiService {
             }
             case "SEARCH" -> {
                 if (recordIds == null || recordIds.isEmpty()) throw ApiException.badRequest("recordIds are required for SEARCH context");
+                AccessScope scope = auth.scope(user);
                 List<String> ids = recordIds.stream().distinct().sorted().limit(40).toList();
-                List<ClinicalRecord> recs = clinical.findRecords(ids);
-                if (recs.isEmpty()) throw ApiException.badRequest("None of the recordIds exist");
+                List<ClinicalRecord> recs = clinical.findRecords(ids).stream().filter(r -> scope.allowsPatient(r.patientId())).toList();
+                if (recs.isEmpty()) throw AuthorizationService.denied(null);
+                ids = recs.stream().map(ClinicalRecord::recordId).sorted().toList();
                 String key = Integer.toHexString(String.join(",", ids).hashCode());
                 Map<String, String> names = patients.findAll().stream().collect(Collectors.toMap(Patient::patientId, Patient::fullName));
                 String header = "CONTEXT: a set of search results spanning these synthetic patients: " + recs.stream()

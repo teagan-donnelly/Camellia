@@ -11,7 +11,8 @@
 
 > **Demo application using synthetic patient information. Not for clinical use.**
 > Camellia is a hackathon prototype. It is not HIPAA compliant, not clinically validated, not connected to Epic or any
-> production EHR, and its access controls are simulated. Never use it with real patient data.
+> production EHR, and its user identities are simulated (role-based access is enforced by the backend, but anyone using
+> the demo can pick any demo user). Never use it with real patient data.
 
 ---
 
@@ -21,18 +22,19 @@
 2. [Problem statement](#problem-statement)
 3. [Target users](#target-users)
 4. [Core features](#core-features)
-5. [Technology stack](#technology-stack)
-6. [Architecture overview](#architecture-overview)
-7. [Installation (Windows, macOS, Linux)](#installation)
-8. [Environment configuration](#environment-configuration)
-9. [Snowflake setup](#snowflake-setup)
-10. [Gemini setup](#gemini-setup)
-11. [Running the app](#running-the-app)
-12. [Demo patient scenarios](#demo-patient-scenarios)
-13. [Testing](#testing)
-14. [Known limitations](#known-limitations)
-15. [Future development](#future-development)
-16. [Documentation map](#documentation-map)
+5. [Roles and access](#roles-and-access)
+6. [Technology stack](#technology-stack)
+7. [Architecture overview](#architecture-overview)
+8. [Installation (Windows, macOS, Linux)](#installation)
+9. [Environment configuration](#environment-configuration)
+10. [Snowflake setup](#snowflake-setup)
+11. [Gemini setup](#gemini-setup)
+12. [Running the app](#running-the-app)
+13. [Demo patient scenarios](#demo-patient-scenarios)
+14. [Testing](#testing)
+15. [Known limitations](#known-limitations)
+16. [Future development](#future-development)
+17. [Documentation map](#documentation-map)
 
 ---
 
@@ -78,12 +80,40 @@ additional safeguard, not a replacement for existing communication or for clinic
 
 | | Feature | What it does |
 |---|---|---|
-| **C** | **Anesthesia OB Alerts** *(primary workflow)* | Finds obstetric patients with a **booked delivery-related encounter** and documented findings relevant to anesthesia planning (platelets below the lab's reference range, relevant conditions, anticoagulants, prior anesthesia complications). It creates an explainable flag and routes an in-app alert to the *Anesthesia OB Coordination* team. The review workspace covers evidence, Gemini Q&A, acknowledgement, notes, provider contact, planning status and the workflow New → Under Review → Coordination Needed → Plan Documented → Resolved (plus Dismissed with a reason). |
-| **B** | **Proactive clinical flags** | Four deterministic, configurable rules: OB anesthesia review, recurrent fractures, repeated out-of-range labs, and repeated encounters for the same symptom. Every flag cites its source records. Re-running analysis never duplicates a flag. Changed evidence updates the existing flag and alert. |
-| **A** | **Intelligent record search** | Natural-language search across all organizations. Gemini turns the request into **allow-listed structured criteria**, the backend runs **parameterized SQL**, and Gemini summarizes the results with citations. A keyword mode with filters (patient, organization, record type, dates) is also available. |
+| **C** | **Anesthesia OB Alerts** *(primary workflow; L&D nurses, CRNAs, anesthesiologists)* | Finds obstetric patients with a **booked delivery-related encounter** and documented findings relevant to anesthesia planning (platelets below the lab's reference range, relevant conditions, anticoagulants, prior anesthesia complications). It creates an explainable flag and routes an in-app alert to the *Anesthesia OB Coordination* team. The review workspace covers evidence, Gemini Q&A, acknowledgement, notes, provider contact, planning status and the workflow New → Under Review → Coordination Needed → Plan Documented → Resolved (plus Dismissed with a reason). A **Coordination board** tab shows every alert by status with a shared planning summary. |
+| **B** | **Clinical Alerts** *(proactive flags)* | Four deterministic, configurable rules: OB anesthesia review, recurrent fractures, repeated out-of-range labs, and repeated encounters for the same symptom. Every alert cites its source records. Re-running analysis never duplicates an alert. Changed evidence updates the existing flag and alert. A filter bar (text, category, status, priority, specialty) runs **server-side flag search**, and Clinical Search answers questions such as *"Find all patients flagged for low platelets."* |
+| **A** | **Intelligent record search** | Natural-language search across all organizations the user may access. Gemini turns the request into **allow-listed structured criteria**, the backend runs **parameterized SQL**, and Gemini summarizes the results with citations. A keyword mode with filters (patient, organization, record type, dates) is also available. |
 | ✦ | **Gemini clinical assistant** | Multi-turn chat on patient profiles, flags, alerts and search results. Each answer separates *documented facts*, *AI interpretation* and *missing information*. Every citation is checked against the records that were actually retrieved, and fabricated ones are removed. |
 | ✦ | **Clinical document interpretation** | Gemini extracts structured observations from notes. An observation is stored only if it quotes its source record verbatim. |
 | ✦ | **Source verification** | Every citation opens the original record, showing normalized content, source organization and system, and the raw HL7/FHIR/legacy/text payload exactly as received. |
+
+## Roles and access
+
+Camellia ships with six **simulated demo users**. Pick one from the user switcher in the top-right corner; switching is
+one click and resets everything cached in the browser. The backend enforces every rule below on every endpoint, including
+search, dashboards and Gemini retrieval, so a restricted record is never read, shown or sent to Gemini.
+
+| Demo user | Role | Patients visible | Anesthesia OB Alerts | Can change alert review status | Coordination |
+|---|---|---|---|---|---|
+| Dr. Alex Kim | Physician (Internal Medicine) | **Practice A only**: Caleb, Dolores, Elias, Frances, Henry | — | ✓ | — |
+| Dr. Sarah Mitchell | Physician (OB/GYN) | **Practice B only**: Ava, Beatriz, Grace, Imani | — | ✓ | — |
+| Jordan Lee, RN | Registered Nurse | All 9 | — | — | — |
+| Taylor Morgan, RN | Labor & Delivery Nurse | All 9 | ✓ view | — | Add notes |
+| Maya Ellison, CRNA *(default)* | Nurse Anesthetist | All 9 | ✓ | ✓ | Full (acknowledge, status, contact, notes) |
+| Dr. Daniel Brooks | Anesthesiologist | All 9 | ✓ | ✓ | Full |
+
+- **Navigation follows the role.** Everyone sees Dashboard, Patients, Clinical Search and Clinical Alerts. Only L&D
+  nurses, CRNAs and anesthesiologists see **Anesthesia OB Alerts** (work queue + coordination board).
+- **Anesthesia OB data is part of the restricted workflow.** Flags from the OB anesthesia rule and all coordination
+  alerts are hidden from other roles everywhere: lists, search, dashboards, patient profiles and Gemini context. Dr.
+  Mitchell sees Ava's records (Ava is her patient) but not Ava's anesthesia alert.
+- **Denials are generic.** A restricted or non-existent patient, record, flag or alert returns the same
+  `403 ACCESS_DENIED`, so the response never confirms that a patient exists.
+- **Practices** are stored in two small tables (`PRACTICES`, `PATIENT_PRACTICE_ASSOCIATIONS`). Practice A is Larkspur
+  Regional Primary Care; Practice B is Bellwether Women's Health Associates.
+- **Identity is simulated, not authenticated.** Choosing a user calls `POST /api/session`, which sets an HMAC-signed,
+  HttpOnly session cookie. The backend trusts only that signed cookie, never a user id sent by the client. Anyone using
+  the demo can still pick any user. That is the point of the demo, and it is not a security boundary.
 
 ## Technology stack
 
@@ -102,11 +132,12 @@ additional safeguard, not a replacement for existing communication or for clinic
 ┌──────────────────────────────────┐   ┌─────────────────────────────────────────────────────────┐   ┌──────────────────┐
 │ Larkspur Regional   FHIR-like JSON│   │ ingestion/   normalizers → CLINICAL_RECORDS + typed rows │   │ Dashboard         │
 │ Bellwether OB/MFM   legacy JSON   │──▶│ analysis/    4 explainable rules → flags → OB alerts     │   │ Patients/Profile  │
-│ Northgate Labs      HL7 v2 ORU    │   │ coordination/ status workflow, notes, simulated teams    │◀─▶│ Clinical Search   │
-│ Cedar Hollow        FHIR-like JSON│   │ search/      NL → allow-listed criteria → param. SQL     │REST│ Clinical Flags    │
+│ Northgate Labs      HL7 v2 ORU    │   │ coordination/ status workflow and notes                  │◀─▶│ Clinical Search   │
+│ Cedar Hollow        FHIR-like JSON│   │ search/      NL → allow-listed criteria → param. SQL     │REST│ Clinical Alerts   │
 │ Riverbend UC        dictation text│   │ ai/          retrieval → Gemini → citation validation    │/api│ Anesthesia OB     │
-└──────────────────────────────────┘   │ integration/ Snowflake JDBC · Google Gen AI SDK          │   │ Care Coordination │
-                                       └───────────────┬─────────────────────────┬───────────────┘   └──────────────────┘
+└──────────────────────────────────┘   │ security/    demo sessions · role & practice scope       │   │  (queue + board)  │
+                                       │ integration/ Snowflake JDBC · Google Gen AI SDK          │   └──────────────────┘
+                                       └───────────────┬─────────────────────────┬───────────────┘
                                                        │ JDBC (key-pair)          │ HTTPS (server-side key)
                                                 ┌──────▼──────┐            ┌──────▼──────┐
                                                 │  Snowflake  │            │ Gemini API  │
@@ -120,7 +151,7 @@ The backend is the only component that talks to Snowflake or Gemini. The browser
 Camellia/
 ├── backend/                 Spring Boot API (mvnw / mvnw.cmd included)
 │   └── src/main/
-│       ├── java/com/camellia/{config,controller,dto,model,repository,service,
+│       ├── java/com/camellia/{config,controller,dto,model,repository,service,security,
 │       │                      ingestion,analysis,search,coordination,ai,integration,web}
 │       └── resources/
 │           ├── application.yml                 configuration + PROTOTYPE rule heuristics
@@ -128,7 +159,7 @@ Camellia/
 │           └── seed/                           synthetic multi-format source files
 ├── frontend/                React + TypeScript + Vite
 ├── database/snowflake/      one-time Snowflake account setup script
-├── assets/                  logo
+├── assets/                  logo (transparent PNG, the original, and the script that converted it)
 └── *.md                     documentation
 ```
 
@@ -195,6 +226,7 @@ quotes. **Use forward slashes in file paths, even on Windows** (for example `C:/
 | `SNOWFLAKE_CREATE_DATABASE` | `true` lets the app run `CREATE DATABASE/SCHEMA IF NOT EXISTS` |
 | `CAMELLIA_DB_MODE` | `auto` (default), `snowflake` (require Snowflake) or `local` (labeled fallback only) |
 | `CAMELLIA_DEMO_ANCHOR_DATE` | Optional fixed anchor for synthetic dates (`YYYY-MM-DD`) |
+| `CAMELLIA_DEMO_SESSION_SECRET` | Optional (16+ characters). Signs demo-session cookies. If unset, a random secret is generated at startup, and the browser silently re-selects its demo user after a backend restart. |
 
 With nothing configured, the app still runs. The UI shows **"Local fallback DB"** and **"Gemini not configured"**
 badges, AI features show a labeled *retrieval-only* mode, and search uses a labeled rule-based interpreter. No simulated
@@ -222,7 +254,8 @@ AI text is ever produced.
 
    The log line `Camellia ready on Snowflake` confirms it. If the configuration is incomplete, startup stops with a
    message that lists exactly what is missing.
-5. **Verify** in the app under **System & integrations → Run read / write check**, or with
+   The two practice tables are created and seeded the same way, so an existing Snowflake database is upgraded in place.
+5. **Verify** in the app under **Demo & integrations → Run read / write check**, or with
    `curl -X POST http://localhost:8080/api/integrations/database/check`.
 
 ## Gemini setup
@@ -230,7 +263,7 @@ AI text is ever produced.
 1. Create an API key at <https://aistudio.google.com/apikey>.
 2. Put it in `backend/.env` as `GEMINI_API_KEY=…`. Optionally change `GEMINI_MODEL`.
 3. Restart the backend. The header badge changes to **"Gemini live"**.
-4. Verify under **System & integrations → Send live test request**. This makes a real API call and shows the model,
+4. Verify under **Demo & integrations → Send live test request**. This makes a real API call and shows the model,
    latency, token counts and response.
 
 ## Running the app
@@ -262,14 +295,16 @@ Open **http://localhost:5173**. The Vite dev server proxies `/api` to the backen
 Useful extras:
 
 - `GET http://localhost:8080/api/integrations/status`: which database and AI mode is active
-- **System & integrations → Reset demo data**: re-seeds with today as the date anchor. Run this before presenting so
+- **Demo & integrations → Reset demo data**: re-seeds with today as the date anchor. Run this before presenting so
   upcoming encounters are relative to the demo day.
-- **System & integrations → Simulate incoming lab result**: a new HL7 platelet result for Patient A, used to demonstrate
+- **Demo & integrations → Simulate incoming lab result**: a new HL7 platelet result for Patient A, used to demonstrate
   re-evaluation without duplicate alerts.
 
 ## Demo patient scenarios
 
 All patients, organizations and providers are fictional. Dates are relative to the demo anchor date.
+
+Practice A = Larkspur Regional Primary Care (Dr. Kim). Practice B = Bellwether Women's Health Associates (Dr. Mitchell).
 
 | ID | Patient | Scenario | Expected behavior |
 |---|---|---|---|
@@ -290,10 +325,15 @@ cd backend
 .\mvnw.cmd test        # Git Bash: ./mvnw test
 ```
 
-38 tests cover patient retrieval, search filtering and SQL safety, the screening rules, alert generation, duplicate
-prevention, re-evaluation, status persistence and transition rules, simulated access control, evidence and citation
-validation, AI response parsing, Gemini grounding (with a scripted gateway), missing Gemini configuration, missing or
-partial Snowflake configuration, and multi-format normalization.
+51 tests cover patient retrieval, search filtering and SQL safety, the screening rules, alert generation, duplicate
+prevention, re-evaluation, status persistence and transition rules, evidence and citation validation, AI response
+parsing, Gemini grounding (with a scripted gateway), missing Gemini configuration, missing or partial Snowflake
+configuration, and multi-format normalization.
+
+`RoleBasedAccessIntegrationTest` (12 tests) covers role-based access end to end: practice-scoped patient lists, generic
+403s for restricted and missing ids, the anesthesia workflow restriction, coordination permissions per role, flag search
+scoping, per-user dashboards, missing and tampered sessions, and proof that **no Gemini request is made** for a denied
+context and that Gemini prompts never contain patients outside the user's scope.
 
 ```bash
 cd frontend
@@ -304,8 +344,12 @@ npm run build          # type-check + production build
 
 - **Prototype rules.** The screening rules are narrow keyword and threshold heuristics on synthetic data, not
   validated clinical logic or risk prediction. The thresholds in `application.yml` are labeled as prototype heuristics.
-- **Simulated identity.** There is no authentication. The user switcher sets an `X-Camellia-User` header, and
-  team-based permissions are simulated.
+- **Simulated identity.** There is no real authentication. Anyone can switch to any demo user. The signed session
+  cookie only stops the browser from asserting an arbitrary identity per request. Access rules are enforced server-side
+  but are a demonstration, not a reviewed security model.
+- **Simplified access model.** Nurses and anesthesia roles see every synthetic patient (a prototype simplification;
+  real access would depend on care relationships and organization policy). There is no break-the-glass flow, and the
+  activity log is not an audit-grade access log.
 - **No real integrations.** No connection to Epic or any production EHR, and no real notifications. Alerts exist only in
   the in-app queue.
 - **Synthetic data only.** Not HIPAA compliant. Gemini receives synthetic records over the public API.
@@ -318,7 +362,7 @@ npm run build          # type-check + production build
 ## Future development
 
 - SMART on FHIR / HL7 interfaces to real EHR sandboxes, and an identity-matching (MPI) service.
-- Real authentication (SSO/OIDC), role-based access, audit trails and a BAA-covered AI deployment (e.g. Vertex AI).
+- Real authentication (SSO/OIDC), care-relationship-based access, audit trails and a BAA-covered AI deployment (e.g. Vertex AI).
 - Snowflake Cortex Search or vector embeddings for semantic retrieval. Snowflake streams and tasks for continuous
   screening as new records arrive.
 - More specialty workflows (cardio-obstetrics, oncology pre-procedure review, pediatric anesthesia), each with

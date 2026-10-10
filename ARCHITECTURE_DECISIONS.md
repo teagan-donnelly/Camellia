@@ -1,6 +1,7 @@
 # Architecture Decisions — Camellia
 
-This document explains the major technical decisions behind the first iteration and the tradeoffs made for a hackathon.
+This document explains the major technical decisions behind Camellia and the tradeoffs made for a hackathon. Sections
+1–14 cover the first iteration; sections 15–22 cover the role-based access iteration.
 Paths are relative to the repository root.
 
 ---
@@ -18,7 +19,8 @@ Paths are relative to the repository root.
 
 **Shape.** Packages follow responsibilities: `controller` (HTTP), `dto` (wire types), `model` (records), `repository`
 (SQL), `service` (read models), `ingestion` (normalization), `analysis` (rules), `coordination` (workflow), `search`,
-`ai` (Gemini features), `integration/{snowflake,gemini}` (external systems), and `web` (errors).
+`ai` (Gemini features), `integration/{snowflake,gemini}` (external systems), `security` (demo sessions, roles,
+authorization) and `web` (errors).
 
 ## 2. Snowflake as the primary persistence layer
 
@@ -205,8 +207,9 @@ of `(recordId, role)` pairs is compared:
 - Separate fields track acknowledgement (by and when), referring-provider contact (`NOT_STARTED/PLANNED/COMPLETED`),
   whether a planning discussion occurred, whether further information is needed, the review due date and last
   updated by/at.
-- **Simulated access control.** Only members of the assigned team can change an alert's workflow. Anyone can add
-  notes. Users come from `DemoUsers` via the `X-Camellia-User` header.
+- **Role-based permissions** (see [§15](#15-role-based-authorization-layer)). Only CRNAs and anesthesiologists
+  (`UPDATE_COORDINATION`) can acknowledge alerts or change their workflow. L&D nurses can add notes
+  (`ADD_COORDINATION_NOTES`). Other roles cannot see coordination alerts at all.
 - Every change writes a `STATUS` note and an `ACTIVITY_LOG` entry. **AI endpoints cannot call the coordination
   service.**
 
@@ -214,8 +217,9 @@ of `(recordId, role)` pairs is compared:
 
 - REST/JSON over `/api`. In development the Vite server proxies `/api` to `localhost:8080`, so there is no CORS
   configuration to manage (CORS is also configured for direct access).
-- `api/client.ts` adds the simulated-user header and turns the backend's standard error envelope
-  `{status, code, message}` into readable UI errors.
+- `api/client.ts` sends requests with the browser's demo-session cookie (it never sends a user id). It turns the
+  backend's standard error envelope `{status, code, message}` into readable UI errors, and on `401
+  DEMO_SESSION_REQUIRED` re-selects the remembered demo user once and retries (see [§16](#16-demo-sessions-signed-cookie-not-a-trusted-header)).
 - **TanStack Query** caches reads and invalidates related queries after each write. Every button calls a real endpoint.
 - The UI makes AI provenance obvious: an **AI-generated · model** badge, sage "documented" sections, coral
   "interpretation" sections, amber "missing information" sections, and clickable citation chips that open the original
@@ -227,7 +231,9 @@ of `(recordId, role)` pairs is compared:
 |---|---|
 | Clinical data, flags, alerts, evidence, notes, statuses, activity, AI observations, flag explanations | Snowflake (or the labeled local H2 file `backend/data/`) |
 | Assistant conversation turns | Backend memory (2-hour TTL) |
-| Selected demo user | Browser `localStorage` (convenience only) |
+| Active demo identity | HMAC-signed HttpOnly cookie `CAMELLIA_DEMO_SESSION` (12-hour TTL) |
+| Last selected demo user | Browser `localStorage` (convenience only, used to re-create the session) |
+| Practices and patient–practice associations | Snowflake `PRACTICES`, `PATIENT_PRACTICE_ASSOCIATIONS` |
 
 Statuses and notes survive browser refreshes and backend restarts. Seeding never duplicates rows.
 
@@ -236,7 +242,9 @@ Statuses and notes survive browser refreshes and backend restarts. Seeding never
 - Keyword and concept search instead of embeddings: explainable and deterministic, but lower recall on paraphrases.
 - Rules are deliberately narrow and term-based. The focus is on demonstrating *explainable* detection, not coverage.
 - App-level uniqueness in a single backend instance, with no distributed locking.
-- No authentication. The user switcher only demonstrates team routing.
+- No real authentication. The user switcher is demo impersonation; access rules are enforced server-side, but anyone
+  can choose any demo user (§16).
+- Nurse and anesthesia roles have network-wide access to the 9 synthetic patients (§15).
 - Assistant memory is not persisted.
 - A synchronous analysis run triggered at startup or on demand, rather than streaming ingestion.
 - The large Snowflake JDBC fat jar is accepted for simplicity.
@@ -256,3 +264,132 @@ Statuses and notes survive browser refreshes and backend restarts. Seeding never
   review policies, and documentation of intended use. Possible regulatory assessment for clinical decision support.
 - **Operations:** monitoring, alert delivery integrated with existing secure messaging or EHR in-basket workflows, SLAs
   and escalation paths, and high availability.
+
+---
+
+# Role-based access iteration
+
+## 15. Role-based authorization layer
+
+**Decision.** One `AuthorizationService` (`backend/.../security/`) is the only place that decides access. Roles
+(`Role`) map to permissions (`Permission`). Demo users (`DemoDirectory`) have a role and, for physicians, practice
+memberships.
+
+| Permission | Physician | RN | L&D nurse | CRNA | Anesthesiologist |
+|---|---|---|---|---|---|
+| VIEW_PATIENTS, CLINICAL_SEARCH, CLINICAL_ALERTS, GEMINI_ASSISTANT | ✓ | ✓ | ✓ | ✓ | ✓ |
+| REVIEW_FLAGS (change flag review status) | ✓ | | | ✓ | ✓ |
+| ANESTHESIA_OB_ALERTS (see the OB anesthesia workflow) | | | ✓ | ✓ | ✓ |
+| UPDATE_COORDINATION (acknowledge, status, contact, toggles) | | | | ✓ | ✓ |
+| ADD_COORDINATION_NOTES | | | ✓ | ✓ | ✓ |
+
+**Scope computed once, applied in SQL.** `scope(user)` returns an `AccessScope(userId, patientIds | null, anesthesia)`.
+`null` means network-wide. Every patient-specific path uses it:
+
+- **Record search:** the patient `IN (...)` list is added to the parameterized SQL, so restricted rows are never read.
+  `openFlagsOnly` excludes the anesthesia rule when needed.
+- **Flag search:** the same patient list and `RULE_ID <> 'OB_ANESTHESIA_REVIEW'` are added to the SQL.
+- **Read models** (`ClinicalViewService.Lookup(scope)`): patients, flags, alerts, evidence, appointments and records are
+  pre-filtered before any DTO is built. That covers the directory, profile, "cited as evidence by" back-references,
+  dashboard and activity feed.
+- **Screening run results** returned to a user only include outcomes they may see. The run itself still evaluates the
+  whole network.
+
+**Generic denials.** `requirePatient/requireFlag/requireAlert` throw `403 ACCESS_DENIED` with the same message for
+missing and restricted ids, so the API cannot be used to probe whether a patient exists. A missing or invalid session is
+`401 DEMO_SESSION_REQUIRED`.
+
+**Why centralized.** Scattered `if (role == ...)` checks are how access bugs happen. With one service, every endpoint
+asks the same question, and `RoleBasedAccessIntegrationTest` exercises each path per role.
+
+**Frontend.** The UI hides what a role can't use (sidebar from `GET /api/session` → `navigation`, buttons from
+`permissions`, a route guard for `/alerts`) and shows a generic *Not available to your role* panel on 403. These are
+conveniences only. The backend is the enforcement point.
+
+**Prototype simplification.** Nurses and anesthesia roles see all patients. Real systems would scope by care
+relationship, unit and organization policy, with break-the-glass access and audit.
+
+## 16. Demo sessions: signed cookie, not a trusted header
+
+**Decision.** `POST /api/session {userId}` issues an HMAC-SHA256-signed, HttpOnly, `SameSite=Strict` cookie
+(`DemoSessionService`, 12-hour TTL). `CurrentUserArgumentResolver` injects the `DemoUser` into controllers only from a
+valid cookie. The old `X-Camellia-User` header is no longer read.
+
+**Why.** With a per-request header, any script or `curl` call could claim to be anyone on any request, and the backend
+had nothing to check. A server-signed token means the identity is chosen in one explicit place and cannot be edited
+in the browser (tampered cookies get 401). HttpOnly keeps it away from page scripts; SameSite=Strict blocks cross-site
+use.
+
+**What it is not.** It is still **demo impersonation, not authentication**: `GET /api/session/users` and `POST
+/api/session` are public so judges can switch users. The secret comes from `CAMELLIA_DEMO_SESSION_SECRET`; if unset, a
+random per-startup secret is generated, sessions reset on restart, and the frontend silently re-selects the remembered
+user.
+
+## 17. Practice tables (minimal schema change)
+
+**Decision.** Two new tables, with nothing existing altered:
+
+- `PRACTICES(PRACTICE_ID, NAME, ORG_ID, SPECIALTY, IS_SYNTHETIC)`
+- `PATIENT_PRACTICE_ASSOCIATIONS(PATIENT_ID, PRACTICE_ID, RELATIONSHIP, REGISTERED_AT)`
+
+Practice A (Larkspur Regional Primary Care, org LRMC) holds patients C, D, E, F and H. Practice B (Bellwether Women's
+Health Associates, org BWHA) holds A, B, G and I. They are seeded from `seed/practices.json` and each patient's
+`practices` entry, idempotently, so an existing Snowflake database is upgraded on the next startup.
+
+**Why separate tables.** A patient can belong to several practices, and a practice is not an organization (one
+organization has many practices). An association table models that without touching `PATIENTS`.
+
+## 18. Anesthesia OB data is a restricted workflow
+
+**Decision.** Flags from rule `OB_ANESTHESIA_REVIEW` and all coordination alerts are visible only with
+`ANESTHESIA_OB_ALERTS`, everywhere: lists, flag search, record search `openFlagsOnly`, dashboard metrics, patient
+profile, evidence back-references, rule descriptors, screening outcomes, the activity feed and Gemini context.
+
+**Why.** Hiding the page while leaking the same alert through search or the dashboard would not be access control. Dr.
+Mitchell can see her patient Ava's records, but not the anesthesia team's alert about Ava.
+
+## 19. Gemini retrieval is authorized first
+
+**Decision.** `ClinicalAiService` authorizes **before** retrieval:
+
+- PATIENT, FLAG and ALERT chat contexts call `requirePatient/requireFlag/requireAlert` first. A denial means no records
+  are loaded and no request is sent to Gemini.
+- SEARCH context and search summaries drop records outside the scope, and return 403 if nothing remains.
+- NL search interpretation sends Gemini only the accessible patients, and only the flag categories the role may use
+  (in the prompt *and* in the response schema's enum).
+- Conversations are keyed by `userId@context`, so history never crosses users.
+
+The integration test proves this with a scripted gateway: denied contexts record **zero** Gemini requests, and allowed
+prompts contain no out-of-scope patient names.
+
+## 20. Flag search
+
+**Decision.** `FlagSearchCriteria` is an allow-listed criteria object (text, categories, status group OPEN/CLOSED/ANY,
+statuses, priorities, specialties, concepts, patient). Only `FlagSearchService` turns it into SQL, using fixed fragments
+and bound parameters. It is used by:
+
+- the Clinical Alerts filter bar (`GET /api/flags/search`, `GET /api/flags/facets`);
+- natural-language search: Gemini (or the rule-based fallback) sets `searchTarget: FLAGS` and fills the flag fields, and
+  the frontend runs `POST /api/flags/search`.
+
+"Unresolved" uses the alert's workflow status when an alert exists, otherwise the flag's review status. Asking for a
+category the role can't use is removed from the criteria (never widened) and reported in `notice`. Asking for an
+out-of-scope patient forces an empty result.
+
+## 21. Navigation and alert consolidation
+
+- "Clinical Flags" is renamed **Clinical Alerts** in the UI (API paths stay `/api/flags…`).
+- The standalone Care Coordination page became the **Coordination board** tab inside Anesthesia OB Alerts, because it
+  shows the same restricted data. `/coordination` redirects there.
+- Sidebar items come from the backend session's `navigation`, so the UI and the server agree on what a role can open.
+- The router is keyed by user id: switching users remounts every page, and the TanStack Query cache is cleared, so no
+  previous user's data, drafts or chat history remains on screen.
+
+## 22. Logo transparency
+
+The brand PNG was a screenshot: white background, white flower center and blue selection lines at the edges.
+`assets/make_logo_transparent.py` crops to the artwork (ignoring the blue lines) and converts white to alpha. Pixels at
+or above the lightest petal tone stay fully opaque, so the petals keep their exact color on dark backgrounds, while
+anti-aliased edges are un-premultiplied to avoid white halos. The original is kept as `camellia-logo-original.png`. In
+the SVG mark (`Logo.tsx`, `favicon.svg`) the painted white center circle was replaced with a mask, so the center is
+truly transparent on navy and white.

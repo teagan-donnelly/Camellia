@@ -1,12 +1,13 @@
 package com.camellia.coordination;
 
-import com.camellia.config.DemoUsers.DemoUser;
 import com.camellia.model.ClinicalFlag;
 import com.camellia.model.CoordinationAlert;
 import com.camellia.model.CoordinationNote;
 import com.camellia.repository.AlertRepository;
 import com.camellia.repository.FlagRepository;
 import com.camellia.repository.SupportRepository;
+import com.camellia.security.AuthorizationService;
+import com.camellia.security.DemoUser;
 import com.camellia.web.ApiException;
 import org.springframework.stereotype.Service;
 
@@ -16,7 +17,7 @@ import java.util.*;
 /**
  * Human-driven administrative workflow for care-coordination alerts and clinical flags.
  * These states describe coordination progress only — they never assert that a patient is clinically cleared.
- * AI components cannot call this service.
+ * AI components cannot call this service. Every method is authorized through {@link AuthorizationService}.
  */
 @Service
 public class CoordinationService {
@@ -43,8 +44,10 @@ public class CoordinationService {
     private final AlertRepository alerts;
     private final FlagRepository flags;
     private final SupportRepository support;
+    private final AuthorizationService auth;
 
-    public CoordinationService(AlertRepository alerts, FlagRepository flags, SupportRepository support) {
+    public CoordinationService(AlertRepository alerts, FlagRepository flags, SupportRepository support, AuthorizationService auth) {
+        this.auth = auth;
         this.alerts = alerts;
         this.flags = flags;
         this.support = support;
@@ -55,11 +58,11 @@ public class CoordinationService {
                               Boolean infoNeeded, String reason, String note) {}
 
     public CoordinationAlert updateAlert(String alertId, AlertUpdate u, DemoUser user) {
-        CoordinationAlert a = alerts.findById(alertId).orElseThrow(() -> ApiException.notFound("Alert", alertId));
-        if (!user.team().equals(a.assignedTeam())) {
-            throw ApiException.forbidden("Simulated access control: only members of '" + a.assignedTeam()
-                    + "' can change this alert's workflow. You are signed in as " + user.name() + " (" + user.team()
-                    + "). You can still add notes.");
+        CoordinationAlert a = alerts.findById(alertId).orElse(null);
+        auth.requireAlert(user, a);
+        if (!auth.canUpdateCoordinationStatus(user, a)) {
+            throw AuthorizationService.denied("Your role (" + user.role().label() + ") can view this alert and add notes, "
+                    + "but only nurse anesthetists and anesthesiologists can change its coordination workflow.");
         }
         LocalDateTime now = LocalDateTime.now();
         List<String> changes = new ArrayList<>();
@@ -125,8 +128,8 @@ public class CoordinationService {
         alerts.updateWorkflow(updated);
         if (!changes.isEmpty()) {
             String detail = String.join("; ", changes);
-            alerts.insertNote(new CoordinationNote(SupportRepository.newId("NTE"), alertId, a.patientId(), user.name(), user.role(),
-                    "STATUS", detail, now));
+            alerts.insertNote(new CoordinationNote(SupportRepository.newId("NTE"), alertId, a.patientId(), user.name(),
+                    user.roleDescription(), "STATUS", detail, now));
             support.logActivity("ALERT", alertId, a.patientId(), "ALERT_UPDATED", detail, user.name());
         }
         if (!isBlank(u.note())) {
@@ -137,20 +140,26 @@ public class CoordinationService {
     }
 
     public CoordinationNote addNote(String alertId, String noteType, String body, DemoUser user) {
-        CoordinationAlert a = alerts.findById(alertId).orElseThrow(() -> ApiException.notFound("Alert", alertId));
+        CoordinationAlert a = alerts.findById(alertId).orElse(null);
+        auth.requireAlert(user, a);
+        if (!auth.canAddCoordinationNote(user, a)) throw AuthorizationService.denied("Your role cannot add coordination notes.");
         if (isBlank(body)) throw ApiException.badRequest("Note text is required.");
         if (body.length() > 4000) throw ApiException.badRequest("Note text must be 4000 characters or fewer.");
         String type = noteType == null ? "GENERAL" : noteType.trim().toUpperCase(Locale.ROOT);
         if (!NOTE_TYPES.contains(type)) throw ApiException.badRequest("Unknown note type: " + noteType + ". Allowed: " + NOTE_TYPES);
-        CoordinationNote n = new CoordinationNote(SupportRepository.newId("NTE"), alertId, a.patientId(), user.name(), user.role(),
-                type, body.trim(), LocalDateTime.now());
+        CoordinationNote n = new CoordinationNote(SupportRepository.newId("NTE"), alertId, a.patientId(), user.name(),
+                user.roleDescription(), type, body.trim(), LocalDateTime.now());
         alerts.insertNote(n);
         support.logActivity("ALERT", alertId, a.patientId(), "NOTE_ADDED", type + ": " + abbreviate(body.trim(), 160), user.name());
         return n;
     }
 
     public ClinicalFlag updateFlagStatus(String flagId, String status, String reason, DemoUser user) {
-        ClinicalFlag f = flags.findById(flagId).orElseThrow(() -> ApiException.notFound("Flag", flagId));
+        ClinicalFlag f = flags.findById(flagId).orElse(null);
+        auth.requireFlag(user, f);
+        if (!auth.canUpdateFlagStatus(user, f)) {
+            throw AuthorizationService.denied("Your role (" + user.role().label() + ") can view clinical alerts but not change their review status.");
+        }
         String target = status == null ? null : status.trim().toUpperCase(Locale.ROOT);
         if (target == null || !FLAG_STATUSES.contains(target)) throw ApiException.badRequest("Status must be one of " + FLAG_STATUSES);
         if (target.equals(f.status())) return f;
