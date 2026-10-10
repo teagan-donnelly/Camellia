@@ -37,8 +37,8 @@ public final class SnowflakeConnectionSettings {
         if (!notBlank(cfg.getWarehouse())) problems.add("SNOWFLAKE_WAREHOUSE is not set");
         if (!notBlank(cfg.getPrivateKeyFile())) {
             problems.add("SNOWFLAKE_PRIVATE_KEY_FILE is not set (path to your PKCS#8 .p8 private key for key-pair auth)");
-        } else if (!Files.isReadable(Path.of(cfg.getPrivateKeyFile()))) {
-            problems.add("SNOWFLAKE_PRIVATE_KEY_FILE points to a file that does not exist or is not readable: " + cfg.getPrivateKeyFile());
+        } else if (!Files.isReadable(Path.of(privateKeyPath()))) {
+            problems.add("SNOWFLAKE_PRIVATE_KEY_FILE points to a file that does not exist or is not readable: " + privateKeyPath());
         }
         if (!isIdentifier(cfg.getDatabase())) problems.add("SNOWFLAKE_DATABASE must be a simple identifier (letters, digits, _ or $)");
         if (!isIdentifier(cfg.getSchema())) problems.add("SNOWFLAKE_SCHEMA must be a simple identifier (letters, digits, _ or $)");
@@ -68,7 +68,7 @@ public final class SnowflakeConnectionSettings {
         p.put("user", cfg.getUser().trim());
         p.put("authenticator", "SNOWFLAKE_JWT");
         // The driver expects forward slashes on every OS (Windows paths included).
-        p.put("private_key_file", cfg.getPrivateKeyFile().trim().replace('\\', '/'));
+        p.put("private_key_file", privateKeyPath().replace('\\', '/'));
         if (notBlank(cfg.getPrivateKeyPassphrase())) {
             p.put("private_key_file_pwd", cfg.getPrivateKeyPassphrase());
         }
@@ -84,6 +84,15 @@ public final class SnowflakeConnectionSettings {
         p.put("TIMEZONE", "UTC");
         p.put("CLIENT_TIMESTAMP_TYPE_MAPPING", "TIMESTAMP_NTZ");
         return p;
+    }
+
+    /** Key file path with a leading "~" expanded to the user's home directory, so one .env works for every teammate. */
+    public String privateKeyPath() {
+        String raw = cfg.getPrivateKeyFile() == null ? "" : cfg.getPrivateKeyFile().trim();
+        if (raw.equals("~") || raw.startsWith("~/") || raw.startsWith("~\\")) {
+            return System.getProperty("user.home") + raw.substring(1);
+        }
+        return raw;
     }
 
     public String database() {

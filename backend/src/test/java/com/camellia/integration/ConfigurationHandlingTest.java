@@ -65,6 +65,14 @@ class ConfigurationHandlingTest {
     }
 
     @Test
+    void privateKeyPathExpandsHomeDirectory() {
+        CamelliaProperties.Snowflake s = new CamelliaProperties.Snowflake();
+        s.setPrivateKeyFile("~/.snowflake/camellia_rsa_key.p8");
+        assertThat(new SnowflakeConnectionSettings(s).privateKeyPath())
+                .isEqualTo(System.getProperty("user.home") + "/.snowflake/camellia_rsa_key.p8");
+    }
+
+    @Test
     void geminiWithoutKeyReportsNotConfiguredAndNeverCallsTheApi() {
         GoogleGenAiGateway g = new GoogleGenAiGateway(new CamelliaProperties());
         assertThat(g.isConfigured()).isFalse();
