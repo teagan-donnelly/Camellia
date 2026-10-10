@@ -129,9 +129,8 @@ public class SearchService {
             sql.append(" AND p.IS_OBSTETRIC = TRUE");
         }
         if (Boolean.TRUE.equals(c.upcomingDeliveryOnly())) {
-            sql.append("""
-                     AND r.PATIENT_ID IN (SELECT a.PATIENT_ID FROM APPOINTMENTS a JOIN CLINICAL_RECORDS ar ON ar.RECORD_ID = a.RECORD_ID
-                         WHERE a.SCHEDULED_START >= ? AND a.SCHEDULED_START <= ? AND ar.CATEGORY_TAGS LIKE ?)""");
+            sql.append(" AND r.PATIENT_ID IN (SELECT a.PATIENT_ID FROM APPOINTMENTS a JOIN CLINICAL_RECORDS ar ON ar.RECORD_ID = a.RECORD_ID")
+               .append(" WHERE a.SCHEDULED_START >= ? AND a.SCHEDULED_START <= ? AND ar.CATEGORY_TAGS LIKE ?)");
             params.add(Timestamp.valueOf(now));
             params.add(Timestamp.valueOf(now.plusDays(120)));
             params.add("%|DELIVERY|%");

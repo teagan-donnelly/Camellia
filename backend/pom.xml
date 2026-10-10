@@ -76,7 +76,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <jvmArguments>--add-opens=java.base/java.nio=ALL-UNNAMED</jvmArguments>
+                    <jvmArguments>--add-opens=java.base/java.nio=ALL-UNNAMED -Duser.timezone=UTC</jvmArguments>
                 </configuration>
             </plugin>
             <plugin>
