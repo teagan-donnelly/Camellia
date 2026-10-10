@@ -1,0 +1,25 @@
+# Secrets — never commit
+.env
+*.env
+!.env.example
+*.p8
+*.pem
+rsa_key*
+
+# Backend
+backend/target/
+backend/data/
+*.mv.db
+*.trace.db
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# IDE / OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.iml
+.DS_Store
+Thumbs.db

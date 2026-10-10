@@ -1,0 +1,156 @@
+{
+  "exportSystem": "Bellwether PracticeSuite v7 (fictional)",
+  "practiceCode": "BWHA",
+  "disclaimer": "SYNTHETIC DEMO DATA — NOT REAL PATIENTS",
+  "patients": [
+    {
+      "mrn": "BW-77120",
+      "visits": [
+        {
+          "visitId": "V-30117",
+          "visitDate": "@D-196T09:00",
+          "visitType": "New obstetric intake",
+          "department": "Obstetrics",
+          "provider": "Dr. Helena Voss, MD",
+          "specialty": "Obstetrics",
+          "chiefComplaint": "Prenatal intake, 12 weeks",
+          "noteText": "G2P1 at 12w0d by early ultrasound. Prior pregnancy: uncomplicated spontaneous vaginal delivery with labor epidural at Larkspur Regional. No known bleeding disorder; denies easy bruising or heavy menses. No chronic medical conditions. Prenatal panel and CBC sent to Northgate Diagnostic Laboratories. Prenatal vitamin started.",
+          "diagnoses": [ { "icd10": "Z34.81", "description": "Encounter for supervision of other normal pregnancy, first trimester", "status": "resolved" } ]
+        },
+        {
+          "visitId": "V-31420",
+          "visitDate": "@D-84T10:15",
+          "visitType": "Routine prenatal visit",
+          "department": "Obstetrics",
+          "provider": "Dr. Helena Voss, MD",
+          "specialty": "Obstetrics",
+          "chiefComplaint": "28-week prenatal visit",
+          "noteText": "28w visit. Glucose challenge normal. CBC from Northgate: platelets 118 x10^3/uL, below the laboratory reference range (previously 162 at intake). Denies epistaxis, gum bleeding, petechiae. BP 112/70. Plan: repeat CBC at 34 weeks; if platelets continue to decline, refer to hematology.",
+          "diagnoses": []
+        },
+        {
+          "visitId": "V-32288",
+          "visitDate": "@D-42T09:30",
+          "visitType": "Routine prenatal visit",
+          "department": "Obstetrics",
+          "provider": "Dr. Helena Voss, MD",
+          "specialty": "Obstetrics",
+          "chiefComplaint": "34-week prenatal visit; platelet follow-up",
+          "noteText": "34w1d. Repeat platelet count 86 x10^3/uL (Northgate). Trend 162 -> 118 -> 86. No petechiae or bruising. BP 118/74, no headache or visual changes, urine protein negative. Assessment: thrombocytopenia in pregnancy, etiology not yet established (gestational thrombocytopenia vs. immune thrombocytopenia under consideration). Plan: hematology referral placed (Larkspur Regional Hematology); repeat CBC with peripheral smear in 2 weeks; induction of labor at 39 weeks scheduled at Larkspur Regional Labor & Delivery. Obstetric anesthesia consultation not yet requested.",
+          "diagnoses": [ { "icd10": "O99.113", "description": "Thrombocytopenia in pregnancy, third trimester", "status": "active" } ]
+        }
+      ],
+      "medications": [
+        { "rxId": "RX-55101", "drug": "Prenatal multivitamin with folic acid", "sig": "1 tablet daily", "route": "Oral", "status": "active", "startDate": "@D-196", "prescriber": "Dr. Helena Voss, MD" }
+      ],
+      "scheduled": []
+    },
+    {
+      "mrn": "BW-80455",
+      "visits": [
+        {
+          "visitId": "V-29871",
+          "visitDate": "@D-160T13:00",
+          "visitType": "Maternal-fetal medicine consultation",
+          "department": "Maternal-Fetal Medicine",
+          "provider": "Dr. Lena Abernathy, MD",
+          "specialty": "Maternal-Fetal Medicine",
+          "chiefComplaint": "MFM consultation: pregnancy with prior lymphoma treatment and history of DVT",
+          "noteText": "36-year-old G1P0 at 14w. History of Hodgkin lymphoma (2016, Cedar Hollow oncology) treated with ABVD chemotherapy and mediastinal radiation, in remission. Left leg DVT in 2019 (Cedar Hollow ED), completed anticoagulation. Plan: prophylactic enoxaparin 40 mg daily through pregnancy and postpartum; cardiology (cardio-oncology) referral for baseline echocardiogram given anthracycline and chest radiation exposure; oncology survivorship records requested from Cedar Hollow.",
+          "diagnoses": [ { "icd10": "Z86.718", "description": "Personal history of venous thrombosis (DVT, 2019)", "status": "active" } ]
+        },
+        {
+          "visitId": "V-31877",
+          "visitDate": "@D-35T14:00",
+          "visitType": "Maternal-fetal medicine follow-up",
+          "department": "Maternal-Fetal Medicine",
+          "provider": "Dr. Lena Abernathy, MD",
+          "specialty": "Maternal-Fetal Medicine",
+          "chiefComplaint": "32-week MFM follow-up; delivery planning",
+          "noteText": "32w. Repeat echocardiogram reviewed with cardiology: LVEF 43-45%, stable. Mild exertional fatigue, no orthopnea. Continues enoxaparin 40 mg daily. Delivery plan: cesarean delivery at 37w0d scheduled at Larkspur Regional. Timing of the last enoxaparin dose relative to delivery to be coordinated. Multidisciplinary planning discussion with cardiology and obstetric anesthesia recommended before delivery; not yet scheduled.",
+          "diagnoses": []
+        }
+      ],
+      "medications": [
+        { "rxId": "RX-56220", "drug": "Enoxaparin 40 mg/0.4 mL prefilled syringe", "sig": "40 mg subcutaneously once daily", "route": "Subcutaneous", "status": "active", "startDate": "@D-160", "prescriber": "Dr. Lena Abernathy, MD" },
+        { "rxId": "RX-56221", "drug": "Prenatal multivitamin with folic acid", "sig": "1 tablet daily", "route": "Oral", "status": "active", "startDate": "@D-170", "prescriber": "Dr. Lena Abernathy, MD" }
+      ],
+      "scheduled": []
+    },
+    {
+      "mrn": "BW-81902",
+      "visits": [
+        {
+          "visitId": "V-30544",
+          "visitDate": "@D-210T09:00",
+          "visitType": "New obstetric intake",
+          "department": "Obstetrics",
+          "provider": "Dr. Helena Voss, MD",
+          "specialty": "Obstetrics",
+          "chiefComplaint": "Prenatal intake, 9 weeks",
+          "noteText": "G1P0 at 9w2d. No significant medical history. No prior surgeries or anesthesia. Prenatal panel sent to Northgate. Prenatal vitamin started. Routine prenatal care plan reviewed.",
+          "diagnoses": [ { "icd10": "Z34.01", "description": "Encounter for supervision of normal first pregnancy, first trimester", "status": "resolved" } ]
+        },
+        {
+          "visitId": "V-31602",
+          "visitDate": "@D-98T10:00",
+          "visitType": "Routine prenatal visit",
+          "department": "Obstetrics",
+          "provider": "Dr. Helena Voss, MD",
+          "specialty": "Obstetrics",
+          "chiefComplaint": "24-week prenatal visit",
+          "noteText": "24w. Fetal anatomy survey normal. BP 108/66. CBC within reference ranges. No concerns.",
+          "diagnoses": []
+        },
+        {
+          "visitId": "V-32790",
+          "visitDate": "@D-28T10:30",
+          "visitType": "Routine prenatal visit",
+          "department": "Obstetrics",
+          "provider": "Dr. Helena Voss, MD",
+          "specialty": "Obstetrics",
+          "chiefComplaint": "34-week prenatal visit",
+          "noteText": "34w. Normal growth. BP 112/70. Labs within reference ranges. Birth preferences discussed: patient interested in labor epidural. Plan: weekly visits from 36 weeks; spontaneous labor anticipated, tentative induction slot at 41 weeks booked at Larkspur Regional.",
+          "diagnoses": []
+        }
+      ],
+      "medications": [
+        { "rxId": "RX-57001", "drug": "Prenatal multivitamin with folic acid", "sig": "1 tablet daily", "route": "Oral", "status": "active", "startDate": "@D-210", "prescriber": "Dr. Helena Voss, MD" }
+      ],
+      "scheduled": [
+        { "apptId": "S-88110", "when": "@D+7T10:00", "apptType": "Routine prenatal visit (36 weeks)", "location": "Bellwether Women's Health — Obstetrics", "provider": "Dr. Helena Voss, MD", "comments": "Routine visit, GBS screen." }
+      ]
+    },
+    {
+      "mrn": "BW-79388",
+      "visits": [
+        {
+          "visitId": "V-30205",
+          "visitDate": "@D-190T11:00",
+          "visitType": "New obstetric intake",
+          "department": "Obstetrics",
+          "provider": "Dr. Helena Voss, MD",
+          "specialty": "Obstetrics",
+          "chiefComplaint": "Prenatal intake, 13 weeks; prior cesarean",
+          "noteText": "G2P1 at 13w. Prior delivery at Cedar Hollow Community Hospital: urgent cesarean delivery (details per patient; outside records requested). Adolescent scoliosis surgery (spinal fusion) as a teenager. Plan: repeat cesarean delivery at 39 weeks at Larkspur Regional; obtain Cedar Hollow delivery and anesthesia records.",
+          "diagnoses": [ { "icd10": "O34.211", "description": "Maternal care for low transverse scar from previous cesarean delivery", "status": "active" } ]
+        },
+        {
+          "visitId": "V-32001",
+          "visitDate": "@D-30T11:30",
+          "visitType": "Routine prenatal visit",
+          "department": "Obstetrics",
+          "provider": "Dr. Helena Voss, MD",
+          "specialty": "Obstetrics",
+          "chiefComplaint": "32-week prenatal visit",
+          "noteText": "32w. Doing well. BP 116/72. Repeat cesarean scheduled at Larkspur Regional at 39 weeks. Cedar Hollow records received and filed in chart; not yet reviewed with anesthesia.",
+          "diagnoses": []
+        }
+      ],
+      "medications": [
+        { "rxId": "RX-56410", "drug": "Prenatal multivitamin with folic acid", "sig": "1 tablet daily", "route": "Oral", "status": "active", "startDate": "@D-190", "prescriber": "Dr. Helena Voss, MD" }
+      ],
+      "scheduled": []
+    }
+  ]
+}

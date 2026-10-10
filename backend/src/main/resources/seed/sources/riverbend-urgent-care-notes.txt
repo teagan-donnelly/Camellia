@@ -1,0 +1,38 @@
+=== RIVERBEND URGENT CARE — VISIT NOTE (SYNTHETIC DEMO DATA) ===
+NOTE-ID: RUC-7781
+MRN: RUC-30019
+DATE: @D-1500T10:20
+PROVIDER: Tomas Herrera, PA-C
+SPECIALTY: Urgent Care
+VISIT-TYPE: Urgent care visit
+CHIEF-COMPLAINT: Left wrist pain and swelling after fall on ice
+DIAGNOSIS: S52.502A | Closed fracture of left distal radius, nondisplaced
+---
+Slipped on an icy driveway and landed on an outstretched left hand. Tenderness over the distal radius, no deformity. Radiographs in clinic: nondisplaced fracture of the left distal radius. Neurovascularly intact. Placed in a sugar-tong splint. Referred to orthopedics for follow-up within one week. Patient uses an inhaled steroid for COPD.
+=== END ===
+
+=== RIVERBEND URGENT CARE — VISIT NOTE (SYNTHETIC DEMO DATA) ===
+NOTE-ID: RUC-9902
+MRN: RUC-41207
+DATE: @D-300T18:05
+PROVIDER: Danielle Fry, NP
+SPECIALTY: Urgent Care
+VISIT-TYPE: Urgent care visit
+CHIEF-COMPLAINT: Headache for two days with light sensitivity
+DIAGNOSIS: R51.9 | Headache, unspecified
+---
+Two days of throbbing headache with photophobia; no fever, neck stiffness, trauma or focal weakness. BP 136/86. Neurologic exam normal. Reports similar headaches a few times per month, worse with poor sleep. Treated with oral ibuprofen and an antiemetic; advised hydration, sleep hygiene and primary care follow-up if recurrent.
+=== END ===
+
+=== RIVERBEND URGENT CARE — VISIT NOTE (SYNTHETIC DEMO DATA) ===
+NOTE-ID: RUC-10457
+MRN: RUC-41207
+DATE: @D-120T19:40
+PROVIDER: Tomas Herrera, PA-C
+SPECIALTY: Urgent Care
+VISIT-TYPE: Urgent care visit
+CHIEF-COMPLAINT: Recurrent headache, not improving with sumatriptan
+DIAGNOSIS: G43.909 | Migraine, unspecified
+---
+Recurrent bifrontal headache for one day. Seen at Cedar Hollow ED months ago for a similar headache with a normal CT head. Uses ibuprofen about five days per week and sumatriptan as needed. BP 140/90. Neurologic exam normal. Treated with ketorolac IM. Advised to establish care with primary care and to limit analgesic use frequency.
+=== END ===

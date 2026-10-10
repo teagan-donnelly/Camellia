@@ -1,0 +1,92 @@
+# Camellia backend configuration.
+# Secrets come from environment variables or a git-ignored .env file (see ../.env.example).
+# NEVER commit real credentials.
+
+spring:
+  application:
+    name: camellia-backend
+  config:
+    import:
+      - optional:file:./.env[.properties]
+      - optional:file:../.env[.properties]
+  # The DataSource is built by com.camellia.config.DataSourceConfig (Snowflake, or the labeled local fallback).
+  jackson:
+    default-property-inclusion: non_null
+
+server:
+  port: ${PORT:8080}
+  error:
+    include-message: always
+
+logging:
+  level:
+    root: INFO
+    com.camellia: INFO
+    net.snowflake: WARN
+    com.zaxxer.hikari: WARN
+
+camellia:
+  cors-origins: ${CAMELLIA_CORS_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
+
+  database:
+    # auto      -> Snowflake when SNOWFLAKE_* variables are present, otherwise the LOCAL DEV FALLBACK (H2 file)
+    # snowflake -> Snowflake only; startup fails with a diagnostic message if configuration is missing
+    # local     -> LOCAL DEV FALLBACK only (never presented as Snowflake)
+    mode: ${CAMELLIA_DB_MODE:auto}
+    init-schema: ${CAMELLIA_INIT_SCHEMA:true}
+    seed-on-startup: ${CAMELLIA_SEED_ON_STARTUP:true}
+    analyze-on-startup: ${CAMELLIA_ANALYZE_ON_STARTUP:true}
+    local-url: ${CAMELLIA_LOCAL_DB_URL:jdbc:h2:file:./data/camellia-local}
+
+  snowflake:
+    account: ${SNOWFLAKE_ACCOUNT:}
+    user: ${SNOWFLAKE_USER:}
+    private-key-file: ${SNOWFLAKE_PRIVATE_KEY_FILE:}
+    private-key-passphrase: ${SNOWFLAKE_PRIVATE_KEY_PASSPHRASE:}
+    warehouse: ${SNOWFLAKE_WAREHOUSE:}
+    database: ${SNOWFLAKE_DATABASE:CAMELLIA_DEMO}
+    schema: ${SNOWFLAKE_SCHEMA:CLINICAL}
+    role: ${SNOWFLAKE_ROLE:}
+    create-database-if-missing: ${SNOWFLAKE_CREATE_DATABASE:true}
+
+  gemini:
+    api-key: ${GEMINI_API_KEY:${GOOGLE_API_KEY:}}
+    model: ${GEMINI_MODEL:gemini-3.8-flash}
+    timeout-seconds: ${GEMINI_TIMEOUT_SECONDS:60}
+    # Upper bound on characters of source-record context sent per request (retrieval budget).
+    max-context-chars: ${GEMINI_MAX_CONTEXT_CHARS:28000}
+    max-history-turns: 8
+
+  demo:
+    # Synthetic dates are stored relative to this anchor. Blank = the date the demo data is seeded.
+    anchor-date: ${CAMELLIA_DEMO_ANCHOR_DATE:}
+
+  # ---------------------------------------------------------------------------
+  # PROTOTYPE SCREENING HEURISTICS — NOT VALIDATED CLINICAL THRESHOLDS.
+  # These values exist only to drive explainable demo rules on synthetic data.
+  # ---------------------------------------------------------------------------
+  rules:
+    ob-anesthesia:
+      lookahead-days: 120
+      lab-lookback-days: 300
+      expedited-within-days: 21
+      review-lead-days: 7
+      platelet-test-codes: [ "777-3" ]
+      # Prototype heuristic: results below this value are highlighted in the explanation (unit 10*3/uL).
+      platelet-highlight-below: 100
+      relevant-condition-terms:
+        "[Hematologic]": [ thrombocytopenia, von willebrand, immune thrombocytopenic, coagulopathy, bleeding disorder ]
+        "[Cardiac]": [ cardiomyopathy, ejection fraction, congenital heart, pulmonary hypertension, aortic stenosis ]
+        "[Prior anesthesia history]": [ malignant hyperthermia, difficult airway, failed epidural, difficult neuraxial, post-dural puncture ]
+        "[Spine]": [ spinal fusion, harrington rod, scoliosis repair ]
+        "[Oncology]": [ lymphoma, malignancy, chemotherapy, mediastinal radiation ]
+      anticoagulant-terms: [ enoxaparin, heparin, fondaparinux, warfarin, apixaban, rivaroxaban ]
+    recurrent-fracture:
+      min-encounters: 3
+      lookback-days: 1825
+    repeated-abnormal-lab:
+      min-results: 3
+      lookback-days: 730
+    repeated-symptom:
+      min-encounters: 3
+      lookback-days: 365

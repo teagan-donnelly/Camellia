@@ -1,0 +1,6 @@
+MSH|^~\&|NORTHGATE_LIS|NDL|CAMELLIA_DEMO|SYNTHETIC|@D-1T1630||ORU^R01|NDLM-1004|P|2.5.1
+PID|1||NDL-550812^^^NDL^MR||MARLOWE^AVA||19950614|F
+OBR|1||ACC-55988|58410-2^CBC panel^LN|||@D-1T0800|||||||||4401^VOSS^HELENA|||||||F
+OBX|1|NM|777-3^Platelets^LN||79|10*3/uL|150-400|L|||F|||@D-1T0800
+NTE|1||Platelet count verified by smear review. Large platelets present; no schistocytes identified.
+OBX|2|NM|718-7^Hemoglobin^LN||11.5|g/dL|11.5-15.5|N|||F|||@D-1T0800

@@ -1,0 +1,47 @@
+[
+  {
+    "orgId": "LRMC",
+    "name": "Larkspur Regional Medical Center",
+    "orgType": "Hospital",
+    "sourceSystem": "Larkspur EHR export — FHIR R4-like bundle (fictional)",
+    "sourceFormat": "FHIR_R4_JSON",
+    "city": "Larkspur Falls",
+    "state": "SC"
+  },
+  {
+    "orgId": "BWHA",
+    "name": "Bellwether Women's Health Associates",
+    "orgType": "Obstetrics & Maternal-Fetal Medicine practice",
+    "sourceSystem": "Bellwether PracticeSuite v7 flat export (fictional)",
+    "sourceFormat": "LEGACY_JSON",
+    "city": "Larkspur Falls",
+    "state": "SC"
+  },
+  {
+    "orgId": "NDL",
+    "name": "Northgate Diagnostic Laboratories",
+    "orgType": "Reference laboratory",
+    "sourceSystem": "Northgate LIS — HL7 v2.5.1 ORU^R01 feed (simulated)",
+    "sourceFormat": "HL7V2_ORU",
+    "city": "Northgate",
+    "state": "SC"
+  },
+  {
+    "orgId": "CHCH",
+    "name": "Cedar Hollow Community Hospital",
+    "orgType": "Community hospital",
+    "sourceSystem": "Cedar Hollow FHIR facade (fictional)",
+    "sourceFormat": "FHIR_R4_JSON",
+    "city": "Cedar Hollow",
+    "state": "NC"
+  },
+  {
+    "orgId": "RUC",
+    "name": "Riverbend Urgent Care",
+    "orgType": "Urgent care clinic",
+    "sourceSystem": "Riverbend dictation text export (fictional)",
+    "sourceFormat": "PLAINTEXT_NOTE",
+    "city": "Riverbend",
+    "state": "SC"
+  }
+]
