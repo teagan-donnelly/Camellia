@@ -112,7 +112,10 @@ public class CamelliaProperties {
 
     public static class Demo {
         private String anchorDate = "";
+        private String sessionSecret = "";
 
+        public String getSessionSecret() { return sessionSecret; }
+        public void setSessionSecret(String sessionSecret) { this.sessionSecret = sessionSecret; }
         public String getAnchorDate() { return anchorDate; }
         public void setAnchorDate(String anchorDate) { this.anchorDate = anchorDate; }
     }

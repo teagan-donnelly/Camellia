@@ -5,6 +5,7 @@ import com.camellia.model.*;
 import com.camellia.repository.ClinicalDataRepository;
 import com.camellia.repository.OrganizationRepository;
 import com.camellia.repository.PatientRepository;
+import com.camellia.repository.PracticeRepository;
 import com.camellia.repository.SupportRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,11 +50,13 @@ public class DemoDataService {
     private final PatientRepository patients;
     private final ClinicalDataRepository clinical;
     private final SupportRepository support;
+    private final PracticeRepository practices;
     private final CamelliaProperties props;
 
     public DemoDataService(OrganizationRepository orgs, PatientRepository patients, ClinicalDataRepository clinical,
-                           SupportRepository support, CamelliaProperties props) {
+                           SupportRepository support, PracticeRepository practices, CamelliaProperties props) {
         this.orgs = orgs;
+        this.practices = practices;
         this.patients = patients;
         this.clinical = clinical;
         this.support = support;
@@ -78,6 +81,16 @@ public class DemoDataService {
         Set<String> newIds = new HashSet<>();
         newPatients.forEach(p -> newIds.add(p.patientId()));
         patients.insertIdentifiers(ps.identifiers.stream().filter(i -> newIds.contains(i.patientId())).toList());
+
+        // Practices and patient registrations (role-based access). Inserted when missing, so existing databases
+        // seeded before practices existed are upgraded in place.
+        List<Practice> practiceList = loadPractices();
+        Set<String> existingPractices = practices.existingIds();
+        practices.insertAll(practiceList.stream().filter(p -> !existingPractices.contains(p.practiceId())).toList());
+        Set<String> existingAssoc = new HashSet<>();
+        practices.allAssociations().forEach(a -> existingAssoc.add(a.patientId() + "|" + a.practiceId()));
+        practices.insertAssociations(ps.associations.stream()
+                .filter(a -> !existingAssoc.contains(a.patientId() + "|" + a.practiceId())).toList());
 
         NormalizedBatch all = new NormalizedBatch();
         SourceContext ctx = new SourceContext(anchor, ps.index(), LocalDateTime.now());
@@ -146,6 +159,14 @@ public class DemoDataService {
         return support.getMeta(META_ANCHOR).map(LocalDate::parse).orElse(LocalDate.now());
     }
 
+    private List<Practice> loadPractices() {
+        List<Practice> out = new ArrayList<>();
+        for (JsonNode p : Json.parse(read("seed/practices.json"))) {
+            out.add(new Practice(text(p.path("practiceId")), text(p.path("name")), text(p.path("orgId")), text(p.path("specialty"))));
+        }
+        return out;
+    }
+
     private List<Organization> loadOrganizations() {
         List<Organization> out = new ArrayList<>();
         for (JsonNode o : Json.parse(read("seed/organizations.json"))) {
@@ -155,7 +176,8 @@ public class DemoDataService {
         return out;
     }
 
-    record PatientSeed(List<Patient> patients, List<PatientIdentifier> identifiers) {
+    record PatientSeed(List<Patient> patients, List<PatientIdentifier> identifiers,
+                       List<PracticeRepository.Association> associations) {
         Map<String, String> index() {
             Map<String, String> idx = new HashMap<>();
             identifiers.forEach(i -> idx.put(SourceContext.indexKey(i.orgId(), i.sourceMrn()), i.patientId()));
@@ -166,6 +188,7 @@ public class DemoDataService {
     private PatientSeed loadPatients(LocalDate anchor) {
         List<Patient> list = new ArrayList<>();
         List<PatientIdentifier> ids = new ArrayList<>();
+        List<PracticeRepository.Association> assoc = new ArrayList<>();
         for (JsonNode p : Json.parse(read("seed/patients.json"))) {
             String pid = text(p.path("patientId"));
             list.add(new Patient(pid, text(p.path("displayId")), text(p.path("firstName")), text(p.path("lastName")),
@@ -175,8 +198,11 @@ public class DemoDataService {
             for (JsonNode i : p.path("identifiers")) {
                 ids.add(new PatientIdentifier(pid, text(i.path("orgId")), text(i.path("mrn"))));
             }
+            for (JsonNode pr : p.path("practices")) {
+                assoc.add(new PracticeRepository.Association(pid, text(pr.path("practiceId")), text(pr.path("relationship"))));
+            }
         }
-        return new PatientSeed(list, ids);
+        return new PatientSeed(list, ids, assoc);
     }
 
     static String read(String resource) {

@@ -7,6 +7,8 @@ import com.camellia.model.Patient;
 import com.camellia.repository.ClinicalDataRepository;
 import com.camellia.repository.OrganizationRepository;
 import com.camellia.repository.PatientRepository;
+import com.camellia.security.AuthorizationService;
+import com.camellia.security.AuthorizationService.AccessScope;
 import org.springframework.stereotype.Service;
 
 import java.sql.Timestamp;
@@ -53,14 +55,17 @@ public class SearchService {
         return patients.existingIds();
     }
 
-    public SearchResult search(SearchCriteria raw) {
+    /** Searches only records of patients inside the caller's access scope (enforced in SQL, not by post-filtering). */
+    public SearchResult search(SearchCriteria raw, AccessScope scope) {
         List<String> warnings = new ArrayList<>();
-        SearchCriteria c = (raw == null ? SearchCriteria.empty() : raw).sanitize(knownOrgIds(), knownPatientIds(), warnings);
-        Query q = buildQuery(c, LocalDateTime.now());
+        Set<String> allowedPatients = knownPatientIds().stream().filter(scope::allowsPatient).collect(Collectors.toSet());
+        SearchCriteria c = (raw == null ? SearchCriteria.empty() : raw).sanitize(knownOrgIds(), allowedPatients, warnings);
+        Query q = buildQuery(c, LocalDateTime.now(), scope);
         List<ClinicalRecord> rows = clinical.queryRecords(q.sql(), q.params());
         boolean truncated = rows.size() >= MAX_ROWS;
 
-        Map<String, Patient> pById = patients.findAll().stream().collect(Collectors.toMap(Patient::patientId, Function.identity()));
+        Map<String, Patient> pById = patients.findAll().stream().filter(p -> scope.allowsPatient(p.patientId()))
+                .collect(Collectors.toMap(Patient::patientId, Function.identity()));
         Map<String, String> orgNames = organizations.findAll().stream().collect(Collectors.toMap(Organization::orgId, Organization::name));
 
         Map<String, List<ClinicalRecord>> byPatient = rows.stream()
@@ -85,9 +90,21 @@ public class SearchService {
 
     /** Package-visible for tests: builds the parameterized SQL for sanitized criteria. */
     Query buildQuery(SearchCriteria c, LocalDateTime now) {
+        return buildQuery(c, now, new AccessScope("system", null, true));
+    }
+
+    Query buildQuery(SearchCriteria c, LocalDateTime now, AccessScope scope) {
         StringBuilder sql = new StringBuilder("""
                 SELECT r.* FROM CLINICAL_RECORDS r JOIN PATIENTS p ON p.PATIENT_ID = r.PATIENT_ID WHERE 1=1""");
         List<Object> params = new ArrayList<>();
+        if (!scope.networkWide()) {
+            if (scope.patientIds().isEmpty()) {
+                sql.append(" AND 1=0");
+            } else {
+                sql.append(" AND r.PATIENT_ID IN (").append(placeholders(scope.patientIds().size())).append(")");
+                params.addAll(scope.patientIds().stream().sorted().toList());
+            }
+        }
 
         List<String> termClauses = new ArrayList<>();
         List<Object> termParams = new ArrayList<>();
@@ -139,7 +156,12 @@ public class SearchService {
             sql.append(" AND r.PATIENT_ID IN (SELECT m.PATIENT_ID FROM CLINICAL_RECORDS m GROUP BY m.PATIENT_ID HAVING COUNT(DISTINCT m.ORG_ID) > 1)");
         }
         if (Boolean.TRUE.equals(c.openFlagsOnly())) {
-            sql.append(" AND r.PATIENT_ID IN (SELECT f.PATIENT_ID FROM CLINICAL_FLAGS f WHERE f.STATUS IN ('UNREVIEWED', 'IN_REVIEW'))");
+            sql.append(" AND r.PATIENT_ID IN (SELECT f.PATIENT_ID FROM CLINICAL_FLAGS f WHERE f.STATUS IN ('UNREVIEWED', 'IN_REVIEW')");
+            if (!scope.anesthesia()) {
+                sql.append(" AND f.RULE_ID <> ?");
+                params.add(AuthorizationService.ANESTHESIA_RULE);
+            }
+            sql.append(")");
         }
         sql.append(" ORDER BY r.RECORD_DATE DESC LIMIT ").append(MAX_ROWS);
         return new Query(sql.toString(), params);

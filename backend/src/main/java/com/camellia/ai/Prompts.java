@@ -83,6 +83,12 @@ public final class Prompts {
             - minMatchesPerPatient: 2 or 3 for "repeated", "recurring", "multiple" requests (counts distinct record dates), otherwise 1.
             - recordTypes only when the request asks for a specific kind of record (e.g. medications, lab results, notes).
             - Use patientId only when a specific patient is named or the request is scoped to the current patient.
+            - Clinical FLAG search: set searchTarget=FLAGS when the request is about flags, alerts, flagged patients, review items or
+              "patients flagged for X". Then use flagCategories (only from the categories listed as available to this clinician),
+              flagStatusGroup (OPEN for open/unresolved/active, CLOSED for resolved/reviewed/dismissed), flagPriorities,
+              flagSpecialties, and concepts for the clinical finding (e.g. LOW_PLATELETS, HEMATOLOGY, FRACTURE). Put any remaining
+              free-text words in keywords. If the clinician asks for a category that is not listed as available, do not substitute
+              another category; leave flagCategories empty and say so in the explanation.
             - Use empty strings / empty arrays / false for anything not requested.
             Respond only with JSON matching the schema.
             """;

@@ -66,7 +66,10 @@ public final class Dtos {
                                long upcomingComplexEncounterCount, List<AlertSummaryDto> upcomingComplexEncounters,
                                List<PatientReviewDto> patientsRequiringReview, List<Activity> recentActivity,
                                Map<String, Object> lastAnalysisRun, String anchorDate, String databaseMode,
-                               boolean geminiConfigured, String geminiModel) {}
+                               boolean geminiConfigured, String geminiModel, boolean anesthesiaAccess,
+                               List<UpcomingEncounterDto> upcomingEncounters) {}
+
+    public record UpcomingEncounterDto(String patientId, String patientName, String displayId, AppointmentDto appointment) {}
 
     public record PatientReviewDto(String patientId, String name, String displayId, List<String> flagTitles,
                                    String highestPriority, int openFlags, int openAlerts) {}

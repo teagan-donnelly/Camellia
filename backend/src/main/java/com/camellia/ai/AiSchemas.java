@@ -54,7 +54,7 @@ public final class AiSchemas {
             "required", List.of("observations"));
 
     public static Map<String, Object> searchCriteria(List<String> concepts, List<String> recordTypes, List<String> orgIds,
-                                                     List<String> patientIds) {
+                                                     List<String> patientIds, List<String> flagCategories) {
         List<String> patientEnum = new java.util.ArrayList<>(patientIds);
         patientEnum.add("");
         return Map.of(
@@ -73,10 +73,18 @@ public final class AiSchemas {
                         Map.entry("openFlagsOnly", Map.of("type", "boolean")),
                         Map.entry("minMatchesPerPatient", Map.of("type", "integer", "description", "1 normally; 2 or 3 for 'repeated/recurring/multiple' requests.")),
                         Map.entry("matchMode", Map.of("type", "string", "enum", List.of("ANY", "ALL"))),
+                        Map.entry("searchTarget", Map.of("type", "string", "enum", List.of("RECORDS", "FLAGS"),
+                                "description", "FLAGS when the request is about clinical flags, alerts, flagged patients or review items; otherwise RECORDS.")),
+                        Map.entry("flagCategories", Map.of("type", "array", "items", Map.of("type", "string", "enum", flagCategories))),
+                        Map.entry("flagStatusGroup", Map.of("type", "string", "enum", List.of("OPEN", "CLOSED", "ANY"),
+                                "description", "OPEN for open/unresolved/active/pending items, CLOSED for resolved/reviewed/dismissed, else ANY.")),
+                        Map.entry("flagPriorities", Map.of("type", "array", "items", Map.of("type", "string", "enum", List.of("EXPEDITED", "STANDARD")))),
+                        Map.entry("flagSpecialties", strArray("Specialties of the evidence (e.g. Cardiology, Hematology, Obstetrics), only if requested.")),
                         Map.entry("explanation", str("One sentence describing how the request was interpreted."))),
                 "required", List.of("keywords", "concepts", "recordTypes", "organizationIds", "patientId", "dateFrom", "dateTo",
                         "obstetricOnly", "upcomingDeliveryOnly", "multipleOrganizationsOnly", "openFlagsOnly",
-                        "minMatchesPerPatient", "matchMode", "explanation"));
+                        "minMatchesPerPatient", "matchMode", "searchTarget", "flagCategories", "flagStatusGroup",
+                        "flagPriorities", "flagSpecialties", "explanation"));
     }
 
     public static final Map<String, Object> PING = Map.of(

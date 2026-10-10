@@ -5,6 +5,7 @@ import com.camellia.dto.Dtos.*;
 import com.camellia.ingestion.Json;
 import com.camellia.model.*;
 import com.camellia.repository.*;
+import com.camellia.security.AuthorizationService.AccessScope;
 import com.camellia.web.ApiException;
 import org.springframework.stereotype.Service;
 import tools.jackson.core.JacksonException;
@@ -44,26 +45,46 @@ public class ClinicalViewService {
         this.support = support;
     }
 
-    /** Per-request bulk-loaded reference data. */
+    /**
+     * Per-request bulk-loaded reference data, already restricted to what the active user may see. Everything built from
+     * a Lookup (directory, profile, flags, alerts, dashboard) therefore inherits the authorization scope.
+     */
     final class Lookup {
-        final Map<String, String> orgNames = orgNames();
-        final Map<String, Patient> patientsById = patients.findAll().stream().collect(Collectors.toMap(Patient::patientId, Function.identity()));
-        final List<ClinicalFlag> allFlags = flags.find(null, null, null);
-        final List<CoordinationAlert> allAlerts = alerts.find(null, null, null);
-        final Map<String, CoordinationAlert> alertByFlag = allAlerts.stream().collect(Collectors.toMap(CoordinationAlert::flagId, Function.identity(), (a, b) -> a));
-        final Map<String, List<EvidenceLink>> flagEvidence = flags.allEvidence().stream().collect(Collectors.groupingBy(EvidenceLink::ownerId));
-        final Map<String, List<EvidenceLink>> alertEvidence = alerts.allEvidence().stream().collect(Collectors.groupingBy(EvidenceLink::ownerId));
-        final Map<String, Integer> noteCounts = alerts.noteCounts();
-        final Map<String, Appointment> appointments = clinical.allAppointments().stream().collect(Collectors.toMap(Appointment::appointmentId, Function.identity()));
+        final AccessScope scope;
+        final Map<String, String> orgNames;
+        final Map<String, Patient> patientsById;
+        final List<ClinicalFlag> allFlags;
+        final List<CoordinationAlert> allAlerts;
+        final Map<String, CoordinationAlert> alertByFlag;
+        final Map<String, List<EvidenceLink>> flagEvidence;
+        final Map<String, List<EvidenceLink>> alertEvidence;
+        final Map<String, Integer> noteCounts;
+        final Map<String, Appointment> appointments;
         final Map<String, ClinicalRecord> records;
 
-        Lookup() {
+        Lookup(AccessScope scope) {
+            this.scope = scope;
+            orgNames = orgNames();
+            patientsById = patients.findAll().stream().filter(p -> scope.allowsPatient(p.patientId()))
+                    .collect(Collectors.toMap(Patient::patientId, Function.identity()));
+            allFlags = flags.find(null, null, null).stream().filter(scope::allowsFlag).toList();
+            allAlerts = alerts.find(null, null, null).stream().filter(scope::allowsAlert).toList();
+            alertByFlag = allAlerts.stream().collect(Collectors.toMap(CoordinationAlert::flagId, Function.identity(), (a, b) -> a));
+            Set<String> flagIds = allFlags.stream().map(ClinicalFlag::flagId).collect(Collectors.toSet());
+            Set<String> alertIds = allAlerts.stream().map(CoordinationAlert::alertId).collect(Collectors.toSet());
+            flagEvidence = flags.allEvidence().stream().filter(e -> flagIds.contains(e.ownerId()))
+                    .collect(Collectors.groupingBy(EvidenceLink::ownerId));
+            alertEvidence = alertIds.isEmpty() ? Map.of() : alerts.allEvidence().stream().filter(e -> alertIds.contains(e.ownerId()))
+                    .collect(Collectors.groupingBy(EvidenceLink::ownerId));
+            noteCounts = alertIds.isEmpty() ? Map.of() : alerts.noteCounts();
+            appointments = clinical.allAppointments().stream().filter(a -> scope.allowsPatient(a.patientId()))
+                    .collect(Collectors.toMap(Appointment::appointmentId, Function.identity()));
             Set<String> ids = new HashSet<>();
             flagEvidence.values().forEach(l -> l.forEach(e -> ids.add(e.recordId())));
             alertEvidence.values().forEach(l -> l.forEach(e -> ids.add(e.recordId())));
             appointments.values().forEach(a -> ids.add(a.recordId()));
             records = new HashMap<>();
-            clinical.findRecords(ids).forEach(r -> records.put(r.recordId(), r));
+            clinical.findRecords(ids).stream().filter(r -> scope.allowsPatient(r.patientId())).forEach(r -> records.put(r.recordId(), r));
         }
     }
 
@@ -81,28 +102,30 @@ public class ClinicalViewService {
                 r.sourceRecordId(), tags);
     }
 
-    public RecordDetailDto recordDetail(String recordId) {
-        ClinicalRecord r = clinical.findRecord(recordId).orElseThrow(() -> ApiException.notFound("Record", recordId));
+    /** Caller must have authorized the record's patient. Back-references are filtered to visible flags/alerts. */
+    public RecordDetailDto recordDetail(ClinicalRecord r, AccessScope scope) {
         Map<String, String> names = orgNames();
         String sourceSystem = organizations.findAll().stream().filter(o -> o.orgId().equals(r.orgId()))
                 .map(Organization::sourceSystem).findFirst().orElse(null);
         Patient p = patients.findById(r.patientId()).orElse(null);
         List<ReferencedBy> refs = new ArrayList<>();
-        Map<String, ClinicalFlag> pFlags = flags.find(null, null, r.patientId()).stream()
+        Map<String, ClinicalFlag> pFlags = flags.find(null, null, r.patientId()).stream().filter(scope::allowsFlag)
                 .collect(Collectors.toMap(ClinicalFlag::flagId, Function.identity()));
-        flags.allEvidence().stream().filter(e -> e.recordId().equals(recordId) && pFlags.containsKey(e.ownerId()))
+        flags.allEvidence().stream().filter(e -> e.recordId().equals(r.recordId()) && pFlags.containsKey(e.ownerId()))
                 .forEach(e -> refs.add(new ReferencedBy("FLAG", e.ownerId(), pFlags.get(e.ownerId()).title(), e.role())));
-        Map<String, CoordinationAlert> pAlerts = alerts.find(null, null, r.patientId()).stream()
-                .collect(Collectors.toMap(CoordinationAlert::alertId, Function.identity()));
-        alerts.allEvidence().stream().filter(e -> e.recordId().equals(recordId) && pAlerts.containsKey(e.ownerId()))
-                .forEach(e -> refs.add(new ReferencedBy("ALERT", e.ownerId(), pAlerts.get(e.ownerId()).title(), e.role())));
+        if (scope.anesthesia()) {
+            Map<String, CoordinationAlert> pAlerts = alerts.find(null, null, r.patientId()).stream().filter(scope::allowsAlert)
+                    .collect(Collectors.toMap(CoordinationAlert::alertId, Function.identity()));
+            alerts.allEvidence().stream().filter(e -> e.recordId().equals(r.recordId()) && pAlerts.containsKey(e.ownerId()))
+                    .forEach(e -> refs.add(new ReferencedBy("ALERT", e.ownerId(), pAlerts.get(e.ownerId()).title(), e.role())));
+        }
         return new RecordDetailDto(record(r, names), r.rawContent(), sourceSystem, r.ingestedAt(),
                 p == null ? null : p.fullName(), p == null ? null : p.displayId(), refs);
     }
 
     // ------------------------------------------------------------------ patients
 
-    public List<PatientSummaryDto> patientDirectory() {
+    public List<PatientSummaryDto> patientDirectory(AccessScope scope) {
         Map<String, String> names = orgNames();
         Map<String, Set<String>> orgsByPatient = clinical.organizationsByPatient();
         Map<String, List<Condition>> conds = clinical.allConditions().stream().collect(Collectors.groupingBy(Condition::patientId));
@@ -110,19 +133,22 @@ public class ClinicalViewService {
         Map<String, ClinicalRecord> apptRecords = clinical.recordsOfType(RecordType.APPOINTMENT).stream()
                 .collect(Collectors.toMap(ClinicalRecord::recordId, Function.identity()));
         Map<String, Integer> recordCounts = clinical.recordCounts();
-        Map<String, Long> openFlags = flags.find(null, null, null).stream().filter(f -> OPEN_FLAG.contains(f.status()))
+        Map<String, Long> openFlags = flags.find(null, null, null).stream().filter(scope::allowsFlag)
+                .filter(f -> OPEN_FLAG.contains(f.status()))
                 .collect(Collectors.groupingBy(ClinicalFlag::patientId, Collectors.counting()));
-        Map<String, Long> openAlerts = alerts.find(null, null, null).stream().filter(a -> !CLOSED_ALERT.contains(a.status()))
+        Map<String, Long> openAlerts = alerts.find(null, null, null).stream().filter(scope::allowsAlert)
+                .filter(a -> !CLOSED_ALERT.contains(a.status()))
                 .collect(Collectors.groupingBy(CoordinationAlert::patientId, Collectors.counting()));
-        return patients.findAll().stream().map(p -> summary(p, names, orgsByPatient.getOrDefault(p.patientId(), Set.of()),
+        return patients.findAll().stream().filter(p -> scope.allowsPatient(p.patientId())).map(p -> summary(p, names, orgsByPatient.getOrDefault(p.patientId(), Set.of()),
                 conds.getOrDefault(p.patientId(), List.of()), appts.getOrDefault(p.patientId(), List.of()), apptRecords,
                 openFlags.getOrDefault(p.patientId(), 0L).intValue(), openAlerts.getOrDefault(p.patientId(), 0L).intValue(),
                 recordCounts.getOrDefault(p.patientId(), 0))).toList();
     }
 
-    public PatientProfileDto patientProfile(String patientId) {
+    /** Caller must have authorized the patient. */
+    public PatientProfileDto patientProfile(String patientId, AccessScope scope) {
         Patient p = patients.findById(patientId).orElseThrow(() -> ApiException.notFound("Patient", patientId));
-        Lookup lk = new Lookup();
+        Lookup lk = new Lookup(scope);
         List<ClinicalRecord> records = clinical.recordsForPatient(patientId);
         Map<String, ClinicalRecord> recById = records.stream().collect(Collectors.toMap(ClinicalRecord::recordId, Function.identity()));
         List<Condition> conds = clinical.conditionsForPatient(patientId);
@@ -170,8 +196,8 @@ public class ClinicalViewService {
 
     // ------------------------------------------------------------------ flags
 
-    public List<FlagDto> flagList(String status, String ruleId, String patientId) {
-        Lookup lk = new Lookup();
+    public List<FlagDto> flagList(String status, String ruleId, String patientId, AccessScope scope) {
+        Lookup lk = new Lookup(scope);
         return lk.allFlags.stream()
                 .filter(f -> blank(status) == null || f.status().equals(status.trim()))
                 .filter(f -> blank(ruleId) == null || f.ruleId().equals(ruleId.trim()))
@@ -179,9 +205,10 @@ public class ClinicalViewService {
                 .map(f -> flag(f, lk, true)).toList();
     }
 
-    public FlagDto flagDetail(String flagId) {
+    /** Caller must have authorized the flag. */
+    public FlagDto flagDetail(String flagId, AccessScope scope) {
         ClinicalFlag f = flags.findById(flagId).orElseThrow(() -> ApiException.notFound("Flag", flagId));
-        return flag(f, new Lookup(), true);
+        return flag(f, new Lookup(scope), true);
     }
 
     FlagDto flag(ClinicalFlag f, Lookup lk, boolean withEvidence) {
@@ -215,16 +242,17 @@ public class ClinicalViewService {
 
     // ------------------------------------------------------------------ alerts
 
-    public List<AlertSummaryDto> alertList(String status, String team) {
-        Lookup lk = new Lookup();
+    public List<AlertSummaryDto> alertList(String status, String team, AccessScope scope) {
+        Lookup lk = new Lookup(scope);
         return lk.allAlerts.stream()
                 .filter(a -> blank(status) == null || a.status().equals(status.trim()))
                 .filter(a -> blank(team) == null || a.assignedTeam().equals(team.trim()))
                 .map(a -> alertSummary(a, lk)).toList();
     }
 
-    public AlertDetailDto alertDetail(String alertId) {
-        Lookup lk = new Lookup();
+    /** Caller must have authorized the alert. */
+    public AlertDetailDto alertDetail(String alertId, AccessScope scope) {
+        Lookup lk = new Lookup(scope);
         CoordinationAlert a = lk.allAlerts.stream().filter(x -> x.alertId().equals(alertId)).findFirst()
                 .orElseThrow(() -> ApiException.notFound("Alert", alertId));
         Patient p = lk.patientsById.get(a.patientId());
@@ -274,8 +302,8 @@ public class ClinicalViewService {
 
     // ------------------------------------------------------------------ dashboard
 
-    public DashboardDto dashboard(String databaseMode, boolean geminiConfigured, String geminiModel) {
-        Lookup lk = new Lookup();
+    public DashboardDto dashboard(AccessScope scope, String databaseMode, boolean geminiConfigured, String geminiModel) {
+        Lookup lk = new Lookup(scope);
         LocalDateTime now = LocalDateTime.now();
         List<AlertSummaryDto> upcoming = lk.allAlerts.stream()
                 .filter(a -> !CLOSED_ALERT.contains(a.status()) && a.encounterDate() != null && a.encounterDate().isAfter(now))
@@ -299,9 +327,40 @@ public class ClinicalViewService {
         long openFlags = lk.allFlags.stream().filter(f -> OPEN_FLAG.contains(f.status())).count();
         long newAlerts = lk.allAlerts.stream().filter(a -> "NEW".equals(a.status())).count();
         long inProgress = lk.allAlerts.stream().filter(a -> !CLOSED_ALERT.contains(a.status()) && !"NEW".equals(a.status())).count();
+
+        // General upcoming encounters for the user's accessible patients (all roles).
+        Map<String, ClinicalRecord> apptRecords = lk.records;
+        List<UpcomingEncounterDto> encounters = lk.appointments.values().stream()
+                .filter(a -> a.scheduledStart() != null && a.scheduledStart().isAfter(now) && a.scheduledStart().isBefore(now.plusDays(60)))
+                .sorted(Comparator.comparing(Appointment::scheduledStart)).limit(8)
+                .map(a -> {
+                    Patient p = lk.patientsById.get(a.patientId());
+                    return new UpcomingEncounterDto(a.patientId(), p == null ? null : p.fullName(), p == null ? null : p.displayId(),
+                            appointment(a, lk.orgNames, apptRecords));
+                }).toList();
+
+        // Network-wide run statistics and patient-less activity would reveal data outside a restricted scope.
+        boolean fullView = scope.networkWide() && scope.anesthesia();
         return new DashboardDto(lk.patientsById.size(), openFlags, newAlerts, inProgress, upcoming.size(), upcoming, requiring,
-                support.recentActivity(15), support.lastRun().orElse(null), support.getMeta("ANCHOR_DATE").orElse(null),
-                databaseMode, geminiConfigured, geminiModel);
+                visibleActivity(lk, 15), fullView ? support.lastRun().orElse(null) : null,
+                support.getMeta("ANCHOR_DATE").orElse(null), databaseMode, geminiConfigured, geminiModel, scope.anesthesia(),
+                encounters);
+    }
+
+    /** Activity entries whose patient, flag and alert are all visible to the user. */
+    List<Activity> visibleActivity(Lookup lk, int limit) {
+        Set<String> allFlagIds = flags.find(null, null, null).stream().map(ClinicalFlag::flagId).collect(Collectors.toSet());
+        Set<String> allAlertIds = alerts.find(null, null, null).stream().map(CoordinationAlert::alertId).collect(Collectors.toSet());
+        Set<String> visibleFlags = lk.allFlags.stream().map(ClinicalFlag::flagId).collect(Collectors.toSet());
+        Set<String> visibleAlerts = lk.allAlerts.stream().map(CoordinationAlert::alertId).collect(Collectors.toSet());
+        boolean fullView = lk.scope.networkWide() && lk.scope.anesthesia();
+        return support.recentActivity(200).stream().filter(a -> {
+            if (a.patientId() == null) return fullView;
+            if (!lk.scope.allowsPatient(a.patientId())) return false;
+            if (a.entityId() != null && allFlagIds.contains(a.entityId()) && !visibleFlags.contains(a.entityId())) return false;
+            if (a.entityId() != null && allAlertIds.contains(a.entityId()) && !visibleAlerts.contains(a.entityId())) return false;
+            return !"ALERT".equals(a.entityType()) || lk.scope.anesthesia();
+        }).limit(limit).toList();
     }
 
     private static String blank(String s) {
