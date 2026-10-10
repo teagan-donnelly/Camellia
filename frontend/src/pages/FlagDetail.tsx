@@ -13,7 +13,8 @@ export default function FlagDetail() {
   const { id = '' } = useParams()
   const { data: f, isLoading, error } = useFlag(id)
   const update = useUpdateFlagStatus(id)
-  const { toast } = useApp()
+  const { toast, can } = useApp()
+  const canReview = can('REVIEW_FLAGS')
   const [dismissing, setDismissing] = useState(false)
   const [reason, setReason] = useState('')
 
@@ -28,7 +29,7 @@ export default function FlagDetail() {
 
   return (
     <div>
-      <Link to="/flags" className="mb-4 inline-flex items-center gap-1 text-[13px] text-navy-500 hover:text-navy-800"><ArrowLeft className="h-3.5 w-3.5" /> Clinical flags</Link>
+      <Link to="/flags" className="mb-4 inline-flex items-center gap-1 text-[13px] text-navy-500 hover:text-navy-800"><ArrowLeft className="h-3.5 w-3.5" /> Clinical alerts</Link>
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_400px]">
         <div className="min-w-0 space-y-5">
           <Card>
@@ -55,11 +56,12 @@ export default function FlagDetail() {
 
             <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-line pt-4">
               <span className="mr-1 text-[12.5px] font-medium text-navy-500">Review actions:</span>
-              {f.status === 'UNREVIEWED' && <Button size="sm" variant="navy" onClick={() => setStatus('IN_REVIEW')} loading={update.isPending}>Start review</Button>}
-              {(f.status === 'UNREVIEWED' || f.status === 'IN_REVIEW') && <Button size="sm" onClick={() => setStatus('REVIEWED')} loading={update.isPending}>Mark reviewed</Button>}
-              {(f.status === 'UNREVIEWED' || f.status === 'IN_REVIEW') && <Button size="sm" variant="danger" onClick={() => setDismissing(true)}>Dismiss…</Button>}
-              {(f.status === 'REVIEWED' || f.status === 'DISMISSED') && <Button size="sm" onClick={() => setStatus('IN_REVIEW')} loading={update.isPending}>Reopen</Button>}
-              {f.alertId && (
+              {!canReview && <span className="text-[12.5px] text-navy-500">Your role can view this alert but not change its review status.</span>}
+              {canReview && f.status === 'UNREVIEWED' && <Button size="sm" variant="navy" onClick={() => setStatus('IN_REVIEW')} loading={update.isPending}>Start review</Button>}
+              {canReview && (f.status === 'UNREVIEWED' || f.status === 'IN_REVIEW') && <Button size="sm" onClick={() => setStatus('REVIEWED')} loading={update.isPending}>Mark reviewed</Button>}
+              {canReview && (f.status === 'UNREVIEWED' || f.status === 'IN_REVIEW') && <Button size="sm" variant="danger" onClick={() => setDismissing(true)}>Dismiss…</Button>}
+              {canReview && (f.status === 'REVIEWED' || f.status === 'DISMISSED') && <Button size="sm" onClick={() => setStatus('IN_REVIEW')} loading={update.isPending}>Reopen</Button>}
+              {f.alertId && can('ANESTHESIA_OB_ALERTS') && (
                 <Link to={`/alerts/${f.alertId}`} className="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-coral-50 px-3 py-1.5 text-[13px] font-medium text-coral-700 ring-1 ring-inset ring-coral-200 hover:bg-coral-100">
                   <Bell className="h-3.5 w-3.5" /> Open Anesthesia OB alert <ChevronRight className="h-3.5 w-3.5" />
                 </Link>

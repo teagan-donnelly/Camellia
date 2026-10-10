@@ -1,20 +1,24 @@
-import { ArrowRight, Bell, Building2, CalendarClock, FileText, Info, Sparkle, Users } from 'lucide-react'
+import { ArrowRight, Bell, Building2, CalendarClock, FileText, Info, KanbanSquare, ListTodo, Sparkle, Users } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAlerts } from '../api/hooks'
 import type { AlertStatus, AlertSummary } from '../api/types'
+import { CoordinationBoard } from '../components/CoordinationBoard'
 import { AlertStatusBadge, PriorityBadge } from '../components/status'
-import { Badge, Button, Card, EmptyState, ErrorBox, Loading, PageHeader } from '../components/ui'
+import { Badge, Button, Card, EmptyState, ErrorBox, Loading, PageHeader, Tabs } from '../components/ui'
 import { ALERT_STATUS_LABEL, CONTACT_LABEL, cx, daysLabel, fmtDate, relative } from '../lib/format'
 import { useApp } from '../state/AppContext'
 
 type View = 'active' | AlertStatus | 'all'
+type Tab = 'queue' | 'board'
 const TEAM = 'Anesthesia OB Coordination'
 
 export default function AnesthesiaAlerts() {
   const { data, isLoading, error } = useAlerts()
   const [view, setView] = useState<View>('active')
-  const { user } = useApp()
+  const [params, setParams] = useSearchParams()
+  const tab: Tab = params.get('tab') === 'board' ? 'board' : 'queue'
+  const { user, can } = useApp()
   const navigate = useNavigate()
 
   const teamAlerts = useMemo(() => (data ?? []).filter((a) => a.assignedTeam === TEAM), [data])
@@ -22,15 +26,23 @@ export default function AnesthesiaAlerts() {
     .filter((a) => view === 'all' || (view === 'active' ? !['RESOLVED', 'DISMISSED'].includes(a.status) : a.status === view))
     .sort((a, b) => (a.encounterDate ?? '').localeCompare(b.encounterDate ?? '')), [teamAlerts, view])
   const count = (s: AlertStatus) => teamAlerts.filter((a) => a.status === s).length
-  const isMember = user.team === TEAM
+  const canUpdate = can('UPDATE_COORDINATION')
+  const canNote = can('ADD_COORDINATION_NOTES')
 
   return (
     <div>
       <PageHeader
         eyebrow="Feature C · Primary workflow"
         title={<span className="inline-flex items-center gap-2.5"><Bell className="h-5 w-5 text-coral-500" />Anesthesia OB Alerts</span>}
-        subtitle="Work queue for advance anesthesia planning. Obstetric patients with an upcoming delivery-related encounter and documented findings are routed here automatically — before the day of delivery."
+        subtitle="Work queue and coordination board for advance anesthesia planning. Obstetric patients with an upcoming delivery-related encounter and documented findings are routed here automatically — before the day of delivery."
       />
+
+      <div className="mb-5">
+        <Tabs<Tab> value={tab} onChange={(t) => setParams(t === 'board' ? { tab: 'board' } : {}, { replace: true })} tabs={[
+          { id: 'queue', label: <span className="inline-flex items-center gap-1.5"><ListTodo className="h-4 w-4" />Work queue</span>, count: data ? teamAlerts.filter((a) => !['RESOLVED', 'DISMISSED'].includes(a.status)).length : undefined },
+          { id: 'board', label: <span className="inline-flex items-center gap-1.5"><KanbanSquare className="h-4 w-4" />Coordination board</span> },
+        ]} />
+      </div>
 
       <div className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-line bg-white px-4 py-3">
         <div className="flex items-center gap-2 text-[13px]">
@@ -38,12 +50,17 @@ export default function AnesthesiaAlerts() {
           <span className="text-navy-500">Assigned team:</span><span className="font-semibold text-navy-900">{TEAM}</span>
         </div>
         <span className="h-4 w-px bg-line" />
-        <span className={cx('text-[12.5px]', isMember ? 'text-sage-700' : 'text-amber-700')}>
-          {isMember ? `You (${user.name}) are a member of this team and can update alerts.` : `Viewing as ${user.name} (${user.team}) — read and note-only access (simulated).`}
+        <span className={cx('text-[12.5px]', canUpdate ? 'text-sage-700' : 'text-amber-700')}>
+          {canUpdate ? `${user.name} (${user.roleLabel}) can acknowledge alerts and update coordination status.`
+            : `${user.name} (${user.roleLabel}) can view alerts${canNote ? ' and add coordination notes' : ''}, but not change their workflow status.`}
         </span>
         <span className="ml-auto inline-flex items-center gap-1 text-[12px] text-navy-400"><Info className="h-3.5 w-3.5" />In-app queue only. No real notifications are sent.</span>
       </div>
 
+      {isLoading && <Loading />}
+      {error && <ErrorBox error={error} />}
+      {tab === 'board' && data && <CoordinationBoard data={teamAlerts} />}
+      {tab === 'queue' && <>
       <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         {(['NEW', 'UNDER_REVIEW', 'COORDINATION_NEEDED', 'PLAN_DOCUMENTED', 'RESOLVED', 'DISMISSED'] as AlertStatus[]).map((s) => (
           <button key={s} onClick={() => setView(view === s ? 'active' : s)}
@@ -64,8 +81,6 @@ export default function AnesthesiaAlerts() {
         {view !== 'active' && view !== 'all' && <Badge tone="coral">Filtered: {ALERT_STATUS_LABEL[view]}</Badge>}
       </div>
 
-      {isLoading && <Loading />}
-      {error && <ErrorBox error={error} />}
       {data && rows.length === 0 && <Card><EmptyState title="Queue is clear" icon={<Bell className="h-5 w-5" />}>No alerts in this view.</EmptyState></Card>}
       {rows.length > 0 && (
         <Card padded={false} className="overflow-hidden">
@@ -90,6 +105,7 @@ export default function AnesthesiaAlerts() {
           </div>
         </Card>
       )}
+      </>}
     </div>
   )
 }

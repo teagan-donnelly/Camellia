@@ -1,7 +1,12 @@
 # Role-Based Access — Progress & Continuation Plan
 
 _Working notes for the "ADDITIONAL REQUIREMENTS: ROLE-BASED USER EXPERIENCES" iteration._
-_Last updated: 2026-10-10. Work paused at the user's request partway through the backend._
+_Last updated: 2026-10-10. Steps 1–6 are complete and committed on `feature/role-based-access`. Only the Snowflake
+run and the push/merge (Step 7, items 3 and 5) remain._
+
+> **Teammates:** the code is on the branch **`feature/role-based-access`**, not yet on `main`. Backend, tests, frontend,
+> logo and docs are done. It has been verified on the local H2 fallback with live Gemini but **not yet started against
+> Snowflake**.
 
 ---
 
@@ -9,20 +14,20 @@ _Last updated: 2026-10-10. Work paused at the user's request partway through the
 
 | Item | State |
 |---|---|
-| Git branch | `feature/role-based-access`, created from `feature/first-iteration` @ `ca874b7` (that commit equals `origin/main`) |
-| Commits on this branch | **None yet.** Everything below is uncommitted in the working tree. |
-| Backend compile | `./mvnw -q compile` printed no errors after the controller rewrite, but a full `./mvnw compile` was interrupted before it confirmed `BUILD SUCCESS`. **Re-verify first.** |
-| Backend tests | **Not updated yet. They will not compile** (they still reference the deleted `config/DemoUsers` and old method signatures). |
-| Frontend | **Not started** for this iteration. It still sends the old `X-Camellia-User` header, which the backend no longer reads, so the UI will get `401 DEMO_SESSION_REQUIRED` until it is updated. |
-| Logo transparency | Not started |
-| Docs (README, USER_GUIDE, ARCHITECTURE_DECISIONS, IMPLEMENTATION_STATUS, DEMO_SCRIPT) | Not updated for this iteration |
-| Running servers | A backend from **before** these changes may still be running on :8080 (nohup), with Vite on :5173. Restart the backend after finishing the code. |
-| Snowflake | Live account `uyc13421.us-east-1`, user `CAMELLIA_SVC`, role `CAMELLIA_APP`. The new tables are created automatically on next startup (`CREATE TABLE IF NOT EXISTS`), and practice links are seeded into the existing DB idempotently. |
+| Git branch | `feature/role-based-access` (local commit on top of `origin/feature/role-based-access`; **not pushed**) |
+| Backend compile | ✅ `./mvnw compile` → BUILD SUCCESS |
+| Backend tests | ✅ `./mvnw test` → **51 tests, 0 failures** (39 existing updated + 12 new in `security/RoleBasedAccessIntegrationTest`) |
+| Frontend | ✅ Done (Step 4). `npm run build` passes. Old `X-Camellia-User` header removed; uses the session cookie. |
+| End-to-end check | ✅ Headless Chrome as all 6 users against a backend on **local H2** with live Gemini (results in `IMPLEMENTATION_STATUS.md`) |
+| Logo transparency | ✅ Done (Step 5). Original kept at `assets/camellia-logo-original.png`; script at `assets/make_logo_transparent.py`. The planned extra backup in `frontend/public/` was skipped because files there are served publicly. |
+| Docs | ✅ README, USER_GUIDE, ARCHITECTURE_DECISIONS (§15–22), IMPLEMENTATION_STATUS, DEMO_SCRIPT (segment 7b) |
+| **Remaining** | 1) Restart the backend on Snowflake and confirm the practice tables are created and seeded (`Camellia ready on Snowflake`). 2) Push the branch and merge to `main` when the team agrees. |
 
 **Operational gotchas**
-- Never use `pkill -f <pattern>`: it matches and kills the shell running it. Stop the backend by port:
-  `kill $(ss -ltnp | awk '/:8080 /{print $NF}' | grep -o 'pid=[0-9]*' | cut -d= -f2)`
+- Stop a backend by port, not by `pkill -f` pattern. macOS: `kill $(lsof -nP -tiTCP:8080 -sTCP:LISTEN)`.
 - Tests use H2 (`camellia.database.mode=local`) and override Gemini/Snowflake config. They never touch Snowflake.
+- CORS only allows `localhost:5173` by default (`CAMELLIA_CORS_ORIGINS`). A Vite dev server on another port gets 403 on
+  POSTs through the proxy because the browser's `Origin` header is forwarded.
 - Pushing to GitHub happens only when the user asks.
 
 ---
@@ -103,7 +108,7 @@ _Last updated: 2026-10-10. Work paused at the user's request partway through the
 
 ---
 
-## 3. Remaining plan (in order)
+## 3. Plan (Steps 1–6 complete; Step 7 items 3 and 5 remain)
 
 ### Step 1: Verify backend compiles
 - `cd backend && ./mvnw compile`. Fix any errors. Likely suspects are unused imports or leftovers in `SystemController` (`OrganizationRepository` and `Organization` are still used for meta) and `IntegrationService` (`patients` field now unused, which is fine).

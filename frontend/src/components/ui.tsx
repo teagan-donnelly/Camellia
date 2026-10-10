@@ -1,4 +1,4 @@
-import { AlertCircle, Inbox } from 'lucide-react'
+import { AlertCircle, Inbox, Lock } from 'lucide-react'
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { ApiError } from '../api/client'
 import { cx } from '../lib/format'
@@ -89,6 +89,7 @@ export function Loading({ label = 'Loading…' }: { label?: string }) {
 }
 
 export function ErrorBox({ error, title = 'Something went wrong' }: { error: unknown; title?: string }) {
+  if (error instanceof ApiError && error.code === 'ACCESS_DENIED') return <Restricted message={error.message} />
   const message = error instanceof ApiError || error instanceof Error ? error.message : String(error)
   return (
     <div className="flex items-start gap-3 rounded-lg border border-critical-100 bg-critical-50 px-4 py-3 text-sm text-critical-700">
@@ -97,6 +98,20 @@ export function ErrorBox({ error, title = 'Something went wrong' }: { error: unk
         <div className="font-medium">{title}</div>
         <div className="mt-0.5 text-critical-700/90">{message}</div>
       </div>
+    </div>
+  )
+}
+
+/** Shown for 403 ACCESS_DENIED. Deliberately generic: it never confirms whether a restricted item exists. */
+export function Restricted({ title = 'Not available to your role', message }: { title?: string; message?: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center rounded-xl border border-line bg-white px-6 py-12 text-center">
+      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-navy-50 text-navy-500"><Lock className="h-5 w-5" /></div>
+      <div className="text-[15px] font-semibold text-navy-900">{title}</div>
+      <div className="mt-1 max-w-md text-[13px] text-navy-500">
+        {message ?? 'This item is not available to your account (it may not exist, or it is outside your access scope).'}
+      </div>
+      <div className="mt-3 text-[11.5px] text-navy-400">Access is based on the simulated demo identity selected in the top-right corner.</div>
     </div>
   )
 }

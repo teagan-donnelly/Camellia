@@ -6,6 +6,8 @@ import com.camellia.integration.gemini.GeminiGateway;
 import com.camellia.model.CoordinationAlert;
 import com.camellia.repository.AlertRepository;
 import com.camellia.repository.FlagRepository;
+import com.camellia.security.DemoDirectory;
+import com.camellia.security.DemoUser;
 import com.camellia.web.ApiException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,6 +59,8 @@ class GeminiGroundingIntegrationTest {
         }
     }
 
+    static final DemoUser MAYA = DemoDirectory.require("maya.ellison");
+
     @Autowired ClinicalAiService ai;
     @Autowired AlertRepository alerts;
     @Autowired FlagRepository flags;
@@ -64,7 +68,7 @@ class GeminiGroundingIntegrationTest {
     @Test
     void chatSendsOnlyThePatientsRecordsAndStripsFabricatedCitations() {
         CoordinationAlert ava = alerts.find(null, null, "CAM-P-1001").getFirst();
-        AiAnswer a = ai.chat(new ChatRequest(null, "ALERT", ava.alertId(), null, "Why was this patient flagged?"), "test");
+        AiAnswer a = ai.chat(new ChatRequest(null, "ALERT", ava.alertId(), null, "Why was this patient flagged?"), MAYA);
 
         assertThat(a.mode()).isEqualTo("GEMINI");
         assertThat(a.aiGenerated()).isTrue();
@@ -81,11 +85,11 @@ class GeminiGroundingIntegrationTest {
 
         // Conversation is bound to its context: reusing it for another patient is refused.
         CoordinationAlert beatriz = alerts.find(null, null, "CAM-P-1002").getFirst();
-        assertThatThrownBy(() -> ai.chat(new ChatRequest(a.conversationId(), "ALERT", beatriz.alertId(), null, "And this one?"), "test"))
+        assertThatThrownBy(() -> ai.chat(new ChatRequest(a.conversationId(), "ALERT", beatriz.alertId(), null, "And this one?"), MAYA))
                 .isInstanceOf(ApiException.class).hasMessageContaining("different patient");
 
         // Follow-up in the same context carries history.
-        ai.chat(new ChatRequest(a.conversationId(), "ALERT", ava.alertId(), null, "Where did you find that information?"), "test");
+        ai.chat(new ChatRequest(a.conversationId(), "ALERT", ava.alertId(), null, "Where did you find that information?"), MAYA);
         assertThat(REQUESTS.getLast().turns()).hasSize(3);
     }
 
@@ -93,8 +97,8 @@ class GeminiGroundingIntegrationTest {
     void flagExplanationIsValidatedAndCached() {
         String flagId = flags.find(null, "OB_ANESTHESIA_REVIEW", "CAM-P-1001").getFirst().flagId();
         int before = REQUESTS.size();
-        AiAnswer first = ai.explainFlag(flagId, false, "test");
-        AiAnswer cached = ai.explainFlag(flagId, false, "test");
+        AiAnswer first = ai.explainFlag(flagId, false, MAYA);
+        AiAnswer cached = ai.explainFlag(flagId, false, MAYA);
         assertThat(REQUESTS).hasSize(before + 1);
         assertThat(cached.answer()).isEqualTo(first.answer());
         assertThat(flags.findById(flagId).orElseThrow().aiExplanationModel()).isEqualTo("scripted-test-model");

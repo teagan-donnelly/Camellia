@@ -1,7 +1,7 @@
 package com.camellia.workflow;
 
+import com.camellia.TestSessions;
 import com.camellia.analysis.AnalysisService;
-import com.camellia.config.DemoUsers;
 import com.camellia.coordination.CoordinationService;
 import com.camellia.coordination.CoordinationService.AlertUpdate;
 import com.camellia.ingestion.DemoDataService;
@@ -13,6 +13,10 @@ import com.camellia.repository.FlagRepository;
 import com.camellia.repository.PatientRepository;
 import com.camellia.search.SearchCriteria;
 import com.camellia.search.SearchService;
+import com.camellia.security.AuthorizationService;
+import com.camellia.security.AuthorizationService.AccessScope;
+import com.camellia.security.DemoDirectory;
+import com.camellia.security.DemoUser;
 import com.camellia.web.ApiException;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -21,8 +25,12 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import jakarta.servlet.http.Cookie;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import java.util.List;
 import java.util.Map;
@@ -30,8 +38,6 @@ import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -58,9 +64,29 @@ class ClinicalWorkflowIntegrationTest {
     @Autowired CoordinationService coordination;
     @Autowired DemoDataService demoData;
     @Autowired SearchService search;
+    @Autowired AuthorizationService auth;
 
-    static final DemoUsers.DemoUser MAYA = DemoUsers.resolve("maya.ellison");
-    static final DemoUsers.DemoUser JORDAN = DemoUsers.resolve("jordan.lee");
+    static final DemoUser MAYA = DemoDirectory.require("maya.ellison");
+    /** L&D nurse: may add coordination notes but not change coordination status. */
+    static final DemoUser TAYLOR = DemoDirectory.require("taylor.morgan");
+
+    AccessScope mayaScope() {
+        return auth.scope(MAYA);
+    }
+
+    /** Every API call runs as the simulated CRNA via a signed demo-session cookie. */
+    ResultActions perform(MockHttpServletRequestBuilder request) throws Exception {
+        Cookie session = TestSessions.as(mvc, MAYA.id());
+        return mvc.perform(request.cookie(session));
+    }
+
+    static MockHttpServletRequestBuilder get(String url) {
+        return org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(url);
+    }
+
+    static MockHttpServletRequestBuilder post(String url) {
+        return org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(url);
+    }
 
     Map<String, CoordinationAlert> alertsByPatient() {
         return alerts.find(null, null, null).stream().collect(Collectors.toMap(CoordinationAlert::patientId, a -> a));
@@ -68,14 +94,16 @@ class ClinicalWorkflowIntegrationTest {
 
     @Test @Order(1)
     void patientRetrievalAcrossOrganizations() throws Exception {
-        mvc.perform(get("/api/patients")).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(9));
-        mvc.perform(get("/api/patients/CAM-P-1001"))
+        perform(get("/api/patients")).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(9));
+        perform(get("/api/patients/CAM-P-1001"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.patient.name").value("Ava Marlowe"))
                 .andExpect(jsonPath("$.identifiers.length()").value(3))
                 .andExpect(jsonPath("$.labs.length()").value(6));
-        mvc.perform(get("/api/patients/CAM-P-9999")).andExpect(status().isNotFound());
-        mvc.perform(get("/api/records/REC-NDL-ACC-55012-1"))
+        // Unknown ids get the same generic 403 as restricted ones, so existence is never revealed.
+        perform(get("/api/patients/CAM-P-9999")).andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+        perform(get("/api/records/REC-NDL-ACC-55012-1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.record.orgName").value("Northgate Diagnostic Laboratories"))
                 .andExpect(jsonPath("$.rawContent").value(org.hamcrest.Matchers.containsString("OBX|1|NM|777-3")));
@@ -154,10 +182,10 @@ class ClinicalWorkflowIntegrationTest {
                 .isInstanceOf(ApiException.class).hasMessageContaining("reason");
         assertThatThrownBy(() -> coordination.updateAlert(imani.alertId(), new AlertUpdate(null, "PLAN_DOCUMENTED", null, null, null, null, null), MAYA))
                 .isInstanceOf(ApiException.class).hasMessageContaining("plan");
-        assertThatThrownBy(() -> coordination.updateAlert(imani.alertId(), new AlertUpdate(null, "UNDER_REVIEW", null, null, null, null, null), JORDAN))
-                .isInstanceOf(ApiException.class).hasMessageContaining("Simulated access control");
-        // Other teams can still add notes.
-        coordination.addNote(imani.alertId(), "GENERAL", "L&D aware.", JORDAN);
+        assertThatThrownBy(() -> coordination.updateAlert(imani.alertId(), new AlertUpdate(null, "UNDER_REVIEW", null, null, null, null, null), TAYLOR))
+                .isInstanceOfSatisfying(ApiException.class, e -> assertThat(e.status()).isEqualTo(HttpStatus.FORBIDDEN));
+        // L&D nursing can still add notes.
+        coordination.addNote(imani.alertId(), "GENERAL", "L&D aware.", TAYLOR);
 
         coordination.updateAlert(imani.alertId(), new AlertUpdate(null, "PLAN_DOCUMENTED", "COMPLETED", null, false, null,
                 "Anesthesia consult completed; plan documented by the obstetric anesthesia team."), MAYA);
@@ -205,65 +233,65 @@ class ClinicalWorkflowIntegrationTest {
     @Test @Order(7)
     void searchFiltersByKeywordConceptOrganizationTypeAndDate() {
         var fx = search.search(new SearchCriteria(null, List.of("fracture"), List.of(), List.of(), List.of(), null, null, null,
-                false, false, false, false, 1, "ALL"));
+                false, false, false, false, 1, "ALL"), mayaScope());
         assertThat(fx.patients()).extracting(SearchService.PatientGroup::patientId).containsExactly("CAM-P-1003");
         assertThat(fx.patients().getFirst().organizations()).hasSize(3);
 
         var low = search.search(new SearchCriteria(null, List.of(), List.of("LOW_PLATELETS"), List.of("LAB_RESULT"), List.of(), null, null, null,
-                false, false, false, false, 1, "ANY"));
+                false, false, false, false, 1, "ANY"), mayaScope());
         assertThat(low.patients()).extracting(SearchService.PatientGroup::patientId).containsExactly("CAM-P-1001");
 
         var calciumNdl = search.search(new SearchCriteria(null, List.of("calcium"), List.of(), List.of("LAB_RESULT"), List.of("CHCH"), "CAM-P-1004",
-                null, null, false, false, false, false, 1, "ALL"));
+                null, null, false, false, false, false, 1, "ALL"), mayaScope());
         assertThat(calciumNdl.totalRecords()).isEqualTo(1);
 
         var obUpcoming = search.search(new SearchCriteria(null, List.of(), List.of("HEMATOLOGY"), List.of(), List.of(), null, null, null,
-                true, true, false, false, 1, "ANY"));
+                true, true, false, false, 1, "ANY"), mayaScope());
         assertThat(obUpcoming.patients()).extracting(SearchService.PatientGroup::patientId)
                 .contains("CAM-P-1001", "CAM-P-1002").doesNotContain("CAM-P-1003", "CAM-P-1006");
 
         var future = search.search(new SearchCriteria(null, List.of("calcium"), List.of(), List.of(), List.of(), null, "2999-01-01", null,
-                false, false, false, false, 1, "ALL"));
+                false, false, false, false, 1, "ALL"), mayaScope());
         assertThat(future.totalRecords()).isZero();
 
         // Hostile input is neutralized and the database is untouched.
         var hostile = search.search(new SearchCriteria(null, List.of("'; DROP TABLE PATIENTS; --"), List.of(), List.of(), List.of(), null, null, null,
-                false, false, false, false, 1, "ALL"));
+                false, false, false, false, 1, "ALL"), mayaScope());
         assertThat(hostile.totalRecords()).isZero();
         assertThat(patients.count()).isEqualTo(9);
     }
 
     @Test @Order(8)
     void aiEndpointsDegradeSafelyWithoutGemini() throws Exception {
-        mvc.perform(post("/api/ai/chat").contentType(MediaType.APPLICATION_JSON)
+        perform(post("/api/ai/chat").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"contextType\":\"PATIENT\",\"contextId\":\"CAM-P-1001\",\"message\":\"Why was this patient flagged?\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.mode").value("RETRIEVAL_ONLY"))
                 .andExpect(jsonPath("$.aiGenerated").value(false))
                 .andExpect(jsonPath("$.retrievedRecords.length()").value(org.hamcrest.Matchers.greaterThan(0)));
-        mvc.perform(post("/api/search/interpret").contentType(MediaType.APPLICATION_JSON)
+        perform(post("/api/search/interpret").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"query\":\"patients with low platelet counts\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.source").value("RULE_BASED"))
                 .andExpect(jsonPath("$.notice").value(org.hamcrest.Matchers.containsString("Gemini is not configured")));
-        mvc.perform(post("/api/integrations/gemini/check"))
+        perform(post("/api/integrations/gemini/check"))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.code").value("GEMINI_NOT_CONFIGURED"));
-        mvc.perform(post("/api/patients/CAM-P-1001/ai-extraction"))
+        perform(post("/api/patients/CAM-P-1001/ai-extraction"))
                 .andExpect(status().isServiceUnavailable());
-        mvc.perform(post("/api/ai/chat").contentType(MediaType.APPLICATION_JSON)
+        perform(post("/api/ai/chat").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"contextType\":\"NOPE\",\"contextId\":\"x\",\"message\":\"hi\"}"))
                 .andExpect(status().isBadRequest());
     }
 
     @Test @Order(9)
     void integrationStatusIsHonestAboutFallbackAndDbCheckReadsAndWrites() throws Exception {
-        mvc.perform(get("/api/integrations/status"))
+        perform(get("/api/integrations/status"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.database.mode").value("LOCAL_FALLBACK"))
                 .andExpect(jsonPath("$.database.isSnowflake").value(false))
                 .andExpect(jsonPath("$.gemini.configured").value(false));
-        mvc.perform(post("/api/integrations/database/check"))
+        perform(post("/api/integrations/database/check"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.writeCheck.verified").value(true));
     }

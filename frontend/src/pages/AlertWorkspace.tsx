@@ -154,14 +154,15 @@ function Stepper({ status }: { status: AlertStatus }) {
 
 function CoordinationPanel({ data }: { data: AlertDetail }) {
   const a = data.alert
-  const { user, toast } = useApp()
+  const { user, toast, can } = useApp()
   const update = useUpdateAlert(a.alertId)
   const addNote = useAddNote(a.alertId)
   const [noteType, setNoteType] = useState('GENERAL')
   const [body, setBody] = useState('')
   const [pendingStatus, setPendingStatus] = useState<AlertStatus | null>(null)
   const [statusText, setStatusText] = useState('')
-  const canEdit = user.team === a.assignedTeam
+  const canEdit = can('UPDATE_COORDINATION')
+  const canNote = can('ADD_COORDINATION_NOTES')
 
   const save = (u: AlertUpdate, msg: string) => update.mutate(u, {
     onSuccess: () => { toast({ tone: 'success', title: msg, body: 'Saved to the database — persists across refresh and restart.' }); setPendingStatus(null); setStatusText('') },
@@ -176,7 +177,7 @@ function CoordinationPanel({ data }: { data: AlertDetail }) {
         <CardHeader title="Coordination actions" subtitle="Administrative workflow — not a clinical clearance" />
         {!canEdit && (
           <div className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-[12.5px] text-amber-700">
-            Simulated access: {user.name} ({user.team}) can add notes, but only {a.assignedTeam} members can change this alert's workflow.
+            Your role ({user.roleLabel}) can {canNote ? 'add coordination notes' : 'view this alert'}, but only nurse anesthetists and anesthesiologists can acknowledge it or change its workflow.
           </div>
         )}
         {!a.acknowledgedBy && (
@@ -228,20 +229,22 @@ function CoordinationPanel({ data }: { data: AlertDetail }) {
 
       <Card>
         <CardHeader icon={<MessageSquarePlus className="h-4 w-4" />} title="Coordination notes" subtitle="Human-entered and visible to the care team" />
-        <form onSubmit={(e) => {
-          e.preventDefault()
-          addNote.mutate({ noteType, body }, {
-            onSuccess: () => { setBody(''); toast({ tone: 'success', title: 'Note saved', body: 'Persisted to the COORDINATION_NOTES table.' }) },
-            onError: (err) => toast({ tone: 'error', title: 'Could not save note', body: (err as Error).message }),
-          })
-        }} className="space-y-2">
-          <select value={noteType} onChange={(e) => setNoteType(e.target.value)} className="h-8 w-full rounded-lg border border-line bg-white px-2 text-[13px]">
-            {['GENERAL', 'INFO_REQUEST', 'CONTACT', 'PLANNING_DISCUSSION', 'PLAN_SUMMARY'].map((t) => <option key={t} value={t}>{NOTE_TYPE_LABEL[t]}</option>)}
-          </select>
-          <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={3} placeholder="e.g. Contacted Dr. Voss's office; hematology consult confirmed before induction."
-            className="w-full rounded-lg border border-line px-3 py-2 text-[13px] focus:border-coral-300 focus:outline-none focus:ring-2 focus:ring-coral-100" />
-          <Button type="submit" variant="navy" size="sm" disabled={!body.trim()} loading={addNote.isPending}>Add note</Button>
-        </form>
+        {canNote ? (
+          <form onSubmit={(e) => {
+            e.preventDefault()
+            addNote.mutate({ noteType, body }, {
+              onSuccess: () => { setBody(''); toast({ tone: 'success', title: 'Note saved', body: 'Persisted to the COORDINATION_NOTES table.' }) },
+              onError: (err) => toast({ tone: 'error', title: 'Could not save note', body: (err as Error).message }),
+            })
+          }} className="space-y-2">
+            <select value={noteType} onChange={(e) => setNoteType(e.target.value)} className="h-8 w-full rounded-lg border border-line bg-white px-2 text-[13px]">
+              {['GENERAL', 'INFO_REQUEST', 'CONTACT', 'PLANNING_DISCUSSION', 'PLAN_SUMMARY'].map((t) => <option key={t} value={t}>{NOTE_TYPE_LABEL[t]}</option>)}
+            </select>
+            <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={3} placeholder="e.g. Contacted Dr. Voss's office; hematology consult confirmed before induction."
+              className="w-full rounded-lg border border-line px-3 py-2 text-[13px] focus:border-coral-300 focus:outline-none focus:ring-2 focus:ring-coral-100" />
+            <Button type="submit" variant="navy" size="sm" disabled={!body.trim()} loading={addNote.isPending}>Add note</Button>
+          </form>
+        ) : <p className="text-[12.5px] text-navy-500">Your role can read coordination notes but not add them.</p>}
         <ol className="mt-4 space-y-2.5">
           {[...data.notes].reverse().map((n) => (
             <li key={n.noteId} className={cx('rounded-lg border px-3 py-2',

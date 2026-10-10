@@ -1,11 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { get, patch, post } from './client'
 import type {
-  AiAnswer, AlertDetail, AlertSummary, CoordinationNote, Dashboard, ExtractionResult, FlagDto, IntegrationStatus,
-  Interpretation, Meta, PatientProfile, PatientSummary, RecordDetail, RuleDescriptor, RunResult, SearchCriteria, SearchResult,
+  AiAnswer, AlertDetail, AlertSummary, CoordinationNote, Dashboard, ExtractionResult, Facets, FlagDto, FlagSearchCriteria,
+  FlagSearchResult, IntegrationStatus, Interpretation, Meta, PatientProfile, PatientSummary, RecordDetail, RuleDescriptor, RunResult,
+  SearchCriteria, SearchResult, Session, SessionUser,
 } from './types'
 
 export const keys = {
+  session: ['session'] as const,
+  sessionUsers: ['session-users'] as const,
+  flagSearch: (params: string) => ['flag-search', params] as const,
+  facets: ['flag-facets'] as const,
   dashboard: ['dashboard'] as const,
   patients: ['patients'] as const,
   patient: (id: string) => ['patient', id] as const,
@@ -19,6 +24,10 @@ export const keys = {
   status: ['integration-status'] as const,
 }
 
+export const useSession = () => useQuery({ queryKey: keys.session, queryFn: () => get<Session>('/session'), staleTime: Infinity, retry: 0 })
+export const useSessionUsers = () => useQuery({ queryKey: keys.sessionUsers, queryFn: () => get<SessionUser[]>('/session/users'), staleTime: Infinity })
+export const selectSession = (userId: string) => post<Session>('/session', { userId })
+
 export const useDashboard = () => useQuery({ queryKey: keys.dashboard, queryFn: () => get<Dashboard>('/dashboard') })
 export const usePatients = () => useQuery({ queryKey: keys.patients, queryFn: () => get<PatientSummary[]>('/patients') })
 export const usePatient = (id: string) => useQuery({ queryKey: keys.patient(id), queryFn: () => get<PatientProfile>(`/patients/${id}`) })
@@ -26,9 +35,15 @@ export const useRecord = (id: string | null) =>
   useQuery({ queryKey: keys.record(id ?? ''), queryFn: () => get<RecordDetail>(`/records/${id}`), enabled: !!id })
 export const useFlags = () => useQuery({ queryKey: keys.flags, queryFn: () => get<FlagDto[]>('/flags') })
 export const useFlag = (id: string) => useQuery({ queryKey: keys.flag(id), queryFn: () => get<FlagDto>(`/flags/${id}`) })
-export const useAlerts = () => useQuery({ queryKey: keys.alerts, queryFn: () => get<AlertSummary[]>('/coordination-alerts') })
+export const useAlerts = (enabled = true) =>
+  useQuery({ queryKey: keys.alerts, queryFn: () => get<AlertSummary[]>('/coordination-alerts'), enabled })
 export const useAlert = (id: string) => useQuery({ queryKey: keys.alert(id), queryFn: () => get<AlertDetail>(`/coordination-alerts/${id}`) })
 export const useRules = () => useQuery({ queryKey: keys.rules, queryFn: () => get<RuleDescriptor[]>('/analysis/rules'), staleTime: Infinity })
+/** Structured clinical-alert (flag) search. `params` is a URL query string built by the filter bar. */
+export const useFlagSearch = (params: string) =>
+  useQuery({ queryKey: keys.flagSearch(params), queryFn: () => get<FlagSearchResult>(`/flags/search${params ? '?' + params : ''}`), placeholderData: (prev) => prev })
+export const useFlagFacets = () => useQuery({ queryKey: keys.facets, queryFn: () => get<Facets>('/flags/facets'), staleTime: Infinity })
+export const executeFlagSearch = (criteria: FlagSearchCriteria) => post<FlagSearchResult>('/flags/search', criteria)
 export const useMeta = () => useQuery({ queryKey: keys.meta, queryFn: () => get<Meta>('/meta'), staleTime: Infinity })
 export const useIntegrationStatus = () =>
   useQuery({ queryKey: keys.status, queryFn: () => get<IntegrationStatus>('/integrations/status'), refetchInterval: 60_000 })
@@ -37,7 +52,8 @@ export const useIntegrationStatus = () =>
 export function useInvalidateWorkflow() {
   const qc = useQueryClient()
   return () => {
-    for (const k of [keys.dashboard, keys.patients, keys.flags, keys.alerts]) qc.invalidateQueries({ queryKey: k })
+    for (const k of [keys.dashboard, keys.patients, keys.flags, keys.alerts, keys.facets]) qc.invalidateQueries({ queryKey: k })
+    qc.invalidateQueries({ queryKey: ['flag-search'] })
     qc.invalidateQueries({ queryKey: ['alert'] })
     qc.invalidateQueries({ queryKey: ['flag'] })
     qc.invalidateQueries({ queryKey: ['patient'] })

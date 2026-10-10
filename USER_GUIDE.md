@@ -1,10 +1,11 @@
 # Camellia User Guide
 
-A walkthrough of every feature in the first iteration, written for a first-time user. Everything described here exists
-in the app today.
+A walkthrough of every feature, written for a first-time user. Everything described here exists in the app today,
+including the role-based experience: what you see depends on the simulated demo user you pick (see
+[§16](#16-switching-the-simulated-user-and-what-each-role-sees)).
 
 > **Demo application using synthetic patient information. Not for clinical use.** All patients, providers and
-> organizations are fictional. Users and teams are simulated. There is no login.
+> organizations are fictional. Users and roles are simulated demo identities. There is no real login.
 
 ---
 
@@ -17,15 +18,15 @@ in the app today.
 5. [Reading a patient's history](#5-reading-a-patients-history)
 6. [Inspecting an original source record](#6-inspecting-an-original-source-record)
 7. [Searching records](#7-searching-records)
-8. [Clinical flags](#8-clinical-flags)
+8. [Clinical Alerts](#8-clinical-alerts)
 9. [Anesthesia OB Alerts: the work queue](#9-anesthesia-ob-alerts-the-work-queue)
 10. [Reviewing an alert: the workspace](#10-reviewing-an-alert-the-workspace)
 11. [Recording care coordination](#11-recording-care-coordination)
 12. [Using the Gemini assistant](#12-using-the-gemini-assistant)
 13. [Gemini document interpretation (AI observations)](#13-gemini-document-interpretation-ai-observations)
-14. [Care Coordination summary](#14-care-coordination-summary)
-15. [System & integrations](#15-system--integrations)
-16. [Switching the simulated user](#16-switching-the-simulated-user)
+14. [Coordination board](#14-coordination-board)
+15. [Demo & integrations](#15-demo--integrations)
+16. [Switching the simulated user and what each role sees](#16-switching-the-simulated-user-and-what-each-role-sees)
 17. [Exploring the broader search and pattern features](#17-exploring-the-broader-search-and-pattern-features)
 18. [Troubleshooting](#18-troubleshooting)
 
@@ -46,17 +47,19 @@ clinical use."*
 
 ## 2. Finding your way around
 
-**Left sidebar**
+**Left sidebar** (items depend on your role)
 
-| Item | Purpose |
-|---|---|
-| Dashboard | Overview: metrics, upcoming complex-care encounters, patients requiring review, recent activity |
-| Patients | Directory of all synthetic patients |
-| Clinical Search | Natural-language and keyword search across all organizations |
-| Clinical Flags | All rule-generated review items |
-| Anesthesia OB Alerts | The anesthesia coordination work queue. The coral badge counts **New** alerts. |
-| Care Coordination | Shared planning summary board |
-| System & integrations (bottom) | Snowflake and Gemini status, live checks, demo data controls |
+| Item | Who sees it | Purpose |
+|---|---|---|
+| Dashboard | Everyone | Overview: metrics, upcoming encounters, patients requiring review, recent activity |
+| Patients | Everyone | Directory of the synthetic patients you may access |
+| Clinical Search | Everyone | Natural-language and keyword search over records and clinical alerts you may access |
+| Clinical Alerts | Everyone | Rule-generated review items, with filters (formerly *Clinical Flags*) |
+| Anesthesia OB Alerts | L&D nurses, CRNAs, anesthesiologists | The anesthesia coordination **work queue** and **coordination board**. The coral badge counts **New** alerts. |
+| Demo & integrations (bottom) | Everyone | Snowflake and Gemini status, live checks, demo data controls |
+
+If you open a page or item your role can't use (for example from an old link), you'll see a **Not available to your
+role** panel instead. It is deliberately generic: it doesn't say whether the item exists.
 
 **Top bar**
 
@@ -64,17 +67,18 @@ clinical use."*
   (Windows/Linux) or **⌘K** (macOS) from any page to focus it. On the Clinical Search page the shortcut focuses that
   page's larger search box instead.
 - **Integration badges.** *Snowflake* (green) or *Local fallback DB* (amber), and *Gemini live* (coral) or *Gemini not
-  configured* (amber). Click either badge to open System & integrations.
-- **User menu.** Shows the simulated user and team. See [§16](#16-switching-the-simulated-user).
+  configured* (amber). Click either badge to open Demo & integrations.
+- **User menu.** Shows the simulated user, a *Demo* tag, their role and their practice or department. See [§16](#16-switching-the-simulated-user-and-what-each-role-sees).
 
 Notifications appear as small toasts in the bottom-right corner after every save.
 
 ## 3. Dashboard
 
-**What it's for:** a morning overview for the anesthesia coordinator. It shows who needs attention, before which
-encounter, and what changed recently.
+**What it's for:** a morning overview. It shows who needs attention, before which encounter, and what changed
+recently, limited to the patients and alerts your role may access. A line under the greeting reads *"Viewing as … —
+scope: …"*.
 
-**What you see**
+**What you see (anesthesia roles: L&D nurse, CRNA, anesthesiologist)**
 
 - **Metric cards** (all values come from the backend; click a card to jump to the related page):
   *Total patients*, *Open clinical flags* (unreviewed or in review), *Unreviewed anesthesia alerts* (status New, with
@@ -86,15 +90,25 @@ encounter, and what changed recently.
 - **Patients requiring review.** Patients with open flags or alerts, with counts. Click one to open the patient profile.
 - **Recent activity.** A timeline of screening runs, routed alerts, status changes, notes, and Gemini requests, stored
   in the database.
-- **How Camellia works.** A five-step explanation, plus the last screening run and the demo date anchor.
+- **How Camellia works.** A five-step explanation, plus the last screening run and the demo date anchor (shown only to
+  network-wide anesthesia roles, because the run covers every patient).
 
-**Actions:** **Run screening** re-runs every rule over every patient. The toast reports how many flags were created,
-updated, or left unchanged ("duplicates prevented"). Running it again never creates duplicate flags or alerts.
+**What you see (physicians and registered nurses)**
+
+- **Metric cards:** *Accessible patients*, *Open clinical alerts*, *Patients requiring review* and *Upcoming
+  encounters* (next 60 days). There are no Anesthesia OB metrics.
+- **Upcoming encounters:** scheduled care for your accessible patients. Click one to open the patient.
+- **Patients requiring review** and **Recent activity**, limited to your scope.
+
+**Actions:** **Run screening** re-runs every rule over every patient. The toast reports how many alerts were created,
+updated, or left unchanged ("duplicates prevented"), counting only those you may see. Running it again never creates duplicate flags or alerts.
 
 ## 4. Finding patients
 
 **Where:** sidebar → **Patients**.
 
+- Only patients in your access scope are listed: Dr. Kim sees Practice A's five patients, Dr. Mitchell sees Practice
+  B's four, and other roles see all nine.
 - **Filter box.** Matches name, synthetic ID, conditions, organizations and demo scenario.
 - **All / Obstetric / Needs review.** Quick filters.
 - **Table columns:** *Patient* (name, an **OB** badge for obstetric patients, synthetic ID, age, sex, estimated due date
@@ -103,8 +117,8 @@ updated, or left unchanged ("duplicates prevented"). Running it again never crea
 
 Click a row to open the patient profile.
 
-**Try it:** select **Obstetric**. You'll see Ava Marlowe, Beatriz Okonkwo-Hale and Imani Brooks, who have open alerts,
-and Grace Thornbury, who is routine and has none.
+**Try it** (as Maya Ellison): select **Obstetric**. You'll see Ava Marlowe, Beatriz Okonkwo-Hale and Imani Brooks, who
+have open alerts, and Grace Thornbury, who is routine and has none.
 
 ## 5. Reading a patient's history
 
@@ -121,7 +135,8 @@ and Grace Thornbury, who is routine and has none.
   index that links records across organizations.
 - **Search records** opens Clinical Search pre-filtered to this patient.
 
-If the patient has an open coordination alert, a **coral banner** links straight to its review workspace.
+If the patient has an open coordination alert and your role has the Anesthesia OB workflow, a **coral banner** links
+straight to its review workspace. Other roles see the patient's records but not the anesthesia alert.
 
 **Tabs**
 
@@ -151,7 +166,7 @@ opens the **Original source record** drawer on the right. It shows:
   identifier;
 - **Normalized content**: the readable text Camellia stores and searches;
 - **Deterministic concept tags** (e.g. `LOW_PLATELETS`, `FRACTURE`);
-- **Cited as evidence by**: the flags and alerts that use this record, as links;
+- **Cited as evidence by**: the flags and alerts that use this record (only those your role may see), as links;
 - **Show raw source payload as received**: the original HL7 message, FHIR resource or text block.
 
 Close the drawer with the ✕, the Escape key, or by clicking outside it.
@@ -161,6 +176,8 @@ Close the drawer with the ✕, the Escape key, or by clicking outside it.
 ## 7. Searching records
 
 **Where:** sidebar → **Clinical Search**, or the top search bar or Ctrl/Cmd+K.
+
+Search only ever covers patients in your access scope. Gemini is only told about patients you may access.
 
 ### Ask Gemini mode (default)
 
@@ -179,6 +196,20 @@ Close the drawer with the ✕, the Escape key, or by clicking outside it.
    record, or **Show all N records** to expand.
 4. **Discuss results with Gemini** opens an assistant scoped to these search results.
 
+### Searching clinical alerts in plain language
+
+Questions about **alerts or flags** run a clinical-alert search instead of a record search. Try the example chips with
+a bell icon:
+
+- *Which patients have open clinical alerts?*
+- *Find all patients flagged for low platelets*
+- *Show unresolved obstetric anesthesia alerts*
+
+The *Interpreted query* card shows *Searching: Clinical alerts* and the chosen category, status and concepts. Results
+are alert cards (see [§8](#8-clinical-alerts)), and Gemini summarizes the source records that triggered them. If you
+ask for a category your role can't access (for example obstetric anesthesia alerts as a physician), an amber notice
+says those alerts were not searched.
+
 ### Keyword mode
 
 Click **Keyword**, type words (all of them must appear) and/or use the filters.
@@ -190,34 +221,42 @@ filters override whatever Gemini chose.
 
 > No results do not mean a condition is absent. They only mean the available records did not match.
 
-## 8. Clinical flags
+## 8. Clinical Alerts
 
-**Where:** sidebar → **Clinical Flags**.
+**Where:** sidebar → **Clinical Alerts** (formerly *Clinical Flags*).
 
-**What a flag is:** a candidate review item produced by a deterministic, explainable rule. It is never a diagnosis.
+**What an alert is:** a candidate review item produced by a deterministic, explainable rule. It is never a diagnosis.
 
-- **How flags are generated.** Expand this panel to see all four rules, their configured parameters, where each one
-  routes, and the label *Prototype heuristics · not validated clinical thresholds*.
-- **Tabs:** *Open*, *Reviewed*, *Dismissed* and *All* (with counts), plus a **rule filter**.
-- **Each flag card shows:** title, rule, *Routed to Anesthesia OB* (when an alert exists), *New evidence* (when
-  re-evaluation found new records), patient, detection reason, the number of triggering findings, evidence records and
-  organizations, status, review ordering and last update.
+- **How alerts are generated.** Expand this panel to see the rules available to your role, their configured
+  parameters, where each one routes, and the label *Prototype heuristics · not validated clinical thresholds*.
+- **Filter bar.** Search text (titles, detection reasons and patient names), **Category**, **Review status**,
+  **Priority** and **Specialty** (the specialties in the evidence). Filtering runs on the server, and the filters are
+  kept in the page URL so you can share a filtered view. **Clear filters** resets them.
+- **Tabs:** *Unresolved* (default), *Resolved / dismissed* and *All*, with the number of alerts and patients found.
+  For an alert routed to Anesthesia OB, the coordination workflow status decides whether it is unresolved.
+- **Each result card shows:** title, category, an *Anesthesia OB alert* badge where one exists, patient, detection
+  reason, evidence count, specialties, source organizations, **Triggered by** chips that open the source records,
+  status (the alert's workflow status if it has one), review ordering, last update and an **Open alert** link.
 - **Run screening** works the same way as on the dashboard.
 
-**Review ordering** (*Expedited* or *Standard review*) orders the queue by time to the encounter. It is not a clinical
+Only alerts for your accessible patients appear. Obstetric anesthesia planning alerts appear only for L&D nurses, CRNAs
+and anesthesiologists.
+
+**Review ordering** (*Expedited* or *Standard review*) orders the list by time to the encounter. It is not a clinical
 risk score; hover the badge for this explanation.
 
 ### Flag detail
 
-Click a flag to open it.
+Click an alert's title or **Open alert** to open it.
 
 - **Detection reason (deterministic rule, not AI):** the rule's exact explanation, including dates, values and
   reference ranges.
 - **Timestamps:** created, last evaluated, last updated by, and evidence updated.
-- **Review actions:** **Start review** (Unreviewed → In Review), **Mark reviewed**, **Dismiss…** (a reason is
-  required), and **Reopen** for reviewed or dismissed flags. Every change is saved to the database. These are
-  administrative states and do not mean the patient is clinically cleared.
-- **Open Anesthesia OB alert** (OB flags only) links to the coordination workspace.
+- **Review actions** (physicians, CRNAs and anesthesiologists): **Start review** (Unreviewed → In Review), **Mark
+  reviewed**, **Dismiss…** (a reason is required), and **Reopen** for reviewed or dismissed items. Every change is saved
+  to the database. These are administrative states and do not mean the patient is clinically cleared. Registered and
+  L&D nurses see a note that their role can view but not change review status.
+- **Open Anesthesia OB alert** (OB items only, anesthesia roles) links to the coordination workspace.
 - **Why was this flagged? (Gemini explanation):** see [§12](#12-using-the-gemini-assistant).
 - **Supporting evidence**, grouped as *Triggering findings*, *Upcoming encounter* and *Supporting documentation*.
   Click any card to open the source record.
@@ -225,15 +264,18 @@ Click a flag to open it.
 
 ## 9. Anesthesia OB Alerts: the work queue
 
-**Where:** sidebar → **Anesthesia OB Alerts**.
+**Where:** sidebar → **Anesthesia OB Alerts** → **Work queue** tab. Available to L&D nurses, CRNAs and
+anesthesiologists.
 
 **How it relates to the real workflow:** this queue replaces the manual watchlist the clinician described.
 Instead of relying on someone to message the anesthesia team, Camellia finds obstetric patients with a **booked
 delivery-related encounter** and documented findings relevant to anesthesia planning, and puts them here
 automatically, before delivery day.
 
-- **Team bar:** the assigned team (*Anesthesia OB Coordination*) and whether the current simulated user is a member.
-  The queue is in-app only and sends no real notifications.
+- **Tabs:** **Work queue** (this section) and **Coordination board** (see [§14](#14-coordination-board)).
+- **Team bar:** the assigned team (*Anesthesia OB Coordination*) and what your role can do here: CRNAs and
+  anesthesiologists can acknowledge and update alerts; L&D nurses can view alerts and add notes. The queue is in-app
+  only and sends no real notifications.
 - **Status cards:** New, Under Review, Coordination Needed, Plan Documented, Resolved and Dismissed. Click one to
   filter; click it again to return to the active queue. **Active queue** and **All alerts** chips switch between the
   two main views.
@@ -281,6 +323,8 @@ automatically, before delivery day.
 In the workspace, go to the **Coordinate** tab. Every action is saved to the database, shows a toast, and survives a
 page refresh or backend restart.
 
+Who can do what: **CRNAs and anesthesiologists** can use every action. **L&D nurses** can add coordination notes only.
+
 | Action | What it does |
 |---|---|
 | **Acknowledge alert** | Records who acknowledged it and when. A New alert moves to Under Review. |
@@ -294,8 +338,8 @@ page refresh or backend restart.
 automatically for each change. *System* notes (amber) appear when re-evaluation adds new evidence; they list the new
 records and confirm that the workflow status was not changed.
 
-If you are signed in as someone outside the assigned team, an amber message explains that you can add notes but not
-change the workflow. This is simulated access control.
+If your role can't change the workflow (L&D nurse), an amber message explains this and the workflow controls are
+disabled. The backend enforces the same rule and rejects the change with a 403 even if it were sent.
 
 > These statuses describe administrative coordination progress, not clinical clearance. Camellia never writes or
 > finalizes a treatment plan; it only records that clinicians documented one.
@@ -325,14 +369,17 @@ upcoming encounter associated with this concern?* · *What should I do next?*
 
 **Safety behavior**
 
-- Camellia retrieves only the relevant patient's records (or the search results) and sends only those to Gemini.
+- Camellia checks your access **before** retrieving anything. If you can't access the patient, flag, alert or search
+  results, nothing is sent to Gemini and you see *Not available to your role*.
+- Camellia retrieves only the relevant patient's records (or the search results you may access) and sends only those
+  to Gemini.
 - Every cited record ID is checked against what was sent. Fabricated citations are removed, and "facts" without a valid
   source are dropped.
 - The assistant does not diagnose, recommend treatments, or declare a patient cleared. "What should I do next?" gets
   administrative next steps, such as verifying results, contacting the referring clinician, or holding a planning
   discussion.
-- Each conversation belongs to one patient, flag, alert or result set. Switching context starts a new conversation, so
-  details from one patient can't carry over to another.
+- Each conversation belongs to one user and one patient, flag, alert or result set. Switching context or demo user
+  starts a new conversation, so details can't carry over between patients or users.
 - The assistant cannot change data or workflow status.
 
 **Flag explanation card** ("Why was this flagged? — Gemini explanation")
@@ -361,12 +408,13 @@ records that were retrieved. No AI text is simulated.
 **Try it with:** Imani Brooks (prior anesthesia history at Cedar Hollow) or Beatriz Okonkwo-Hale (cardio-oncology
 relationships).
 
-## 14. Care Coordination summary
+## 14. Coordination board
 
-**Where:** sidebar → **Care Coordination**.
+**Where:** sidebar → **Anesthesia OB Alerts** → **Coordination board** tab. (The old *Care Coordination* page now lives
+here; old `/coordination` links redirect to it.)
 
-**What it's for:** a shared, at-a-glance planning status that any simulated care-team member can read, including the
-clinician who will staff the encounter but didn't build the plan.
+**What it's for:** a shared, at-a-glance planning status for the anesthesia care team, including the clinician who will
+staff the encounter but didn't build the plan.
 
 - **Board:** alerts in columns by status (New → Resolved, plus Dismissed if any). Each card shows the patient, the
   encounter and when it is, contact status, and *Discussed* / *Info needed* badges.
@@ -378,14 +426,15 @@ clinician who will staff the encounter but didn't build the plan.
      due date, last update and dismissal reason.
 - **Open review workspace** jumps to the full workspace.
 
-## 15. System & integrations
+## 15. Demo & integrations
 
-**Where:** sidebar bottom → **System & integrations**, or click a header badge.
+**Where:** sidebar bottom → **Demo & integrations**, or click a header badge.
 
 - **Database (Snowflake):** mode (Snowflake, or *Local fallback — NOT Snowflake*), connection, live session details
-  (Snowflake version, account, region, warehouse, database, schema, role and user) and the stored patient count.
-  **Run read / write check** reads a demo patient with a JOIN, inserts a row into `INTEGRATION_CHECKS`, reads it back,
-  and shows the JSON result with `"verified": true`.
+  (Snowflake version, account, region, warehouse, database, schema, role and user).
+  **Run read / write check** reads non-patient reference data (a JOIN of organizations and practices), inserts a row
+  into `INTEGRATION_CHECKS`, reads it back, and shows the JSON result with `"verified": true`. It never returns patient
+  data, so it is safe for every role.
 - **AI (Google Gemini):** whether an API key is configured, model, SDK, call and failure counts since startup, last
   success and last error. **Send live test request** makes a real Gemini call and shows the model, latency, token counts
   and the structured response.
@@ -394,27 +443,47 @@ clinician who will staff the encounter but didn't build the plan.
     re-runs screening. The existing alert is updated (*New evidence*, plus a system note); no duplicate alert is
     created. Running it again inserts nothing.
   - **Reset demo data** (asks for confirmation) deletes all demo data, notes and statuses, re-seeds the dataset
-    anchored to today, and re-runs screening. Use it before a presentation.
+    anchored to today, and re-runs screening. Use it before a presentation. The screening summary shown afterwards
+    counts only what your role may see.
 - **Safety & access:** a summary of what the prototype is and isn't.
 
-## 16. Switching the simulated user
+## 16. Switching the simulated user and what each role sees
 
-Click your name in the top-right corner. There are five fictional users:
+Click your name in the top-right corner. The menu is labeled **"Simulated demo identity — not a secure login"** and lists
+six fictional users with their role, department and practice. Click one to switch. The app reloads its data for the new
+user, closes any open record, starts fresh Gemini conversations, and returns you to the dashboard if your current page
+isn't available to the new role. A toast confirms *"Now viewing as …"*.
 
-| User | Team | Can change Anesthesia OB alert workflow? |
-|---|---|---|
-| Maya Ellison, CRNA (default) | Anesthesia OB Coordination | Yes |
-| Dr. Samuel Okafor, MD | Anesthesia OB Coordination | Yes |
-| Dr. Priya Raman, MD | Maternal-Fetal Medicine | No; can add notes |
-| Jordan Lee, RN | Labor & Delivery | No; can add notes |
-| Dr. Alex Kim, MD | Clinical Review | No; can add notes |
+| User | Role | Patients | Sidebar | Clinical Alerts review status | Anesthesia OB workflow |
+|---|---|---|---|---|---|
+| Dr. Alex Kim | Physician, Internal Medicine (Practice A) | Practice A: Caleb, Dolores, Elias, Frances, Henry | 4 items | Can change | Not available |
+| Dr. Sarah Mitchell | Physician, OB/GYN (Practice B) | Practice B: Ava, Beatriz, Grace, Imani | 4 items | Can change | Not available |
+| Jordan Lee, RN | Registered Nurse | All 9 | 4 items | View only | Not available |
+| Taylor Morgan, RN | Labor & Delivery Nurse | All 9 | 5 items | View only | View + add notes |
+| Maya Ellison, CRNA (default) | Nurse Anesthetist | All 9 | 5 items | Can change | Full |
+| Dr. Daniel Brooks | Anesthesiologist | All 9 | 5 items | Can change | Full |
 
-Your choice is remembered in this browser. Notes and status changes record the selected user's name. There is no
-authentication.
+Things to notice when switching:
+
+- **Dr. Kim** opening Ava Marlowe (for example from a saved link) sees *Not available to your role*. The same panel
+  appears for a patient ID that doesn't exist, so it never confirms whether a patient exists.
+- **Dr. Mitchell** sees Ava's records and labs (Ava is her patient), but Ava's obstetric anesthesia alert doesn't appear
+  anywhere: not in Clinical Alerts, the profile, search or the dashboard.
+- **Jordan Lee** sees every patient and the general clinical alerts, but not the Anesthesia OB workflow, and can't
+  change review status.
+- **Taylor Morgan** sees the Anesthesia OB queue and board and can add notes, but the workflow controls are disabled.
+
+**How it works:** choosing a user asks the backend for a signed demo session (an HttpOnly cookie). Every request after
+that is authorized on the server from that session. Your choice is remembered in this browser, and the session is
+re-created automatically if the backend restarts. Notes and status changes record the selected user's name.
+
+> This is **demo impersonation, not authentication**. Anyone using the demo can pick any user. It exists to show how
+> access would differ by role and practice.
 
 ## 17. Exploring the broader search and pattern features
 
 Anesthesia coordination is the primary use case, but the same platform finds other patterns across organizations.
+These examples assume a network-wide user such as Maya Ellison or Jordan Lee.
 
 | Try this | Where | What you should see |
 |---|---|---|
@@ -426,7 +495,9 @@ Anesthesia coordination is the primary use case, but the same platform finds oth
 | *Which patients have records from more than one hospital?* | Clinical Search | Patients with records from more than one organization |
 | *Has this patient had previous anesthesia complications?* on **Frances Albright** | Patient profile assistant | Uneventful general anesthesia and monitored anesthesia care are documented. No flag exists for her. |
 | **Grace Thornbury** | Patients → Obstetric | Routine pregnancy, normal platelets, tentative induction slot, and no alert |
-| **Clinical Flags → How flags are generated** | Clinical Flags | All rule parameters, labeled as prototype heuristics |
+| *Find all patients flagged for low platelets* | Clinical Search | Ava Marlowe's alert card (anesthesia roles only) with the triggering platelet results |
+| **Clinical Alerts → Category: Recurrent fractures** | Clinical Alerts | Caleb Wren's alert with the triggering fracture records |
+| **Clinical Alerts → How alerts are generated** | Clinical Alerts | All rule parameters available to your role, labeled as prototype heuristics |
 
 ## 18. Troubleshooting
 
@@ -438,4 +509,6 @@ Anesthesia coordination is the primary use case, but the same platform finds oth
 | *Gemini not configured* | Set `GEMINI_API_KEY` in `backend/.env` and restart. |
 | "Gemini rate limit or quota reached" | Wait a moment and retry. Free-tier keys have per-minute limits. |
 | "Model … is not available" | Set `GEMINI_MODEL` to a model your key can use and restart. |
-| Upcoming encounters show as in the past | The demo was seeded long ago. Use **System & integrations → Reset demo data**. |
+| Upcoming encounters show as in the past | The demo was seeded long ago. Use **Demo & integrations → Reset demo data**. |
+| *Not available to your role* | The current demo user can't access that page or item. Switch users in the top-right corner. |
+| *Could not start a demo session* | The backend isn't reachable or rejected the request. Check that it is running, then click **Try again**. |

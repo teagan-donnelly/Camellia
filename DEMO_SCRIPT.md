@@ -1,6 +1,6 @@
 # Camellia — Live Demo Script (PalmettoHacks 2026)
 
-**Length:** about 6–7 minutes, plus Q&A. **Presenter view:** a 1440px or wider browser window at http://localhost:5173.
+**Length:** about 7–8 minutes, plus Q&A. **Presenter view:** a 1440px or wider browser window at http://localhost:5173.
 Lines in *italics* are things to say; **bold** lines are actions to take.
 
 ---
@@ -9,11 +9,11 @@ Lines in *italics* are things to say; **bold** lines are actions to take.
 
 1. Backend running, with the log line `Camellia ready on Snowflake`. Frontend running.
 2. Header badges read **Snowflake** (green) and **Gemini live** (coral).
-3. **System & integrations → Reset demo data**, so encounters are relative to today and no notes are left over from
+3. **Demo & integrations → Reset demo data**, so encounters are relative to today and no notes are left over from
    rehearsal.
 4. On the same page, click **Run read / write check** and **Send live test request** once. This warms up the Snowflake
    warehouse and confirms the Gemini key works.
-5. Signed-in user: **Maya Ellison, CRNA** (top right).
+5. Demo user: **Maya Ellison, CRNA** (top right). If you rehearsed the role-switching segment, switch back to her.
 6. Open these tabs in order: Dashboard · Anesthesia OB Alerts · Clinical Search.
 
 > If either badge is amber, say so honestly and stick to what works. The app labels its fallbacks, and we never fake a
@@ -107,18 +107,45 @@ status."*
 *"Every change is written to Snowflake."* **Refresh the browser.** *"After a refresh, the acknowledgement, the note and
 the status are all still here."*
 
-**Optional, the "new lab arrives" moment:** **System & integrations → Simulate incoming lab result → back to the
+**Optional, the "new lab arrives" moment:** **Demo & integrations → Simulate incoming lab result → back to the
 alert.** *"A new HL7 result arrived. Camellia re-screened and updated this same alert with the new evidence, with a
 system note and a 'new evidence' badge. It didn't create a duplicate, and it didn't touch Maya's workflow status."*
 
-## 7. Shared planning status (≈ 30 s) — Care Coordination
+## 7. Shared planning status (≈ 30 s) — Coordination board
 
-**Open Care Coordination → select Ava.**
+**Open Anesthesia OB Alerts → Coordination board tab → select Ava.**
 
 *"The person who staffs the delivery may not be the person who did the planning. That was part of the original
 incident. This summary keeps four things visibly separate: documented facts, AI observations, notes written by people,
 and the planning status. Camellia never writes the treatment plan. It makes sure the right people know there is one to
 write."*
+
+## 7b. Who sees what: role-based access (≈ 75 s) — user switcher
+
+*"In a real hospital, people shouldn't all see the same things. So Camellia is role-aware. These are simulated demo
+identities, not a real login, but every rule is enforced by the backend, including what Gemini is allowed to read."*
+
+**Open the user menu (top right).** Point to the label *"Simulated demo identity — not a secure login."*
+
+1. **Switch to Dr. Alex Kim** (Physician, Practice A). *"Dr. Kim is a primary-care physician. He sees only the five
+   patients registered to his practice, and there's no Anesthesia OB Alerts item in his sidebar."* **Open Patients**
+   (5 patients). **Open Clinical Alerts:** Caleb's fractures, Dolores's calcium, Elias's headaches.
+   *If you have Ava's URL handy, paste it:* *"Ava isn't his patient, so he gets 'Not available to your role'. The same
+   response comes back for a patient who doesn't exist, so it never reveals who's in the system."*
+2. **Switch to Dr. Sarah Mitchell** (OB/GYN, Practice B). *"Ava is her patient, so she sees Ava's records and the
+   falling platelets, but not the anesthesia team's alert. That workflow belongs to anesthesia."* **Clinical Alerts →
+   0 unresolved.**
+3. **Switch to Jordan Lee, RN.** *"A registered nurse sees all patients and the general clinical alerts, but can't
+   change review status and doesn't see the anesthesia queue."*
+4. **Switch to Taylor Morgan, L&D nurse.** **Open Anesthesia OB Alerts → Ava.** *"Labor and delivery can see the
+   anesthesia alerts and add notes, but the workflow buttons are disabled. Only anesthesia can change the status."*
+5. **Switch to Dr. Daniel Brooks, anesthesiologist.** *"And the anesthesiologist has the full workflow."* **Open the
+   dashboard:** *"Different users, different dashboards, from the same endpoints."*
+
+**Switch back to Maya Ellison.**
+
+*"The same scope applies to Gemini: if you can't see a patient, their records are never retrieved or sent to the
+model. Our tests check that no Gemini request is made at all."*
 
 ## 8. Broader platform: cross-organization search (≈ 60 s) — Clinical Search
 
@@ -134,9 +161,12 @@ call that out.)
 
 **If time:** *"Show all patients with multiple abnormal calcium tests"* → Dolores Fenwick.
 
+**Or search the alerts themselves:** click the bell chip *"Find all patients flagged for low platelets."* *"Questions
+about alerts become a clinical-alert search, with the triggering records attached."*
+
 ## 9. Sponsor technology and close (≈ 30 s)
 
-**Open System & integrations.**
+**Open Demo & integrations.**
 
 - **Snowflake:** *"The primary database: patients, records from five source formats, flags, alerts, notes and the
   activity log, connected through the official JDBC driver with key-pair auth. Here's a live read/write check."*
@@ -159,7 +189,7 @@ on it."*
 | In-app alert queue with team routing, workflow and notes | Secure messaging or EHR in-basket notifications, escalation and SLAs |
 | Live Gemini explanations, chat, extraction and search, with citation validation | BAA-covered deployment and formal AI evaluation |
 | Snowflake persistence with live read/write checks | Snowflake Cortex semantic search; streaming re-screening with streams and tasks |
-| Simulated users and teams | Real authentication, authorization and audit |
+| Role-based access for 6 simulated users (practice scope, anesthesia workflow, Gemini retrieval), enforced server-side | Real authentication (SSO), care-relationship-based access, break-the-glass and audit |
 
 ## Backup answers
 
@@ -169,6 +199,9 @@ on it."*
   citations are removed and the count is shown. Extraction requires verbatim quotes.
 - **"Why not just let the model query the database?"** It would be unsafe. Gemini only fills an enum-constrained JSON
   schema; the backend validates it and runs fixed, parameterized SQL.
+- **"Can anyone just switch to the anesthesiologist?"** In the demo, yes, on purpose. The switcher is demo
+  impersonation, not a login. What's real is that the backend, not the browser, decides access from a signed session,
+  and every endpoint (search, dashboard, Gemini) applies it. Production would put real SSO in front of the same checks.
 - **"Duplicates?"** Each flag has a stable dedup key and an evidence fingerprint. Re-runs update, never duplicate.
 - **If Gemini is rate-limited live:** the UI shows a clear error. Retry, or show the saved flag explanation, which is
   cached with its timestamp.

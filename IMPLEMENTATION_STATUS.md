@@ -1,6 +1,6 @@
 # Implementation Status
 
-_Last updated: 2026-10-10 (first iteration)._
+_Last updated: 2026-10-10 (role-based access iteration)._
 
 **Legend**
 - ✅ **Implemented and tested.** Covered by automated tests and/or exercised end to end through the running app.
@@ -27,6 +27,38 @@ Both sponsor integrations have now been verified live against the team's account
 `gemini-3.5-flash-lite` and skips the primary model for 3 minutes. Live answers so far came from the fallback model.
 The UI always shows the model that actually answered. Raising the key's quota (billing enabled) should let the primary
 model answer.
+
+## Role-based access iteration (2026-10-10)
+
+| Item | Status | Evidence |
+|---|---|---|
+| Six simulated demo users, five roles, permission model (`security/Role`, `Permission`, `DemoDirectory`) | ✅ | `RoleBasedAccessIntegrationTest` |
+| Signed demo-session cookie (`POST/GET/DELETE /api/session`); `X-Camellia-User` header no longer trusted; missing or tampered cookie → 401 | ✅ | `requestsWithoutOrWithTamperedSessionAreRejected` |
+| Practice tables `PRACTICES`, `PATIENT_PRACTICE_ASSOCIATIONS`; Practice A (5 patients) and Practice B (4) seeded idempotently | ✅ on H2 · 🟡 on Snowflake | Created by `CREATE TABLE IF NOT EXISTS` on next startup; not yet run against the team's Snowflake account |
+| Practice-scoped patient directory, profile, records, appointments, AI extraction; generic 403 for restricted and missing ids | ✅ | `physicianSeesOnlyTheirPracticesPatients`, `physicianIsDeniedOtherPracticesPatientsWithAGenericError` |
+| Anesthesia OB workflow hidden from physicians and RNs everywhere (lists, flag detail, profile, rules, facets, dashboard) | ✅ | `registeredNurseSeesAllPatientsButNoAnesthesiaWorkflow`, `physiciansCannotReachAnesthesiaAlerts` |
+| Coordination permissions: CRNA/anesthesiologist full; L&D nurse notes only; RN cannot change flag review status | ✅ | `anesthesiologistHasFullCoordinationWorkflow`, `laborAndDeliveryNurseCanViewAndAnnotateButNotChangeStatus` |
+| Flag search (filter bar + NL), scope and restricted categories enforced in SQL | ✅ | `flagSearchFindsFlaggedPatientsWithinScope`, `flagSearchNeverWidensScope` |
+| Gemini authorized before retrieval; zero Gemini requests on denial; prompts contain no out-of-scope patients | ✅ | `geminiNeverReceivesDataOutsideTheUsersScope` (scripted gateway) |
+| Per-user dashboard, record search and screening-run outcomes | ✅ | `sameEndpointsReturnDifferentResultsPerUser`, `analysisRunOutcomesAreScoped` |
+| Frontend: session-driven sidebar, user switcher with simulated-identity label, route guard, *Not available to your role* panel, Clinical Alerts filter bar, flag results in Clinical Search, role-aware dashboard, Coordination board tab | ✅ | `npm run build`; headless Chrome walkthrough as all six users (below) |
+| Transparent logo PNG (white background, center and blue selection lines removed) and masked SVG center | ✅ | Alpha checks: center and corners alpha = 0, petals opaque, 0 visible blue pixels; composites viewed on navy and white |
+
+**Headless Chrome walkthrough** (backend on local H2 with live Gemini; Vite proxy), switching users from the menu:
+
+| User | Sidebar | `/alerts` | Unresolved clinical alerts |
+|---|---|---|---|
+| Maya Ellison, CRNA | 5 items incl. Anesthesia OB Alerts | Opens | 6 alerts · 6 patients |
+| Dr. Alex Kim | 4 items | *Not available to your role* | 3 alerts · 3 patients |
+| Dr. Sarah Mitchell | 4 items | *Not available to your role* | 0 (her patients only have OB anesthesia alerts) |
+| Jordan Lee, RN | 4 items | *Not available to your role* | 3 alerts · 3 patients |
+| Taylor Morgan, RN (L&D) | 5 items | Opens | 6 alerts · 6 patients |
+| Dr. Daniel Brooks | 5 items | Opens | 6 alerts · 6 patients |
+
+Also verified: Dr. Kim opening `/patients/CAM-P-1001` shows the restricted panel; Jordan's Clinical Alerts filtered to
+*Recurrent fractures* shows Caleb Wren; Maya's NL query *"Show unresolved obstetric anesthesia alerts"* was interpreted
+by Gemini as a flag search and returned 3 alerts across 3 patients; `/coordination` redirects to the board tab; no page
+errors in the browser console.
 
 ## Priority 1: obstetric anesthesia workflow
 
@@ -86,13 +118,13 @@ model answer.
 | Repeated out-of-range labs (≥3 per LOINC code in 2 years, cross-organization) | ✅ | `ScreeningRulesTest`, Patient D |
 | Repeated symptom encounters (≥3 per category in 1 year) | ✅ | `ScreeningRulesTest`, Patient E |
 | No unnecessary flags for patients F, G and H | ✅ | `screeningGeneratesExpectedFlagsAndRoutesObAlerts` |
-| Configurable thresholds, labeled as prototype heuristics and shown in the UI | ✅ | `application.yml`, Clinical Flags page |
+| Configurable thresholds, labeled as prototype heuristics and shown in the UI | ✅ | `application.yml`, Clinical Alerts page |
 
 ## Priority 6: frontend
 
 | Item | Status |
 |---|---|
-| Dashboard, Patients, Patient Profile (9 tabs), Clinical Search, Clinical Flags plus detail, Anesthesia OB Alerts queue plus workspace, Care Coordination, System & integrations | ✅ built (`npm run build`) and exercised with headless Chromium |
+| Dashboard, Patients, Patient Profile (9 tabs), Clinical Search, Clinical Alerts plus detail, Anesthesia OB Alerts (work queue + coordination board) plus workspace, Demo & integrations | ✅ built (`npm run build`) and exercised with headless Chromium |
 | Camellia brand theme (coral petals, deep navy, sage, amber), logo recreated as SVG | ✅ |
 | Responsive layout | 🟠 Desktop first. Works at tablet widths. The sidebar is hidden on small screens and has no mobile menu yet. |
 | Dark mode | ⛔ Not implemented |
@@ -109,7 +141,9 @@ model answer.
 
 ## Not implemented (by design for this iteration)
 
-- ⛔ Real authentication and authorization (users are simulated).
+- ⛔ Real authentication (users are simulated demo identities; anyone can switch). Role-based authorization *is*
+  enforced server-side for the demo identities.
+- ⛔ Care-relationship-based access, break-the-glass access, and an audit-grade access log.
 - ⛔ Real EHR connections (Epic or otherwise) and real notifications.
 - ⛔ Semantic or vector search.
 - ⛔ Persisted assistant conversation history (it is kept in memory for 2 hours; flag explanations and AI observations
@@ -120,10 +154,12 @@ model answer.
 
 | Command | Result |
 |---|---|
-| `./mvnw test` (backend) | ✅ 38 tests, 0 failures. One real SQL bug was found by the tests and fixed. |
+| `./mvnw test` (backend, first iteration) | ✅ 38 tests, 0 failures. One real SQL bug was found by the tests and fixed. |
+| `./mvnw test` (backend, role-based access iteration) | ✅ **51 tests, 0 failures** (39 existing, updated for sessions and scopes, plus 12 in `RoleBasedAccessIntegrationTest`) |
 | `./mvnw -DskipTests package` | ✅ `target/camellia-backend-0.1.0.jar` |
 | `npm run build` (frontend: `tsc -b && vite build`) | ✅ |
 | Backend started with `CAMELLIA_DB_MODE=local` and the API exercised with curl | ✅ 156 records seeded; 6 flags and 3 alerts; dedup, workflow, re-evaluation and search verified |
 | Scripted Chromium walkthrough of Demo 1 (queue → workspace → record drawer → acknowledge → note → status → reload) | ✅ All steps passed, and changes persisted after reload |
 | Live Snowflake connection, DDL, seed, read/write check | ✅ Passed |
 | Live Gemini API calls (all five capabilities) | ✅ Passed via the fallback model; the primary model is rate limited on the current key |
+| Role-based access iteration: `npm run build`, headless Chrome walkthrough as all six users, logo alpha checks | ✅ Passed (details above). Not yet run against Snowflake. |

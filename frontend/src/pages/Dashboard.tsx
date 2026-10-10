@@ -1,5 +1,6 @@
-import { Activity as ActivityIcon, ArrowRight, Bell, CalendarClock, Flag, PlayCircle, Sparkles, Users } from 'lucide-react'
+import { Activity as ActivityIcon, ArrowRight, Bell, CalendarClock, ClipboardList, Flag, PlayCircle, ShieldCheck, Sparkles, Users } from 'lucide-react'
 import type { ReactNode } from 'react'
+import type { Dashboard as DashboardDto } from '../api/types'
 import { Link, useNavigate } from 'react-router-dom'
 import { useDashboard, useRunAnalysis } from '../api/hooks'
 import { AlertStatusBadge, PriorityBadge } from '../components/status'
@@ -20,9 +21,15 @@ export default function Dashboard() {
   return (
     <div>
       <PageHeader
-        eyebrow={user.team}
+        eyebrow={`${user.roleLabel} · ${user.department}`}
         title={`${greeting}, ${firstName}`}
-        subtitle="Patients whose documented history may need advance preparation before their upcoming care — surfaced early, with the source records attached."
+        subtitle={<>
+          Patients whose documented history may need advance preparation before their upcoming care — surfaced early, with the source records attached.
+          <span className="mt-2 block text-[12.5px] text-navy-500">
+            <ShieldCheck className="-mt-0.5 mr-1.5 inline h-3.5 w-3.5 text-sage-600" />
+            Viewing as <span className="font-medium text-navy-700">{user.name}</span> — scope: {user.patientScope} <span className="text-navy-400">(simulated demo identity)</span>
+          </span>
+        </>}
         actions={
           <Button
             variant="navy"
@@ -45,16 +52,24 @@ export default function Dashboard() {
       {data && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <Metric icon={<Users className="h-4 w-4" />} label="Total patients" value={data.totalPatients} hint="Synthetic, across 5 organizations" onClick={() => navigate('/patients')} />
-            <Metric icon={<Flag className="h-4 w-4" />} label="Open clinical flags" value={data.openFlags} hint="Unreviewed or in review" onClick={() => navigate('/flags')} />
-            <Metric icon={<Bell className="h-4 w-4" />} label="Unreviewed anesthesia alerts" value={data.unreviewedAnesthesiaAlerts} accent
-              hint={`${data.alertsInProgress} more in progress`} onClick={() => navigate('/alerts')} />
-            <Metric icon={<CalendarClock className="h-4 w-4" />} label="Upcoming complex-care encounters" value={data.upcomingComplexEncounterCount}
-              hint="With an open coordination alert" onClick={() => navigate('/coordination')} />
+            <Metric icon={<Users className="h-4 w-4" />} label={data.anesthesiaAccess ? 'Total patients' : 'Accessible patients'} value={data.totalPatients}
+              hint={user.practices.length ? 'Registered to your practice' : 'Synthetic, across 5 organizations'} onClick={() => navigate('/patients')} />
+            <Metric icon={<Flag className="h-4 w-4" />} label="Open clinical alerts" value={data.openFlags} hint="Unreviewed or in review" onClick={() => navigate('/flags')} />
+            {data.anesthesiaAccess ? <>
+              <Metric icon={<Bell className="h-4 w-4" />} label="Unreviewed anesthesia alerts" value={data.unreviewedAnesthesiaAlerts} accent
+                hint={`${data.alertsInProgress} more in progress`} onClick={() => navigate('/alerts')} />
+              <Metric icon={<CalendarClock className="h-4 w-4" />} label="Upcoming complex-care encounters" value={data.upcomingComplexEncounterCount}
+                hint="With an open coordination alert" onClick={() => navigate('/alerts?tab=board')} />
+            </> : <>
+              <Metric icon={<ClipboardList className="h-4 w-4" />} label="Patients requiring review" value={data.patientsRequiringReview.length}
+                hint="With an open clinical alert" onClick={() => navigate('/flags')} />
+              <Metric icon={<CalendarClock className="h-4 w-4" />} label="Upcoming encounters" value={data.upcomingEncounters.length}
+                hint="Scheduled in the next 60 days" onClick={() => navigate('/patients')} />
+            </>}
           </div>
 
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.6fr_1fr]">
-            <Card padded={false}>
+            {!data.anesthesiaAccess ? <UpcomingEncounters data={data} /> : <Card padded={false}>
               <div className="px-5 pt-5">
                 <CardHeader
                   icon={<CalendarClock className="h-4 w-4" />}
@@ -93,10 +108,10 @@ export default function Dashboard() {
                   ))}
                 </ul>
               )}
-            </Card>
+            </Card>}
 
             <Card>
-              <CardHeader icon={<Flag className="h-4 w-4" />} title="Patients requiring review" subtitle="Open flags or coordination alerts" />
+              <CardHeader icon={<Flag className="h-4 w-4" />} title="Patients requiring review" subtitle={data.anesthesiaAccess ? 'Open clinical or coordination alerts' : 'Open clinical alerts'} />
               {data.patientsRequiringReview.length === 0 ? <EmptyState title="Nothing awaiting review" /> : (
                 <ul className="space-y-2">
                   {data.patientsRequiringReview.map((p) => (
@@ -106,7 +121,7 @@ export default function Dashboard() {
                           <span className="text-[13.5px] font-medium text-navy-900">{p.name}</span>
                           <div className="flex gap-1">
                             {p.openAlerts > 0 && <Badge tone="coral">{p.openAlerts} alert{p.openAlerts > 1 ? 's' : ''}</Badge>}
-                            {p.openFlags > 0 && <Badge>{p.openFlags} flag{p.openFlags > 1 ? 's' : ''}</Badge>}
+                            {p.openFlags > 0 && <Badge>{p.openFlags} clinical alert{p.openFlags > 1 ? 's' : ''}</Badge>}
                           </div>
                         </div>
                         <div className="mt-0.5 truncate text-[12.5px] text-navy-500">{p.flagTitles.join(' · ') || 'Coordination in progress'}</div>
@@ -165,6 +180,39 @@ export default function Dashboard() {
         </div>
       )}
     </div>
+  )
+}
+
+/** General upcoming encounters for the user's accessible patients (roles without the Anesthesia OB workflow). */
+function UpcomingEncounters({ data }: { data: DashboardDto }) {
+  return (
+    <Card padded={false}>
+      <div className="px-5 pt-5">
+        <CardHeader icon={<CalendarClock className="h-4 w-4" />} title="Upcoming encounters" subtitle="Scheduled care for patients in your access scope (next 60 days)" />
+      </div>
+      {data.upcomingEncounters.length === 0 ? <EmptyState title="No upcoming encounters" /> : (
+        <ul className="divide-y divide-line border-t border-line">
+          {data.upcomingEncounters.map((e) => (
+            <li key={e.appointment.appointmentId}>
+              <Link to={`/patients/${e.patientId}`} className="flex items-center gap-4 px-5 py-3.5 hover:bg-canvas">
+                <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl border border-line bg-canvas text-navy-600">
+                  <span className="text-[17px] font-semibold leading-none">{e.appointment.daysUntil}</span>
+                  <span className="mt-0.5 text-[10px] font-medium uppercase">days</span>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-medium text-navy-900">{e.patientName}</span>
+                    <span className="text-[12px] text-navy-400">{e.displayId}</span>
+                  </div>
+                  <div className="mt-0.5 truncate text-[13px] text-navy-600">{e.appointment.type} · {fmtDate(e.appointment.scheduledStart)}</div>
+                  <div className="mt-0.5 truncate text-[12.5px] text-navy-500">{e.appointment.orgName}{e.appointment.department ? ` — ${e.appointment.department}` : ''}</div>
+                </div>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
   )
 }
 

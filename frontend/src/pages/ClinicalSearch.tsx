@@ -1,13 +1,14 @@
-import { ArrowRight, Building2, Database, Filter, MessageSquareText, Search, Sparkles, Type, X } from 'lucide-react'
+import { ArrowRight, Bell, Building2, Database, Filter, MessageSquareText, Search, Sparkles, Type, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { get } from '../api/client'
-import { executeSearch, interpretSearch, summarizeSearch, useMeta, usePatients } from '../api/hooks'
-import type { AiAnswer, Interpretation, SearchCriteria, SearchResult } from '../api/types'
+import { executeFlagSearch, executeSearch, interpretSearch, summarizeSearch, useMeta, usePatients } from '../api/hooks'
+import type { AiAnswer, FlagSearchResult, Interpretation, SearchCriteria, SearchResult } from '../api/types'
 import { AiAnswerView, AssistantPanel, GeminiThinking } from '../components/ai'
+import { FlagHitCard } from '../components/flags'
 import { RecordTypeIcon } from '../components/records'
 import { Badge, Button, Card, CardHeader, EmptyState, ErrorBox, PageHeader } from '../components/ui'
-import { RECORD_TYPE_LABEL, cx, fmtDate, titleCase } from '../lib/format'
+import { RECORD_TYPE_LABEL, RULE_LABEL, cx, fmtDate, titleCase } from '../lib/format'
 import { useApp } from '../state/AppContext'
 
 const EXAMPLES = [
@@ -18,6 +19,13 @@ const EXAMPLES = [
   'Show all patients with multiple abnormal calcium tests',
   'Which patients have records from more than one hospital?',
   'Find repeated visits involving the same symptom',
+]
+
+/** Natural-language questions about clinical alerts (flags) rather than records. */
+const FLAG_EXAMPLES = [
+  'Which patients have open clinical alerts?',
+  'Find all patients flagged for low platelets',
+  'Show unresolved obstetric anesthesia alerts',
 ]
 
 type Mode = 'ai' | 'keyword'
@@ -32,6 +40,7 @@ export default function ClinicalSearch() {
   const [stage, setStage] = useState<'idle' | 'interpreting' | 'searching' | 'done'>('idle')
   const [interp, setInterp] = useState<Interpretation | null>(null)
   const [result, setResult] = useState<SearchResult | null>(null)
+  const [flagResult, setFlagResult] = useState<FlagSearchResult | null>(null)
   const [summary, setSummary] = useState<AiAnswer | null>(null)
   const [summaryState, setSummaryState] = useState<'idle' | 'loading' | 'error'>('idle')
   const [summaryError, setSummaryError] = useState<unknown>(null)
@@ -67,7 +76,7 @@ export default function ClinicalSearch() {
     const text = q.trim()
     const hasFilter = Object.values(filters).some(Boolean)
     if (!text && !hasFilter) return
-    setError(null); setInterp(null); setResult(null); setSummary(null); setSummaryState('idle'); setDiscuss(false)
+    setError(null); setInterp(null); setResult(null); setFlagResult(null); setSummary(null); setSummaryState('idle'); setDiscuss(false)
     setParams((p) => { const n = new URLSearchParams(p); n.set('q', text); n.set('mode', m); return n }, { replace: true })
     try {
       let res: SearchResult
@@ -77,6 +86,20 @@ export default function ClinicalSearch() {
         const i = await interpretSearch(text, filters.patientId || undefined)
         setInterp(i)
         setStage('searching')
+        if (i.target === 'FLAGS' && i.flagCriteria) {
+          // The request was about clinical alerts: run the flag search (scope and restricted categories enforced server-side).
+          const fr = await executeFlagSearch({ ...i.flagCriteria, patientId: filters.patientId || i.flagCriteria.patientId || null })
+          setFlagResult(fr)
+          setStage('done')
+          const ids = Array.from(new Set(fr.results.flatMap((h) => h.sourceRecords.map((r) => r.recordId)))).slice(0, 40)
+          if (ids.length > 0) {
+            setSummaryState('loading')
+            summarizeSearch(text, ids)
+              .then((sum) => { setSummary(sum); setSummaryState('idle') })
+              .catch((e) => { setSummaryError(e); setSummaryState('error') })
+          }
+          return
+        }
         res = await executeSearch(mergeFilters(i.criteria))
       } else {
         setStage('searching')
@@ -150,11 +173,16 @@ export default function ClinicalSearch() {
             )}
           </div>
         </form>
-        {stage === 'idle' && !result && (
+        {stage === 'idle' && !result && !flagResult && (
           <div className="mt-4 flex flex-wrap gap-1.5 border-t border-line pt-4">
             {EXAMPLES.map((ex) => (
               <button key={ex} onClick={() => { setQuery(ex); setMode('ai'); run(ex, 'ai') }} className="rounded-full border border-line bg-white px-3 py-1 text-[12.5px] text-navy-700 hover:border-coral-200 hover:bg-coral-50">
                 {ex}
+              </button>
+            ))}
+            {FLAG_EXAMPLES.map((ex) => (
+              <button key={ex} onClick={() => { setQuery(ex); setMode('ai'); run(ex, 'ai') }} className="inline-flex items-center gap-1 rounded-full border border-coral-200 bg-coral-50/50 px-3 py-1 text-[12.5px] text-navy-700 hover:bg-coral-50">
+                <Bell className="h-3 w-3 text-coral-500" />{ex}
               </button>
             ))}
           </div>
@@ -166,6 +194,27 @@ export default function ClinicalSearch() {
       {stage === 'searching' && <div className="flex items-center gap-2 rounded-lg border border-line bg-white px-4 py-3 text-[13px] text-navy-600"><Database className="h-4 w-4 text-sage-600" /> Running approved, parameterized queries against the clinical record index…</div>}
 
       {interp && <InterpretationCard interp={interp} />}
+
+      {flagResult && (
+        <div className="mt-5 space-y-4">
+          {(summaryState !== 'idle' || summary) && (
+            <Card className="border-coral-200">
+              <CardHeader icon={<Sparkles className="h-4 w-4 text-coral-500" />} title="Summary of the triggering records"
+                subtitle="Gemini summarizes only the source records behind these alerts; every claim cites a record." />
+              {summaryState === 'loading' && <GeminiThinking label="Gemini is reading the records that triggered these alerts…" />}
+              {summaryState === 'error' && <ErrorBox error={summaryError} title="Gemini summary unavailable" />}
+              {summary && <AiAnswerView answer={summary} />}
+            </Card>
+          )}
+          <div className="text-[13px] text-navy-600">
+            <span className="font-semibold text-navy-900">{flagResult.totalFlags}</span> clinical alert{flagResult.totalFlags === 1 ? '' : 's'} across <span className="font-semibold text-navy-900">{flagResult.totalPatients}</span> patient{flagResult.totalPatients === 1 ? '' : 's'}
+          </div>
+          {flagResult.notice && <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12.5px] text-amber-800">{flagResult.notice}</div>}
+          {flagResult.warnings.length > 0 && <div className="rounded-lg bg-amber-50 px-3 py-2 text-[12.5px] text-amber-700">{flagResult.warnings.join(' · ')}</div>}
+          {flagResult.results.length === 0 && <Card><EmptyState title="No matching clinical alerts">Only alerts for patients and categories available to your role are searched.</EmptyState></Card>}
+          {flagResult.results.map((h) => <FlagHitCard key={h.flagId} hit={h} />)}
+        </div>
+      )}
 
       {result && (
         <div className="mt-5 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_400px]">
@@ -199,19 +248,38 @@ export default function ClinicalSearch() {
           )}
         </div>
       )}
-      <p className="mt-6 text-[11.5px] text-navy-400">Signed in as {user.name} (simulated). Search runs over synthetic records only.</p>
+      <p className="mt-6 text-[11.5px] text-navy-400">Viewing as {user.name} (simulated demo identity) — {user.patientScope.toLowerCase()}. Search runs over synthetic records only.</p>
     </div>
   )
 }
 
+function flagChips(interp: Interpretation): [string, string][] {
+  const f = interp.flagCriteria ?? {}
+  const chips: [string, string][] = [['Searching', 'Clinical alerts']]
+  if (f.text) chips.push(['Text', f.text])
+  for (const c of f.categories ?? []) chips.push(['Category', RULE_LABEL[c] ?? titleCase(c)])
+  if (f.statusGroup && f.statusGroup !== 'ANY') chips.push(['Status', f.statusGroup === 'OPEN' ? 'Unresolved' : 'Resolved / dismissed'])
+  for (const p of f.priorities ?? []) chips.push(['Priority', titleCase(p)])
+  for (const sp of f.specialties ?? []) chips.push(['Specialty', sp])
+  for (const c of f.concepts ?? []) chips.push(['Concept', titleCase(c)])
+  if (f.patientId) chips.push(['Patient', f.patientId])
+  return chips
+}
+
 function InterpretationCard({ interp }: { interp: Interpretation }) {
   const c = interp.criteria
-  const chips: [string, string][] = [
+  const isFlags = interp.target === 'FLAGS'
+  const chips: [string, string][] = isFlags ? flagChips(interp) : [
     ...c.concepts.map((x) => ['Concept', titleCase(x.replace('SYMPTOM_', 'Symptom: '))] as [string, string]),
     ...c.keywords.map((x) => ['Keyword', x] as [string, string]),
     ...c.recordTypes.map((x) => ['Record type', RECORD_TYPE_LABEL[x as keyof typeof RECORD_TYPE_LABEL] ?? x] as [string, string]),
     ...c.organizationIds.map((x) => ['Organization', x] as [string, string]),
   ]
+  if (!isFlags) addRecordChips(c, chips)
+  return <InterpretationView interp={interp} chips={chips} isFlags={isFlags} />
+}
+
+function addRecordChips(c: SearchCriteria, chips: [string, string][]) {
   if (c.patientId) chips.push(['Patient', c.patientId])
   if (c.obstetricOnly) chips.push(['Population', 'Obstetric patients'])
   if (c.upcomingDeliveryOnly) chips.push(['Population', 'Upcoming delivery-related encounter'])
@@ -219,6 +287,10 @@ function InterpretationCard({ interp }: { interp: Interpretation }) {
   if (c.openFlagsOnly) chips.push(['Population', 'Open flags'])
   if (c.dateFrom || c.dateTo) chips.push(['Dates', `${c.dateFrom ?? '…'} → ${c.dateTo ?? '…'}`])
   if ((c.minMatchesPerPatient ?? 1) > 1) chips.push(['Repeated', `≥ ${c.minMatchesPerPatient} separate dates per patient`])
+}
+
+function InterpretationView({ interp, chips, isFlags }: { interp: Interpretation; chips: [string, string][]; isFlags: boolean }) {
+  const c = interp.criteria
   return (
     <Card className="mt-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -236,7 +308,7 @@ function InterpretationCard({ interp }: { interp: Interpretation }) {
             <span className="text-navy-400">{k}:</span><span className="font-medium text-navy-800">{v}</span>
           </span>
         ))}
-        <span className="inline-flex items-center rounded-lg border border-line bg-canvas px-2 py-1 text-[12.5px] text-navy-500">Match {c.matchMode === 'ALL' ? 'all terms' : 'any term'}</span>
+        {!isFlags && <span className="inline-flex items-center rounded-lg border border-line bg-canvas px-2 py-1 text-[12.5px] text-navy-500">Match {c.matchMode === 'ALL' ? 'all terms' : 'any term'}</span>}
       </div>
       {interp.notice && <div className="mt-2 text-[12px] text-amber-700">{interp.notice}</div>}
     </Card>
