@@ -111,11 +111,17 @@ public class DataSourceConfig {
         try (Connection c = DriverManager.getConnection(sf.jdbcUrl(), sf.connectionProperties(false));
              Statement st = c.createStatement()) {
             // Identifiers were validated by SnowflakeConnectionSettings.problems() (simple identifiers only).
-            if (sf.createDatabaseIfMissing()) {
+            String qualified = sf.database() + "." + sf.schema();
+            try {
+                st.execute("USE SCHEMA " + qualified);
+            } catch (SQLException missing) {
+                // Only try to create when the schema is not usable yet; a role that merely has USAGE on an
+                // existing database must not need the CREATE DATABASE privilege.
+                if (!sf.createDatabaseIfMissing()) throw missing;
                 st.execute("CREATE DATABASE IF NOT EXISTS " + sf.database());
-                st.execute("CREATE SCHEMA IF NOT EXISTS " + sf.database() + "." + sf.schema());
+                st.execute("CREATE SCHEMA IF NOT EXISTS " + qualified);
+                st.execute("USE SCHEMA " + qualified);
             }
-            st.execute("USE SCHEMA " + sf.database() + "." + sf.schema());
         } catch (SQLException e) {
             throw new SnowflakeConfigurationException("""
                     Could not connect to Snowflake (%s).

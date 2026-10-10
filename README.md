@@ -209,8 +209,9 @@ AI text is ever produced.
 2. **Run [`database/snowflake/00_account_setup.sql`](database/snowflake/00_account_setup.sql)** in a Snowsight
    worksheet. It creates the warehouse, database, schema and role, and registers the public key
    (`ALTER USER … SET RSA_PUBLIC_KEY='…'`). Paste the key body without the BEGIN/END lines.
-3. **Fill in the `SNOWFLAKE_*` values** in `backend/.env`. If your role cannot create databases, set
-   `SNOWFLAKE_CREATE_DATABASE=false` and make sure the database and schema already exist.
+3. **Fill in the `SNOWFLAKE_*` values** in `backend/.env`. The end of the setup script lists them: user
+   `CAMELLIA_SVC`, role `CAMELLIA_APP`, `SNOWFLAKE_CREATE_DATABASE=false`, and the account identifier printed by its
+   final `SELECT`. If the schema already exists, the backend uses it and does not need CREATE DATABASE privileges.
 4. **Start the backend.** On startup it:
    - connects with `authenticator=SNOWFLAKE_JWT`;
    - runs [`schema-snowflake.sql`](backend/src/main/resources/db/schema-snowflake.sql) (`CREATE TABLE IF NOT EXISTS …`);
