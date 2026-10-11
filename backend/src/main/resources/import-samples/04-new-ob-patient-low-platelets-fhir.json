@@ -1,0 +1,264 @@
+{
+  "resourceType": "Bundle",
+  "type": "collection",
+  "meta": {
+    "source": "BWHA",
+    "tag": [
+      {
+        "display": "SYNTHETIC DEMO DATA — NOT REAL PATIENTS"
+      }
+    ]
+  },
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "pt-90117",
+        "identifier": [
+          {
+            "system": "urn:bwha:mrn",
+            "value": "BW-90117"
+          }
+        ],
+        "name": [
+          {
+            "family": "Castillo",
+            "given": [
+              "Noemi"
+            ]
+          }
+        ],
+        "gender": "female",
+        "birthDate": "1993-02-11"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Condition",
+        "id": "BW-C-9011",
+        "subject": {
+          "reference": "Patient/pt-90117"
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "ICD-10-CM",
+              "code": "O99.113",
+              "display": "Thrombocytopenia in pregnancy, third trimester"
+            }
+          ]
+        },
+        "clinicalStatus": {
+          "coding": [
+            {
+              "code": "active"
+            }
+          ]
+        },
+        "onsetDateTime": "@D-40",
+        "recorder": {
+          "display": "Dr. Lena Abernathy, MD"
+        },
+        "specialty": "Maternal-Fetal Medicine"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "BW-L-9012",
+        "subject": {
+          "reference": "Patient/pt-90117"
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "777-3",
+              "display": "Platelet count"
+            }
+          ]
+        },
+        "valueQuantity": {
+          "value": 132,
+          "unit": "10*3/uL"
+        },
+        "referenceRange": [
+          {
+            "low": {
+              "value": 150
+            },
+            "high": {
+              "value": 400
+            }
+          }
+        ],
+        "interpretation": [
+          {
+            "coding": [
+              {
+                "code": "L"
+              }
+            ]
+          }
+        ],
+        "effectiveDateTime": "@D-60T09:00",
+        "performer": [
+          {
+            "display": "Northgate Diagnostic Laboratories"
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "BW-L-9013",
+        "subject": {
+          "reference": "Patient/pt-90117"
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "777-3",
+              "display": "Platelet count"
+            }
+          ]
+        },
+        "valueQuantity": {
+          "value": 104,
+          "unit": "10*3/uL"
+        },
+        "referenceRange": [
+          {
+            "low": {
+              "value": 150
+            },
+            "high": {
+              "value": 400
+            }
+          }
+        ],
+        "interpretation": [
+          {
+            "coding": [
+              {
+                "code": "L"
+              }
+            ]
+          }
+        ],
+        "effectiveDateTime": "@D-25T09:10",
+        "performer": [
+          {
+            "display": "Northgate Diagnostic Laboratories"
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "BW-L-9014",
+        "subject": {
+          "reference": "Patient/pt-90117"
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "777-3",
+              "display": "Platelet count"
+            }
+          ]
+        },
+        "valueQuantity": {
+          "value": 89,
+          "unit": "10*3/uL"
+        },
+        "referenceRange": [
+          {
+            "low": {
+              "value": 150
+            },
+            "high": {
+              "value": 400
+            }
+          }
+        ],
+        "interpretation": [
+          {
+            "coding": [
+              {
+                "code": "L"
+              }
+            ]
+          }
+        ],
+        "effectiveDateTime": "@D-4T08:45",
+        "performer": [
+          {
+            "display": "Northgate Diagnostic Laboratories"
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Appointment",
+        "id": "BW-A-9015",
+        "status": "booked",
+        "subject": {
+          "reference": "Patient/pt-90117"
+        },
+        "appointmentType": {
+          "text": "Scheduled cesarean delivery (39w0d)"
+        },
+        "serviceCategory": {
+          "text": "Obstetrics"
+        },
+        "department": "Labor & Delivery",
+        "start": "@D+18T07:30",
+        "participant": [
+          {
+            "actor": {
+              "display": "Dr. Lena Abernathy, MD"
+            }
+          }
+        ],
+        "description": "Scheduled repeat cesarean delivery at Larkspur Regional Labor & Delivery. Referring practice: Bellwether Women's Health Associates."
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "DocumentReference",
+        "id": "BW-D-9016",
+        "subject": {
+          "reference": "Patient/pt-90117"
+        },
+        "type": {
+          "text": "Prenatal visit note"
+        },
+        "date": "@D-4T10:20",
+        "author": [
+          {
+            "display": "Dr. Lena Abernathy, MD"
+          }
+        ],
+        "context": {
+          "practiceSetting": {
+            "text": "Maternal-Fetal Medicine"
+          }
+        },
+        "content": [
+          {
+            "attachment": {
+              "contentType": "text/plain",
+              "text": "Pregnancy at 36 weeks with platelet counts trending down (132 → 104 → 89 x10^3/uL). Hematology input requested before the scheduled cesarean delivery. Prior cesarean under spinal anesthesia without complication."
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

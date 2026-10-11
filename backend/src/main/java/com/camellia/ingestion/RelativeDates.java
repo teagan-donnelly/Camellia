@@ -52,6 +52,11 @@ public final class RelativeDates {
         if (v.matches("\\d{8}")) return LocalDate.parse(v, DateTimeFormatter.BASIC_ISO_DATE).atStartOfDay();
         if (v.matches("\\d{12}(\\d{2})?")) return LocalDateTime.parse(v.substring(0, 12), HL7_TS);
         if (v.length() == 10) return LocalDate.parse(v).atStartOfDay();
+        // ISO-8601 with an offset or Z (real FHIR exports): stored as UTC like every other timestamp.
+        if (v.matches(".*T.*(Z|[+-]\\d{2}:?\\d{2})$")) {
+            return java.time.OffsetDateTime.parse(v.replaceFirst("([+-]\\d{2})(\\d{2})$", "$1:$2"))
+                    .withOffsetSameInstant(java.time.ZoneOffset.UTC).toLocalDateTime();
+        }
         return LocalDateTime.parse(v.length() > 19 ? v.substring(0, 19) : v);
     }
 

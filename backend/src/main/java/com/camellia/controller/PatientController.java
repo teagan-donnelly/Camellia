@@ -23,8 +23,11 @@ public class PatientController {
     private final ClinicalAiService ai;
     private final AuthorizationService auth;
     private final ClinicalDataRepository clinical;
+    private final com.camellia.monitoring.MonitoringService monitoring;
 
-    public PatientController(ClinicalViewService views, ClinicalAiService ai, AuthorizationService auth, ClinicalDataRepository clinical) {
+    public PatientController(ClinicalViewService views, ClinicalAiService ai, AuthorizationService auth, ClinicalDataRepository clinical,
+                             com.camellia.monitoring.MonitoringService monitoring) {
+        this.monitoring = monitoring;
         this.views = views;
         this.ai = ai;
         this.auth = auth;
@@ -72,7 +75,10 @@ public class PatientController {
     /** Original source record. Authorized through the record's patient; unknown and restricted ids get the same 403. */
     @GetMapping("/records/{recordId}")
     public RecordDetailDto record(DemoUser user, @PathVariable String recordId) {
-        ClinicalRecord r = clinical.findRecord(recordId).orElseThrow(() -> AuthorizationService.denied(null));
+        // REC-MON-* citations point at evidence built from simulated wearable data (never stored as clinical records).
+        ClinicalRecord r = recordId.startsWith("REC-MON-")
+                ? monitoring.evidenceRecord(user, recordId).orElseThrow(() -> AuthorizationService.denied(null))
+                : clinical.findRecord(recordId).orElseThrow(() -> AuthorizationService.denied(null));
         auth.requirePatient(user, r.patientId());
         return views.recordDetail(r, auth.scope(user));
     }

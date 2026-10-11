@@ -12,6 +12,10 @@ import FlagDetail from './pages/FlagDetail'
 import PatientProfile from './pages/PatientProfile'
 import Patients from './pages/Patients'
 import SystemStatus from './pages/SystemStatus'
+import Briefing from './pages/Briefing'
+import ImportRecords from './pages/ImportRecords'
+import MonitoringDetail from './pages/MonitoringDetail'
+import NursingMonitoring from './pages/NursingMonitoring'
 import { useApp } from './state/AppContext'
 
 /** Hides pages the simulated role may not use. The backend enforces the same rule on every endpoint. */
@@ -30,7 +34,11 @@ export default function App() {
       <Routes key={user.id}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/patients" element={<Patients />} />
+        <Route path="/patients/import" element={<RequirePermission permission="IMPORT_RECORDS" message="Importing records is limited to the Clinical Data Coordinator demo role."><ImportRecords /></RequirePermission>} />
         <Route path="/patients/:id" element={<PatientProfile />} />
+        <Route path="/patients/:patientId/encounters/:encounterId/monitoring" element={<RequirePermission permission="VIEW_MONITORING" message="Wearable monitoring is not available to your role."><MonitoringDetail /></RequirePermission>} />
+        <Route path="/briefing" element={<RequirePermission permission="CLINICAL_BRIEFING" message="Camellia Briefing is available to clinical roles."><Briefing /></RequirePermission>} />
+        <Route path="/monitoring" element={<RequirePermission permission="NURSING_MONITORING" message="The nursing monitoring queue is available to nursing roles."><NursingMonitoring /></RequirePermission>} />
         <Route path="/search" element={<ClinicalSearch />} />
         <Route path="/flags" element={<ClinicalFlags />} />
         <Route path="/flags/:id" element={<FlagDetail />} />

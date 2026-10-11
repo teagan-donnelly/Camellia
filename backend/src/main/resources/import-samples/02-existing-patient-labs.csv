@@ -1,0 +1,5 @@
+record_type,source_id,patient_mrn,patient_first_name,patient_last_name,patient_birth_date,patient_sex,org_id,org_name,date,end_date,code,name,value,unit,ref_low,ref_high,flag,text,provider,department,status,encounter_source_id,encounter_class
+ENCOUNTER,IMP-CH-E-7701,CH-3390128,Caleb,Wren,1978-02-21,M,CHCH,Cedar Hollow Community Hospital,@D-12T13:00,,,Bone health clinic visit,,,,,,"Bone health follow-up after recurrent metatarsal injuries",Dr. Imogen Ashby MD,Orthopedics,,,AMB
+LAB,IMP-CH-L-7702,CH-3390128,Caleb,Wren,1978-02-21,M,CHCH,Cedar Hollow Community Hospital,@D-12T13:40,,1989-3,"25-hydroxyvitamin D",19,ng/mL,30,100,L,,Cedar Hollow Laboratory,Laboratory,,IMP-CH-E-7701,
+LAB,IMP-CH-L-7703,CH-3390128,Caleb,Wren,1978-02-21,M,CHCH,Cedar Hollow Community Hospital,@D-12T13:40,,17861-6,Calcium,9.4,mg/dL,8.6,10.3,N,,Cedar Hollow Laboratory,Laboratory,,IMP-CH-E-7701,
+NOTE,IMP-CH-N-7704,CH-3390128,Caleb,Wren,1978-02-21,M,CHCH,Cedar Hollow Community Hospital,@D-12T14:10,,,Bone health clinic note,,,,,,"25-hydroxyvitamin D below the laboratory reference range; supplementation started. Bone density testing (DXA) ordered.",Dr. Imogen Ashby MD,Orthopedics,,IMP-CH-E-7701,

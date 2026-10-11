@@ -393,3 +393,119 @@ or above the lightest petal tone stay fully opaque, so the petals keep their exa
 anti-aliased edges are un-premultiplied to avoid white halos. The original is kept as `camellia-logo-original.png`. In
 the SVG mark (`Logo.tsx`, `favicon.svg`) the painted white center circle was replaced with a mask, so the center is
 truly transparent on navy and white.
+
+# Camellia V3
+
+## 23. Bug fixes and their causes
+
+- **Profile dropdown under page content.** The top bar uses `backdrop-blur`; a backdrop filter creates a stacking
+  context, so the dropdown's `z-40` only competed *inside* the header. Later page content with its own stacking contexts
+  (the Gemini search panel, animated cards) painted over it. Fix: floating panels render in a portal on `<body>`
+  (`components/Popover.tsx`) and use one documented layer scale in `index.css` (`--layer-header` 20 < `--layer-popover`
+  40 < `--layer-drawer` 50 < `--layer-toast` 60). No arbitrary z-index values on individual components.
+- **"Nonfunctional" coordination actions.** Every action was wired and persisted (verified in the browser against H2 and
+  Snowflake). On Snowflake each write takes about 3.5–6 s, and only *Acknowledge* showed a spinner; the other controls
+  were silently disabled and the card changed only after a second round of refetches, so clicks looked ignored. Fix: a
+  spinner on the clicked control, all controls locked while saving, a "Saving to the database…" line, an inline error,
+  an "Acknowledged by … at …" line, and the PATCH response written straight into the cache.
+- **"Snowflake is not configured" in the Local Fallback DB section.** The UI printed that sentence whenever the fallback
+  was active, even when Snowflake *was* configured and `CAMELLIA_DB_MODE=local` had been chosen. A common way to get there:
+  the tracked `backend/.env` names a Snowflake account but points to a private key that exists only on one laptop, so
+  teammates switched to `local`. The status endpoint now reports `state` = `SNOWFLAKE_CONNECTED` | `SNOWFLAKE_UNAVAILABLE`
+  | `LOCAL_FALLBACK_SELECTED` | `CONFIGURATION_MISSING`, an explanation, the names (never values) of missing settings, and
+  a note that the local H2 data is a separate copy. `auto` with partial settings still fails fast (§2), by design.
+- **Patient identifiers.** `SYN-…` is a synthetic display MRN, `CAM-P-…` the internal key, source MRNs live per
+  organization. They are preserved; the UI now labels the display MRN ("MRN SYN-…", with an explanation on hover).
+
+## 24. Synthetic workforce (100 clinicians)
+
+`seed/clinicians.json` is generated deterministically by `database/seed-tools/generate_clinicians.py` (fixed seed) and
+loaded by `DemoDirectory` at startup; seeding copies it into `CLINICIANS` / `CLINICIAN_PRACTICES` (insert-if-missing).
+Only identities flagged `demoAccount` appear in the switcher. Ten practices exist; four seeded patients gained
+specialty-practice registrations, so some of the new physicians have real patient scope. The authorization model is
+unchanged: role permissions + practice scope for physicians. A seventh demo role, **Clinical Data Coordinator**, exists
+only to import records.
+
+## 25. Patient import architecture
+
+`ImportService` parses three formats and converts **all of them into the FHIR-style structure** handled by the existing
+`FhirLikeNormalizer`, so imported records get the same deterministic record ids (duplicate detection), concept tags,
+evidence handling and screening as seeded data. Flow: `POST /api/import/preview` (validate, normalize with a placeholder
+identity, list duplicates and candidate matches) → `POST /api/import/confirm` (same file, verified by SHA-256, plus an
+explicit decision). Matching: an exact organization + source MRN link is suggested; same name/birth date is only ever a
+*possible* match. Confirm never creates a second patient for an MRN that is already linked. New organizations are added
+as "imported source organization". CSV and Camellia JSON keep the original row/element as the raw payload. Relative date
+tokens (`@D+18T07:30`) are accepted so demo files stay current. ISO timestamps with an offset are converted to UTC.
+
+## 26. Camellia Briefing
+
+- **Assignments come from Snowflake** (`PROVIDER_SHIFTS`, `SHIFT_PATIENT_ASSIGNMENTS`), never from the model. A user can
+  only brief their own shifts. Assigned patients outside the user's scope are excluded before retrieval; Gemini never
+  sees them (tested), and the UI only reports how many were excluded.
+- **Retrieval is deterministic Java:** current stay (bounded, see §29), upcoming appointments (21 days), open flags the
+  user may see, open coordination alerts (anesthesia roles only), open monitoring reviews, recent out-of-range results.
+  Each fact is a citable source item.
+- **Script:** Gemini returns JSON (`title`, `opening`, `segments[{heading, patientIds, narration, sources}]`, `closing`).
+  Validation rejects unknown sources, sources belonging to a patient not in the segment, bracketed ids in narration, and
+  any narration naming a patient who is not an authorized assignment. Failed validation is sent back as a revision
+  note, up to three attempts.
+- **Duration:** a word budget (150 wpm) is set from the amount of content (Priority mode is shorter). After synthesis, the
+  real duration comes from ElevenLabs' character alignment (`/v1/text-to-speech/{voice}/with-timestamps`). Over 480 s →
+  the script is rewritten shorter and re-synthesized; nothing over the limit is ever published or truncated.
+- **Caching:** a briefing is reused when user, shift, mode and a fingerprint of the source text are unchanged; audio is
+  cached by a hash of text + voice + model + settings, so identical text is never synthesized twice.
+- **Storage and access:** metadata in `BRIEFINGS` / `BRIEFING_SOURCE_REFERENCES`; audio bytes in a non-public directory
+  (`CAMELLIA_BRIEFING_AUDIO_DIR`) served only by `GET /api/briefings/{id}/audio`, which checks that the requester
+  generated the briefing. The browser plays a private blob, so there is no public audio URL. For serverless/multi-instance
+  hosting this directory should become object storage (S3) — noted limitation.
+- **Asynchronous generation:** Gemini plus ElevenLabs can take a while, so generation runs on a small executor and the UI
+  polls the status (QUEUED → SCRIPTING → SYNTHESIZING → READY). Without ElevenLabs the status is SCRIPT_ONLY; without
+  Gemini it is FAILED with an honest message — no canned script and no browser speech fallback.
+
+## 27. Encounter-scoped monitoring
+
+Data model: `MONITORING_DEVICES`, `MONITORING_SESSIONS` (device ↔ patient ↔ encounter), `SENSOR_OBSERVATIONS`,
+`ACTIVITY_EVENTS` (source SENSOR / NURSE / SYSTEM), `MONITORING_CARE_PLANS`, `NURSING_INTERVENTIONS`,
+`MONITORING_ALERTS`. Every row carries `ENCOUNTER_ID`; every read in `MonitoringRepository` filters on patient **and**
+encounter, and `MonitoringService.resolve` checks permission, patient scope and that the encounter belongs to the patient
+before any query. Chart ranges (24 h / 7 d / stay) are clipped to the stay. Encounters gained a nullable `END_TIME`
+(additive `ALTER TABLE … ADD COLUMN IF NOT EXISTS`); the new stays arrive through two FHIR seed files, so they are ordinary
+encounters with ordinary clinical notes.
+
+## 28. Simulator and nursing review rules
+
+- The simulator is backend Java (`MonitoringService.simulate`), so every action is persisted like real data. Each session
+  has its own simulation clock (`SIM_CLOCK_AT`) separate from real time, and a seeded random generator, so scenarios are
+  reproducible; *Reset scenario* regenerates one stay's seeded data.
+- Rules run at the session's simulated time after every simulator action or nursing documentation, with at most one open
+  alert per type and stay (no duplicates):
+  - **Mobility review** — only if the care plan defines a mobility interval, only with fresh data; resolves when walking is
+    detected.
+  - **Repositioning review** — measured from the last *nurse-documented* repositioning; wrist movement and "possible
+    position change" never count.
+  - **Device connectivity** — disconnected or stale (> 30 min) data. Stale data suppresses the mobility rule, so missing
+    readings are never read as inactivity.
+- Monitoring alerts are separate from clinical flags (different table, labels and queue) but appear in the Briefing and in
+  a role-specific Nursing Monitoring queue.
+
+## 29. Open-ended stays are bounded
+
+Several source systems record admissions without a discharge time. Treating every such admission as "current" made a
+3½-year-old delivery admission look like a current hospitalization in a briefing (found during live testing). An
+encounter without an end time now counts as ongoing only if it started within 30 days (`Encounter.MAX_OPEN_STAY_DAYS`).
+
+## 30. Gemini monitoring conversations
+
+The assistant gained a `MONITORING` context (id = encounter). Retrieval builds evidence records on the fly from that
+stay only — a session summary, alerts, events, nursing documentation, and hourly min/mean/max vitals — plus clinical
+records documented in the same encounter. They are citable as `REC-MON-…`, resolve through `GET /api/records/{id}` with
+the same access checks, and are never written to `CLINICAL_RECORDS`. The prompt states that values are simulated device
+estimates and that missing data is not inactivity.
+
+## 31. Reused vs. new
+
+Reused: authorization (`AuthorizationService`, `AccessScope`), the normalizer, screening engine, citation validator,
+conversation store, Gemini gateway, Snowflake access layer and UI components. New services: `ImportService`,
+`BriefingService`, `ElevenLabsClient`, `MonitoringService` (+ repositories). Tradeoffs: synchronous simulator writes;
+audio on local disk; nursing scope inherits the prototype's broad network access; ElevenLabs could not be called live
+without a key (see IMPLEMENTATION_STATUS.md).

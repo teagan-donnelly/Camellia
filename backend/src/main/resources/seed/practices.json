@@ -10,5 +10,53 @@
     "name": "Bellwether Women's Health Associates (Practice B)",
     "orgId": "BWHA",
     "specialty": "Obstetrics & Gynecology / Maternal-Fetal Medicine"
+  },
+  {
+    "practiceId": "PRAC-C",
+    "name": "Larkspur Heart & Vascular (Practice C)",
+    "orgId": "LRMC",
+    "specialty": "Cardiology"
+  },
+  {
+    "practiceId": "PRAC-D",
+    "name": "Cedar Hollow Orthopedics (Practice D)",
+    "orgId": "CHCH",
+    "specialty": "Orthopedics"
+  },
+  {
+    "practiceId": "PRAC-E",
+    "name": "Cedar Hollow Family Medicine (Practice E)",
+    "orgId": "CHCH",
+    "specialty": "Family Medicine"
+  },
+  {
+    "practiceId": "PRAC-F",
+    "name": "Larkspur Endocrinology (Practice F)",
+    "orgId": "LRMC",
+    "specialty": "Endocrinology"
+  },
+  {
+    "practiceId": "PRAC-G",
+    "name": "Larkspur Hematology & Oncology (Practice G)",
+    "orgId": "LRMC",
+    "specialty": "Hematology / Oncology"
+  },
+  {
+    "practiceId": "PRAC-H",
+    "name": "Cedar Hollow Neurology (Practice H)",
+    "orgId": "CHCH",
+    "specialty": "Neurology"
+  },
+  {
+    "practiceId": "PRAC-I",
+    "name": "Riverbend Emergency & Urgent Care Physicians (Practice I)",
+    "orgId": "RUC",
+    "specialty": "Emergency Medicine"
+  },
+  {
+    "practiceId": "PRAC-J",
+    "name": "Larkspur Pulmonary & Sleep (Practice J)",
+    "orgId": "LRMC",
+    "specialty": "Pulmonology"
   }
 ]

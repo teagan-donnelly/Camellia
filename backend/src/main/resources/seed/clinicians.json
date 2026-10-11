@@ -1,0 +1,1193 @@
+[
+  {
+    "id": "alex.kim",
+    "name": "Dr. Alex Kim",
+    "role": "PHYSICIAN",
+    "department": "Internal Medicine — Practice A",
+    "orgId": "LRMC",
+    "specialty": "Internal Medicine",
+    "credentials": "MD",
+    "practices": [
+      "PRAC-A"
+    ],
+    "demoAccount": true
+  },
+  {
+    "id": "sarah.mitchell",
+    "name": "Dr. Sarah Mitchell",
+    "role": "PHYSICIAN",
+    "department": "Obstetrics & Gynecology — Practice B",
+    "orgId": "BWHA",
+    "specialty": "Obstetrics & Gynecology",
+    "credentials": "MD",
+    "practices": [
+      "PRAC-B"
+    ],
+    "demoAccount": true
+  },
+  {
+    "id": "jordan.lee",
+    "name": "Jordan Lee, RN",
+    "role": "REGISTERED_NURSE",
+    "department": "Medical-Surgical Nursing",
+    "orgId": "LRMC",
+    "specialty": "Medical-Surgical Nursing",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": true
+  },
+  {
+    "id": "taylor.morgan",
+    "name": "Taylor Morgan, RN",
+    "role": "LD_NURSE",
+    "department": "Labor & Delivery",
+    "orgId": "LRMC",
+    "specialty": "Labor & Delivery Nursing",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": true
+  },
+  {
+    "id": "maya.ellison",
+    "name": "Maya Ellison, CRNA",
+    "role": "CRNA",
+    "department": "Anesthesia OB Coordination",
+    "orgId": "LRMC",
+    "specialty": "Obstetric Anesthesia",
+    "credentials": "CRNA",
+    "practices": [],
+    "demoAccount": true
+  },
+  {
+    "id": "daniel.brooks",
+    "name": "Dr. Daniel Brooks",
+    "role": "ANESTHESIOLOGIST",
+    "department": "Obstetric Anesthesiology",
+    "orgId": "LRMC",
+    "specialty": "Anesthesiology",
+    "credentials": "MD",
+    "practices": [],
+    "demoAccount": true
+  },
+  {
+    "id": "riley.okafor",
+    "name": "Riley Okafor",
+    "role": "DATA_COORDINATOR",
+    "department": "Health Information Management",
+    "orgId": "LRMC",
+    "specialty": "Clinical Data Coordination",
+    "credentials": "RHIA",
+    "practices": [],
+    "demoAccount": true
+  },
+  {
+    "id": "pavel.ustinov",
+    "name": "Dr. Pavel Ustinov",
+    "role": "PHYSICIAN",
+    "department": "Internal Medicine / Primary Care — Practice A",
+    "orgId": "LRMC",
+    "specialty": "Internal Medicine / Primary Care",
+    "credentials": "MD",
+    "practices": [
+      "PRAC-A"
+    ],
+    "demoAccount": false
+  },
+  {
+    "id": "calla.montoya",
+    "name": "Dr. Calla Montoya",
+    "role": "PHYSICIAN",
+    "department": "Internal Medicine / Primary Care — Practice A",
+    "orgId": "LRMC",
+    "specialty": "Internal Medicine / Primary Care",
+    "credentials": "DO",
+    "practices": [
+      "PRAC-A"
+    ],
+    "demoAccount": false
+  },
+  {
+    "id": "mireille.yoshida",
+    "name": "Dr. Mireille Yoshida",
+    "role": "PHYSICIAN",
+    "department": "Internal Medicine / Primary Care — Practice A",
+    "orgId": "LRMC",
+    "specialty": "Internal Medicine / Primary Care",
+    "credentials": "DO",
+    "practices": [
+      "PRAC-A"
+    ],
+    "demoAccount": false
+  },
+  {
+    "id": "elowen.abernathy",
+    "name": "Dr. Elowen Abernathy",
+    "role": "PHYSICIAN",
+    "department": "Internal Medicine / Primary Care — Practice A",
+    "orgId": "LRMC",
+    "specialty": "Internal Medicine / Primary Care",
+    "credentials": "MD",
+    "practices": [
+      "PRAC-A"
+    ],
+    "demoAccount": false
+  },
+  {
+    "id": "odette.sandoval",
+    "name": "Dr. Odette Sandoval",
+    "role": "PHYSICIAN",
+    "department": "Internal Medicine / Primary Care — Practice A",
+    "orgId": "LRMC",
+    "specialty": "Internal Medicine / Primary Care",
+    "credentials": "MD",
+    "practices": [
+      "PRAC-A"
+    ],
+    "demoAccount": false
+  },
+  {
+    "id": "hiro.abernathy",
+    "name": "Dr. Hiro Abernathy",
+    "role": "PHYSICIAN",
+    "department": "Obstetrics & Gynecology / Maternal-Fetal Medicine — Practice B",
+    "orgId": "BWHA",
+    "specialty": "Obstetrics & Gynecology / Maternal-Fetal Medicine",
+    "credentials": "DO",
+    "practices": [
+      "PRAC-B"
+    ],
+    "demoAccount": false
+  },
+  {
+    "id": "orrin.nakashima",
+    "name": "Dr. Orrin Nakashima",
+    "role": "PHYSICIAN",
+    "department": "Obstetrics & Gynecology / Maternal-Fetal Medicine — Practice B",
+    "orgId": "BWHA",
+    "specialty": "Obstetrics & Gynecology / Maternal-Fetal Medicine",
+    "credentials": "DO",
+    "practices": [
+      "PRAC-B"
+    ],
+    "demoAccount": false
+  },
+  {
+    "id": "galen.whitlock",
+    "name": "Dr. Galen Whitlock",
+    "role": "PHYSICIAN",
+    "department": "Obstetrics & Gynecology / Maternal-Fetal Medicine — Practice B",
+    "orgId": "BWHA",
+    "specialty": "Obstetrics & Gynecology / Maternal-Fetal Medicine",
+    "credentials": "DO",
+    "practices": [
+      "PRAC-B"
+    ],
+    "demoAccount": false
+  },
+  {
+    "id": "yara.winslow",
+    "name": "Dr. Yara Winslow",
+    "role": "PHYSICIAN",
+    "department": "Obstetrics & Gynecology / Maternal-Fetal Medicine — Practice B",
+    "orgId": "BWHA",
+    "specialty": "Obstetrics & Gynecology / Maternal-Fetal Medicine",
+    "credentials": "MD",
+    "practices": [
+      "PRAC-B"
+    ],
+    "demoAccount": false
+  },
+  {
+    "id": "saoirse.fairbanks",
+    "name": "Dr. Saoirse Fairbanks",
+    "role": "PHYSICIAN",
+    "department": "Obstetrics & Gynecology / Maternal-Fetal Medicine — Practice B",
+    "orgId": "BWHA",
+    "specialty": "Obstetrics & Gynecology / Maternal-Fetal Medicine",
+    "credentials": "DO",
+    "practices": [
+      "PRAC-B"
+    ],
+    "demoAccount": false
+  },
+  {
+    "id": "kofi.dunmore",
+    "name": "Dr. Kofi Dunmore",
+    "role": "PHYSICIAN",
+    "department": "Cardiology — Practice C",
+    "orgId": "LRMC",
+    "specialty": "Cardiology",
+    "credentials": "MD",
+    "practices": [
+      "PRAC-C"
+    ],
+    "demoAccount": false
+  },
+  {
+    "id": "noor.balogun",
+    "name": "Dr. Noor Balogun",
+    "role": "PHYSICIAN",
+    "department": "Cardiology — Practice C",
+    "orgId": "LRMC",
+    "specialty": "Cardiology",
+    "credentials": "DO",
+    "practices": [
+      "PRAC-C"
+    ],
+    "demoAccount": false
+  },
+  {
+    "id": "vaughn.dunmore",
+    "name": "Dr. Vaughn Dunmore",
+    "role": "PHYSICIAN",
+    "department": "Cardiology — Practice C",
+    "orgId": "LRMC",
+    "specialty": "Cardiology",
+    "credentials": "DO",
+    "practices": [
+      "PRAC-C"
+    ],
+    "demoAccount": false
+  },
+  {
+    "id": "lorcan.zeller",
+    "name": "Dr. Lorcan Zeller",
+    "role": "PHYSICIAN",
+    "department": "Cardiology — Practice C",
+    "orgId": "LRMC",
+    "specialty": "Cardiology",
+    "credentials": "DO",
+    "practices": [
+      "PRAC-C"
+    ],
+    "demoAccount": false
+  },
+  {
+    "id": "odette.brightwater",
+    "name": "Dr. Odette Brightwater",
+    "role": "PHYSICIAN",
+    "department": "Orthopedics — Practice D",
+    "orgId": "CHCH",
+    "specialty": "Orthopedics",
+    "credentials": "DO",
+    "practices": [
+      "PRAC-D"
+    ],
+    "demoAccount": false
+  },
+  {
+    "id": "amara.hollander",
+    "name": "Dr. Amara Hollander",
+    "role": "PHYSICIAN",
+    "department": "Orthopedics — Practice D",
+    "orgId": "CHCH",
+    "specialty": "Orthopedics",
+    "credentials": "DO",
+    "practices": [
+      "PRAC-D"
+    ],
+    "demoAccount": false
+  },
+  {
+    "id": "dorian.kingsley",
+    "name": "Dr. Dorian Kingsley",
+    "role": "PHYSICIAN",
+    "department": "Orthopedics — Practice D",
+    "orgId": "CHCH",
+    "specialty": "Orthopedics",
+    "credentials": "DO",
+    "practices": [
+      "PRAC-D"
+    ],
+    "demoAccount": false
+  },
+  {
+    "id": "perrin.hollander",
+    "name": "Dr. Perrin Hollander",
+    "role": "PHYSICIAN",
+    "department": "Orthopedics — Practice D",
+    "orgId": "CHCH",
+    "specialty": "Orthopedics",
+    "credentials": "MD",
+    "practices": [
+      "PRAC-D"
+    ],
+    "demoAccount": false
+  },
+  {
+    "id": "calla.zabala",
+    "name": "Dr. Calla Zabala",
+    "role": "PHYSICIAN",
+    "department": "Family Medicine — Practice E",
+    "orgId": "CHCH",
+    "specialty": "Family Medicine",
+    "credentials": "MD",
+    "practices": [
+      "PRAC-E"
+    ],
+    "demoAccount": false
+  },
+  {
+    "id": "greer.underhill",
+    "name": "Dr. Greer Underhill",
+    "role": "PHYSICIAN",
+    "department": "Family Medicine — Practice E",
+    "orgId": "CHCH",
+    "specialty": "Family Medicine",
+    "credentials": "MD",
+    "practices": [
+      "PRAC-E"
+    ],
+    "demoAccount": false
+  },
+  {
+    "id": "eira.ellingsen",
+    "name": "Dr. Eira Ellingsen",
+    "role": "PHYSICIAN",
+    "department": "Family Medicine — Practice E",
+    "orgId": "CHCH",
+    "specialty": "Family Medicine",
+    "credentials": "MD",
+    "practices": [
+      "PRAC-E"
+    ],
+    "demoAccount": false
+  },
+  {
+    "id": "leander.okonjo",
+    "name": "Dr. Leander Okonjo",
+    "role": "PHYSICIAN",
+    "department": "Family Medicine — Practice E",
+    "orgId": "CHCH",
+    "specialty": "Family Medicine",
+    "credentials": "MD",
+    "practices": [
+      "PRAC-E"
+    ],
+    "demoAccount": false
+  },
+  {
+    "id": "ilse.stroud",
+    "name": "Dr. Ilse Stroud",
+    "role": "PHYSICIAN",
+    "department": "Endocrinology — Practice F",
+    "orgId": "LRMC",
+    "specialty": "Endocrinology",
+    "credentials": "DO",
+    "practices": [
+      "PRAC-F"
+    ],
+    "demoAccount": false
+  },
+  {
+    "id": "galen.jessup",
+    "name": "Dr. Galen Jessup",
+    "role": "PHYSICIAN",
+    "department": "Endocrinology — Practice F",
+    "orgId": "LRMC",
+    "specialty": "Endocrinology",
+    "credentials": "DO",
+    "practices": [
+      "PRAC-F"
+    ],
+    "demoAccount": false
+  },
+  {
+    "id": "noor.jessup",
+    "name": "Dr. Noor Jessup",
+    "role": "PHYSICIAN",
+    "department": "Endocrinology — Practice F",
+    "orgId": "LRMC",
+    "specialty": "Endocrinology",
+    "credentials": "DO",
+    "practices": [
+      "PRAC-F"
+    ],
+    "demoAccount": false
+  },
+  {
+    "id": "beckett.brightwater",
+    "name": "Dr. Beckett Brightwater",
+    "role": "PHYSICIAN",
+    "department": "Hematology / Oncology — Practice G",
+    "orgId": "LRMC",
+    "specialty": "Hematology / Oncology",
+    "credentials": "MD",
+    "practices": [
+      "PRAC-G"
+    ],
+    "demoAccount": false
+  },
+  {
+    "id": "liesel.rasmussen",
+    "name": "Dr. Liesel Rasmussen",
+    "role": "PHYSICIAN",
+    "department": "Hematology / Oncology — Practice G",
+    "orgId": "LRMC",
+    "specialty": "Hematology / Oncology",
+    "credentials": "MD",
+    "practices": [
+      "PRAC-G"
+    ],
+    "demoAccount": false
+  },
+  {
+    "id": "esme.jovanovic",
+    "name": "Dr. Esme Jovanovic",
+    "role": "PHYSICIAN",
+    "department": "Hematology / Oncology — Practice G",
+    "orgId": "LRMC",
+    "specialty": "Hematology / Oncology",
+    "credentials": "DO",
+    "practices": [
+      "PRAC-G"
+    ],
+    "demoAccount": false
+  },
+  {
+    "id": "rhiannon.fontaine",
+    "name": "Dr. Rhiannon Fontaine",
+    "role": "PHYSICIAN",
+    "department": "Neurology — Practice H",
+    "orgId": "CHCH",
+    "specialty": "Neurology",
+    "credentials": "DO",
+    "practices": [
+      "PRAC-H"
+    ],
+    "demoAccount": false
+  },
+  {
+    "id": "zelda.quenneville",
+    "name": "Dr. Zelda Quenneville",
+    "role": "PHYSICIAN",
+    "department": "Neurology — Practice H",
+    "orgId": "CHCH",
+    "specialty": "Neurology",
+    "credentials": "DO",
+    "practices": [
+      "PRAC-H"
+    ],
+    "demoAccount": false
+  },
+  {
+    "id": "jasper.grisham",
+    "name": "Dr. Jasper Grisham",
+    "role": "PHYSICIAN",
+    "department": "Neurology — Practice H",
+    "orgId": "CHCH",
+    "specialty": "Neurology",
+    "credentials": "DO",
+    "practices": [
+      "PRAC-H"
+    ],
+    "demoAccount": false
+  },
+  {
+    "id": "florian.jessup",
+    "name": "Dr. Florian Jessup",
+    "role": "PHYSICIAN",
+    "department": "Emergency Medicine — Practice I",
+    "orgId": "RUC",
+    "specialty": "Emergency Medicine",
+    "credentials": "MD",
+    "practices": [
+      "PRAC-I"
+    ],
+    "demoAccount": false
+  },
+  {
+    "id": "liesel.ustinov",
+    "name": "Dr. Liesel Ustinov",
+    "role": "PHYSICIAN",
+    "department": "Emergency Medicine — Practice I",
+    "orgId": "RUC",
+    "specialty": "Emergency Medicine",
+    "credentials": "DO",
+    "practices": [
+      "PRAC-I"
+    ],
+    "demoAccount": false
+  },
+  {
+    "id": "marisol.coulter",
+    "name": "Dr. Marisol Coulter",
+    "role": "PHYSICIAN",
+    "department": "Emergency Medicine — Practice I",
+    "orgId": "RUC",
+    "specialty": "Emergency Medicine",
+    "credentials": "DO",
+    "practices": [
+      "PRAC-I"
+    ],
+    "demoAccount": false
+  },
+  {
+    "id": "hiro.lindqvist",
+    "name": "Dr. Hiro Lindqvist",
+    "role": "PHYSICIAN",
+    "department": "Emergency Medicine — Practice I",
+    "orgId": "RUC",
+    "specialty": "Emergency Medicine",
+    "credentials": "DO",
+    "practices": [
+      "PRAC-I"
+    ],
+    "demoAccount": false
+  },
+  {
+    "id": "leander.eriksen",
+    "name": "Dr. Leander Eriksen",
+    "role": "PHYSICIAN",
+    "department": "Pulmonology — Practice J",
+    "orgId": "LRMC",
+    "specialty": "Pulmonology",
+    "credentials": "DO",
+    "practices": [
+      "PRAC-J"
+    ],
+    "demoAccount": false
+  },
+  {
+    "id": "niall.xu",
+    "name": "Dr. Niall Xu",
+    "role": "PHYSICIAN",
+    "department": "Pulmonology — Practice J",
+    "orgId": "LRMC",
+    "specialty": "Pulmonology",
+    "credentials": "MD",
+    "practices": [
+      "PRAC-J"
+    ],
+    "demoAccount": false
+  },
+  {
+    "id": "yusuf.winslow",
+    "name": "Dr. Yusuf Winslow",
+    "role": "PHYSICIAN",
+    "department": "Pulmonology — Practice J",
+    "orgId": "LRMC",
+    "specialty": "Pulmonology",
+    "credentials": "DO",
+    "practices": [
+      "PRAC-J"
+    ],
+    "demoAccount": false
+  },
+  {
+    "id": "sefa.coulter",
+    "name": "Sefa Coulter, RN",
+    "role": "REGISTERED_NURSE",
+    "department": "Medical-Surgical Nursing",
+    "orgId": "LRMC",
+    "specialty": "Medical-Surgical Nursing",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "bram.fairbanks",
+    "name": "Bram Fairbanks, RN",
+    "role": "REGISTERED_NURSE",
+    "department": "Intensive Care Unit",
+    "orgId": "LRMC",
+    "specialty": "Intensive Care Unit",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "adaeze.coulter",
+    "name": "Adaeze Coulter, RN",
+    "role": "REGISTERED_NURSE",
+    "department": "Emergency Department",
+    "orgId": "LRMC",
+    "specialty": "Emergency Department",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "keiko.northcott",
+    "name": "Keiko Northcott, RN",
+    "role": "REGISTERED_NURSE",
+    "department": "Telemetry",
+    "orgId": "LRMC",
+    "specialty": "Telemetry",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "zelda.prentiss",
+    "name": "Zelda Prentiss, RN",
+    "role": "REGISTERED_NURSE",
+    "department": "Oncology Nursing",
+    "orgId": "LRMC",
+    "specialty": "Oncology Nursing",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "pavel.northcott",
+    "name": "Pavel Northcott, RN",
+    "role": "REGISTERED_NURSE",
+    "department": "Medical-Surgical Nursing",
+    "orgId": "CHCH",
+    "specialty": "Medical-Surgical Nursing",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "farid.yoshida",
+    "name": "Farid Yoshida, RN",
+    "role": "REGISTERED_NURSE",
+    "department": "Orthopedic Surgical Unit",
+    "orgId": "CHCH",
+    "specialty": "Orthopedic Surgical Unit",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "idris.radcliffe",
+    "name": "Idris Radcliffe, RN",
+    "role": "REGISTERED_NURSE",
+    "department": "Emergency Department",
+    "orgId": "CHCH",
+    "specialty": "Emergency Department",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "uma.jovanovic",
+    "name": "Uma Jovanovic, RN",
+    "role": "REGISTERED_NURSE",
+    "department": "Medical-Surgical Nursing",
+    "orgId": "LRMC",
+    "specialty": "Medical-Surgical Nursing",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "adaeze.ustinov",
+    "name": "Adaeze Ustinov, RN",
+    "role": "REGISTERED_NURSE",
+    "department": "Intensive Care Unit",
+    "orgId": "LRMC",
+    "specialty": "Intensive Care Unit",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "mireille.tennant",
+    "name": "Mireille Tennant, RN",
+    "role": "REGISTERED_NURSE",
+    "department": "Emergency Department",
+    "orgId": "LRMC",
+    "specialty": "Emergency Department",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "rosalind.ivers",
+    "name": "Rosalind Ivers, RN",
+    "role": "REGISTERED_NURSE",
+    "department": "Telemetry",
+    "orgId": "LRMC",
+    "specialty": "Telemetry",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "calla.ellingsen",
+    "name": "Calla Ellingsen, RN",
+    "role": "REGISTERED_NURSE",
+    "department": "Oncology Nursing",
+    "orgId": "LRMC",
+    "specialty": "Oncology Nursing",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "quinn.montoya",
+    "name": "Quinn Montoya, RN",
+    "role": "REGISTERED_NURSE",
+    "department": "Medical-Surgical Nursing",
+    "orgId": "CHCH",
+    "specialty": "Medical-Surgical Nursing",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "ottilie.sandoval",
+    "name": "Ottilie Sandoval, RN",
+    "role": "REGISTERED_NURSE",
+    "department": "Orthopedic Surgical Unit",
+    "orgId": "CHCH",
+    "specialty": "Orthopedic Surgical Unit",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "keiko.ashdown",
+    "name": "Keiko Ashdown, RN",
+    "role": "REGISTERED_NURSE",
+    "department": "Emergency Department",
+    "orgId": "CHCH",
+    "specialty": "Emergency Department",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "ulises.iwasaki",
+    "name": "Ulises Iwasaki, RN",
+    "role": "REGISTERED_NURSE",
+    "department": "Medical-Surgical Nursing",
+    "orgId": "LRMC",
+    "specialty": "Medical-Surgical Nursing",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "noor.grisham",
+    "name": "Noor Grisham, RN",
+    "role": "REGISTERED_NURSE",
+    "department": "Intensive Care Unit",
+    "orgId": "LRMC",
+    "specialty": "Intensive Care Unit",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "cosima.yarrow",
+    "name": "Cosima Yarrow, RN",
+    "role": "REGISTERED_NURSE",
+    "department": "Emergency Department",
+    "orgId": "LRMC",
+    "specialty": "Emergency Department",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "tamsin.hollander",
+    "name": "Tamsin Hollander, RN",
+    "role": "REGISTERED_NURSE",
+    "department": "Telemetry",
+    "orgId": "LRMC",
+    "specialty": "Telemetry",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "zelda.yarrow",
+    "name": "Zelda Yarrow, RN",
+    "role": "REGISTERED_NURSE",
+    "department": "Oncology Nursing",
+    "orgId": "LRMC",
+    "specialty": "Oncology Nursing",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "bram.galloway",
+    "name": "Bram Galloway, RN",
+    "role": "REGISTERED_NURSE",
+    "department": "Medical-Surgical Nursing",
+    "orgId": "CHCH",
+    "specialty": "Medical-Surgical Nursing",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "zev.eriksen",
+    "name": "Zev Eriksen, RN",
+    "role": "REGISTERED_NURSE",
+    "department": "Orthopedic Surgical Unit",
+    "orgId": "CHCH",
+    "specialty": "Orthopedic Surgical Unit",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "greer.whitlock",
+    "name": "Greer Whitlock, RN",
+    "role": "REGISTERED_NURSE",
+    "department": "Emergency Department",
+    "orgId": "CHCH",
+    "specialty": "Emergency Department",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "uma.zabala",
+    "name": "Uma Zabala, RN",
+    "role": "REGISTERED_NURSE",
+    "department": "Medical-Surgical Nursing",
+    "orgId": "LRMC",
+    "specialty": "Medical-Surgical Nursing",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "dmitri.balogun",
+    "name": "Dmitri Balogun, RN",
+    "role": "REGISTERED_NURSE",
+    "department": "Intensive Care Unit",
+    "orgId": "LRMC",
+    "specialty": "Intensive Care Unit",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "perrin.ellingsen",
+    "name": "Perrin Ellingsen, RN",
+    "role": "REGISTERED_NURSE",
+    "department": "Emergency Department",
+    "orgId": "LRMC",
+    "specialty": "Emergency Department",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "philippa.stroud",
+    "name": "Philippa Stroud, RN",
+    "role": "REGISTERED_NURSE",
+    "department": "Telemetry",
+    "orgId": "LRMC",
+    "specialty": "Telemetry",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "mateo.coulter",
+    "name": "Mateo Coulter, RN",
+    "role": "REGISTERED_NURSE",
+    "department": "Oncology Nursing",
+    "orgId": "LRMC",
+    "specialty": "Oncology Nursing",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "philippa.haddad",
+    "name": "Philippa Haddad, RN",
+    "role": "LD_NURSE",
+    "department": "Labor & Delivery",
+    "orgId": "LRMC",
+    "specialty": "Labor & Delivery Nursing",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "niall.dunmore",
+    "name": "Niall Dunmore, RN",
+    "role": "LD_NURSE",
+    "department": "Birthing Center",
+    "orgId": "CHCH",
+    "specialty": "Labor & Delivery Nursing",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "vesna.jovanovic",
+    "name": "Vesna Jovanovic, RN",
+    "role": "LD_NURSE",
+    "department": "Labor & Delivery",
+    "orgId": "LRMC",
+    "specialty": "Labor & Delivery Nursing",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "rhiannon.nakashima",
+    "name": "Rhiannon Nakashima, RN",
+    "role": "LD_NURSE",
+    "department": "Birthing Center",
+    "orgId": "CHCH",
+    "specialty": "Labor & Delivery Nursing",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "florian.northcott",
+    "name": "Florian Northcott, RN",
+    "role": "LD_NURSE",
+    "department": "Labor & Delivery",
+    "orgId": "LRMC",
+    "specialty": "Labor & Delivery Nursing",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "saoirse.dunmore",
+    "name": "Saoirse Dunmore, RN",
+    "role": "LD_NURSE",
+    "department": "Birthing Center",
+    "orgId": "CHCH",
+    "specialty": "Labor & Delivery Nursing",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "desmond.stroud",
+    "name": "Desmond Stroud, RN",
+    "role": "LD_NURSE",
+    "department": "Labor & Delivery",
+    "orgId": "LRMC",
+    "specialty": "Labor & Delivery Nursing",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "ines.jessup",
+    "name": "Ines Jessup, RN",
+    "role": "LD_NURSE",
+    "department": "Birthing Center",
+    "orgId": "CHCH",
+    "specialty": "Labor & Delivery Nursing",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "beckett.castellanos",
+    "name": "Beckett Castellanos, RN",
+    "role": "LD_NURSE",
+    "department": "Labor & Delivery",
+    "orgId": "LRMC",
+    "specialty": "Labor & Delivery Nursing",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "zelda.pemberton",
+    "name": "Zelda Pemberton, RN",
+    "role": "LD_NURSE",
+    "department": "Birthing Center",
+    "orgId": "CHCH",
+    "specialty": "Labor & Delivery Nursing",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "wren.castellanos",
+    "name": "Wren Castellanos, RN",
+    "role": "LD_NURSE",
+    "department": "Labor & Delivery",
+    "orgId": "LRMC",
+    "specialty": "Labor & Delivery Nursing",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "greer.coulter",
+    "name": "Greer Coulter, RN",
+    "role": "LD_NURSE",
+    "department": "Birthing Center",
+    "orgId": "CHCH",
+    "specialty": "Labor & Delivery Nursing",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "yusuf.ellingsen",
+    "name": "Yusuf Ellingsen, RN",
+    "role": "LD_NURSE",
+    "department": "Labor & Delivery",
+    "orgId": "LRMC",
+    "specialty": "Labor & Delivery Nursing",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "celia.iwasaki",
+    "name": "Celia Iwasaki, RN",
+    "role": "LD_NURSE",
+    "department": "Birthing Center",
+    "orgId": "CHCH",
+    "specialty": "Labor & Delivery Nursing",
+    "credentials": "RN",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "silas.nakashima",
+    "name": "Silas Nakashima, CRNA",
+    "role": "CRNA",
+    "department": "Anesthesia — Main OR",
+    "orgId": "LRMC",
+    "specialty": "Nurse Anesthesia",
+    "credentials": "CRNA",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "rhiannon.iwasaki",
+    "name": "Rhiannon Iwasaki, CRNA",
+    "role": "CRNA",
+    "department": "Anesthesia OB Coordination",
+    "orgId": "CHCH",
+    "specialty": "Nurse Anesthesia",
+    "credentials": "CRNA",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "ulises.radcliffe",
+    "name": "Ulises Radcliffe, CRNA",
+    "role": "CRNA",
+    "department": "Anesthesia — Main OR",
+    "orgId": "LRMC",
+    "specialty": "Nurse Anesthesia",
+    "credentials": "CRNA",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "xiomara.yarrow",
+    "name": "Xiomara Yarrow, CRNA",
+    "role": "CRNA",
+    "department": "Anesthesia OB Coordination",
+    "orgId": "CHCH",
+    "specialty": "Nurse Anesthesia",
+    "credentials": "CRNA",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "idris.brightwater",
+    "name": "Idris Brightwater, CRNA",
+    "role": "CRNA",
+    "department": "Anesthesia — Main OR",
+    "orgId": "LRMC",
+    "specialty": "Nurse Anesthesia",
+    "credentials": "CRNA",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "dorian.fairbanks",
+    "name": "Dorian Fairbanks, CRNA",
+    "role": "CRNA",
+    "department": "Anesthesia OB Coordination",
+    "orgId": "CHCH",
+    "specialty": "Nurse Anesthesia",
+    "credentials": "CRNA",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "zev.thorne",
+    "name": "Zev Thorne, CRNA",
+    "role": "CRNA",
+    "department": "Anesthesia — Main OR",
+    "orgId": "LRMC",
+    "specialty": "Nurse Anesthesia",
+    "credentials": "CRNA",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "xiomara.whitlock",
+    "name": "Xiomara Whitlock, CRNA",
+    "role": "CRNA",
+    "department": "Anesthesia OB Coordination",
+    "orgId": "CHCH",
+    "specialty": "Nurse Anesthesia",
+    "credentials": "CRNA",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "wren.quenneville",
+    "name": "Wren Quenneville, CRNA",
+    "role": "CRNA",
+    "department": "Anesthesia — Main OR",
+    "orgId": "LRMC",
+    "specialty": "Nurse Anesthesia",
+    "credentials": "CRNA",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "jasper.fontaine",
+    "name": "Dr. Jasper Fontaine",
+    "role": "ANESTHESIOLOGIST",
+    "department": "Obstetric Anesthesiology",
+    "orgId": "LRMC",
+    "specialty": "Anesthesiology",
+    "credentials": "MD",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "dorian.sandoval",
+    "name": "Dr. Dorian Sandoval",
+    "role": "ANESTHESIOLOGIST",
+    "department": "General Anesthesiology",
+    "orgId": "CHCH",
+    "specialty": "Anesthesiology",
+    "credentials": "MD",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "jasper.lindqvist",
+    "name": "Dr. Jasper Lindqvist",
+    "role": "ANESTHESIOLOGIST",
+    "department": "Obstetric Anesthesiology",
+    "orgId": "LRMC",
+    "specialty": "Anesthesiology",
+    "credentials": "MD",
+    "practices": [],
+    "demoAccount": false
+  },
+  {
+    "id": "philippa.hollander",
+    "name": "Dr. Philippa Hollander",
+    "role": "ANESTHESIOLOGIST",
+    "department": "General Anesthesiology",
+    "orgId": "CHCH",
+    "specialty": "Anesthesiology",
+    "credentials": "MD",
+    "practices": [],
+    "demoAccount": false
+  }
+]

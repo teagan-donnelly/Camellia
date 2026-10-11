@@ -7,7 +7,7 @@ import type { AiAnswer, FlagSearchResult, Interpretation, SearchCriteria, Search
 import { AiAnswerView, AssistantPanel, GeminiThinking } from '../components/ai'
 import { FlagHitCard } from '../components/flags'
 import { RecordTypeIcon } from '../components/records'
-import { Badge, Button, Card, CardHeader, EmptyState, ErrorBox, PageHeader } from '../components/ui'
+import { Badge, Button, Card, CardHeader, EmptyState, ErrorBox, PageHeader, SynMrn } from '../components/ui'
 import { RECORD_TYPE_LABEL, RULE_LABEL, cx, fmtDate, titleCase } from '../lib/format'
 import { useApp } from '../state/AppContext'
 
@@ -324,7 +324,7 @@ function PatientResults({ group }: { group: SearchResult['patients'][number] }) 
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3">
         <div>
           <Link to={`/patients/${group.patientId}`} className="text-[14.5px] font-semibold text-navy-900 hover:text-coral-700">{group.patientName}</Link>
-          <span className="ml-2 text-[12px] text-navy-400">{group.displayId}</span>
+          <SynMrn id={group.displayId} className="ml-2 text-navy-400" />
           <div className="mt-0.5 text-[12px] text-navy-500">{group.matchCount} records on {group.distinctDates} separate dates</div>
         </div>
         <div className="flex flex-wrap gap-1">{group.organizations.map((o) => <Badge key={o} tone="outline"><Building2 className="h-3 w-3" />{o}</Badge>)}</div>

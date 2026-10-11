@@ -297,7 +297,7 @@ public class ClinicalViewService {
                 appt == null ? null : lk.orgNames.getOrDefault(appt.orgId(), appt.orgId()) + " — " + appt.department(),
                 a.reviewDueDate(), a.concernSummary(), a.involvedSpecialties(), orgs, ev.size(), a.acknowledgedBy(),
                 a.contactStatus(), a.planningDiscussionOccurred(), a.infoNeeded(), a.updatedAt(), a.updatedBy(),
-                a.evidenceUpdatedAt(), lk.noteCounts.getOrDefault(a.alertId(), 0));
+                a.evidenceUpdatedAt(), lk.noteCounts.getOrDefault(a.alertId(), 0), a.acknowledgedAt());
     }
 
     // ------------------------------------------------------------------ dashboard

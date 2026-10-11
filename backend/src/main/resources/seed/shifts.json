@@ -1,0 +1,215 @@
+[
+  {
+    "shiftId": "SH-JLEE-D0",
+    "userId": "jordan.lee",
+    "start": "@D+0T07:00",
+    "end": "@D+0T19:00",
+    "orgId": "LRMC",
+    "department": "Medical-Surgical Nursing",
+    "location": "Larkspur Regional — 4 West / 5 East",
+    "label": "Day shift",
+    "patients": [
+      {
+        "patientId": "CAM-P-1004",
+        "role": "Primary nurse"
+      },
+      {
+        "patientId": "CAM-P-1006",
+        "role": "Primary nurse"
+      }
+    ]
+  },
+  {
+    "shiftId": "SH-JLEE-D1",
+    "userId": "jordan.lee",
+    "start": "@D+1T07:00",
+    "end": "@D+1T19:00",
+    "orgId": "LRMC",
+    "department": "Medical-Surgical Nursing",
+    "location": "Larkspur Regional — 4 West / 5 East",
+    "label": "Day shift",
+    "patients": [
+      {
+        "patientId": "CAM-P-1004",
+        "role": "Primary nurse"
+      },
+      {
+        "patientId": "CAM-P-1006",
+        "role": "Primary nurse"
+      },
+      {
+        "patientId": "CAM-P-1008",
+        "role": "Float coverage (Cedar Hollow)"
+      }
+    ]
+  },
+  {
+    "shiftId": "SH-TMOR-D0",
+    "userId": "taylor.morgan",
+    "start": "@D+0T19:00",
+    "end": "@D+1T07:00",
+    "orgId": "LRMC",
+    "department": "Labor & Delivery",
+    "location": "Larkspur Regional — Labor & Delivery",
+    "label": "Night shift",
+    "patients": [
+      {
+        "patientId": "CAM-P-1001",
+        "role": "Scheduled induction"
+      },
+      {
+        "patientId": "CAM-P-1002",
+        "role": "Scheduled cesarean"
+      },
+      {
+        "patientId": "CAM-P-1009",
+        "role": "Upcoming delivery"
+      },
+      {
+        "patientId": "CAM-P-1007",
+        "role": "Routine prenatal follow-up"
+      }
+    ]
+  },
+  {
+    "shiftId": "SH-MELL-D0",
+    "userId": "maya.ellison",
+    "start": "@D+0T07:00",
+    "end": "@D+0T17:00",
+    "orgId": "LRMC",
+    "department": "Anesthesia OB Coordination",
+    "location": "Larkspur Regional — OB Anesthesia",
+    "label": "Day coverage",
+    "patients": [
+      {
+        "patientId": "CAM-P-1001",
+        "role": "Upcoming induction — anesthesia review"
+      },
+      {
+        "patientId": "CAM-P-1002",
+        "role": "Upcoming cesarean — anesthesia review"
+      },
+      {
+        "patientId": "CAM-P-1009",
+        "role": "Upcoming delivery — anesthesia review"
+      }
+    ]
+  },
+  {
+    "shiftId": "SH-MELL-D1",
+    "userId": "maya.ellison",
+    "start": "@D+1T07:00",
+    "end": "@D+1T17:00",
+    "orgId": "LRMC",
+    "department": "Anesthesia OB Coordination",
+    "location": "Larkspur Regional — OB Anesthesia",
+    "label": "Day coverage",
+    "patients": [
+      {
+        "patientId": "CAM-P-1001",
+        "role": "Upcoming induction — anesthesia review"
+      },
+      {
+        "patientId": "CAM-P-1002",
+        "role": "Upcoming cesarean — anesthesia review"
+      },
+      {
+        "patientId": "CAM-P-1009",
+        "role": "Upcoming delivery — anesthesia review"
+      }
+    ]
+  },
+  {
+    "shiftId": "SH-DBRO-D0",
+    "userId": "daniel.brooks",
+    "start": "@D+0T07:00",
+    "end": "@D+0T19:00",
+    "orgId": "LRMC",
+    "department": "Obstetric Anesthesiology",
+    "location": "Larkspur Regional — OB Anesthesia",
+    "label": "Attending coverage",
+    "patients": [
+      {
+        "patientId": "CAM-P-1001",
+        "role": "Upcoming induction — anesthesia review"
+      },
+      {
+        "patientId": "CAM-P-1002",
+        "role": "Upcoming cesarean — anesthesia review"
+      },
+      {
+        "patientId": "CAM-P-1009",
+        "role": "Upcoming delivery — anesthesia review"
+      },
+      {
+        "patientId": "CAM-P-1007",
+        "role": "Routine obstetric patient"
+      }
+    ]
+  },
+  {
+    "shiftId": "SH-AKIM-D0",
+    "userId": "alex.kim",
+    "start": "@D+0T08:00",
+    "end": "@D+0T17:00",
+    "orgId": "LRMC",
+    "department": "Internal Medicine — Practice A",
+    "location": "Larkspur Regional Primary Care + inpatient rounds",
+    "label": "Clinic and rounds",
+    "patients": [
+      {
+        "patientId": "CAM-P-1003",
+        "role": "Practice patient"
+      },
+      {
+        "patientId": "CAM-P-1004",
+        "role": "Practice patient — inpatient"
+      },
+      {
+        "patientId": "CAM-P-1005",
+        "role": "Practice patient"
+      },
+      {
+        "patientId": "CAM-P-1006",
+        "role": "Practice patient — inpatient"
+      },
+      {
+        "patientId": "CAM-P-1008",
+        "role": "Practice patient — inpatient (Cedar Hollow)"
+      },
+      {
+        "patientId": "CAM-P-1001",
+        "role": "Cross-cover request",
+        "note": "Scheduling entry outside Practice A; Camellia excludes it from this user's briefing"
+      }
+    ]
+  },
+  {
+    "shiftId": "SH-SMIT-D0",
+    "userId": "sarah.mitchell",
+    "start": "@D+0T08:00",
+    "end": "@D+0T17:00",
+    "orgId": "BWHA",
+    "department": "Obstetrics & Gynecology — Practice B",
+    "location": "Bellwether Women's Health",
+    "label": "Clinic",
+    "patients": [
+      {
+        "patientId": "CAM-P-1001",
+        "role": "Practice patient"
+      },
+      {
+        "patientId": "CAM-P-1002",
+        "role": "Practice patient"
+      },
+      {
+        "patientId": "CAM-P-1007",
+        "role": "Practice patient"
+      },
+      {
+        "patientId": "CAM-P-1009",
+        "role": "Practice patient"
+      }
+    ]
+  }
+]

@@ -17,6 +17,9 @@ public class CamelliaProperties {
     private Gemini gemini = new Gemini();
     private Demo demo = new Demo();
     private Jobs jobs = new Jobs();
+    private Monitoring monitoring = new Monitoring();
+    private Briefing briefing = new Briefing();
+    private ElevenLabs elevenlabs = new ElevenLabs();
     private Rules rules = new Rules();
 
     public String getCorsOrigins() { return corsOrigins; }
@@ -30,6 +33,12 @@ public class CamelliaProperties {
     public Demo getDemo() { return demo; }
     public void setDemo(Demo demo) { this.demo = demo; }
     public Jobs getJobs() { return jobs; }
+    public Monitoring getMonitoring() { return monitoring; }
+    public void setMonitoring(Monitoring monitoring) { this.monitoring = monitoring; }
+    public Briefing getBriefing() { return briefing; }
+    public void setBriefing(Briefing briefing) { this.briefing = briefing; }
+    public ElevenLabs getElevenlabs() { return elevenlabs; }
+    public void setElevenlabs(ElevenLabs elevenlabs) { this.elevenlabs = elevenlabs; }
     public void setJobs(Jobs jobs) { this.jobs = jobs; }
     public Rules getRules() { return rules; }
     public void setRules(Rules rules) { this.rules = rules; }
@@ -136,6 +145,81 @@ public class CamelliaProperties {
 
         public boolean isEnabled() { return enabled; }
         public void setEnabled(boolean enabled) { this.enabled = enabled; }
+    }
+
+    /** Simulated wearable monitoring. */
+    public static class Monitoring {
+        private String hospitalTimeZone = "America/New_York";
+        private int staleDataMinutes = 30;
+        private boolean simulatorEnabled = true;
+
+        public String getHospitalTimeZone() { return hospitalTimeZone; }
+        public void setHospitalTimeZone(String v) { this.hospitalTimeZone = v; }
+        public int getStaleDataMinutes() { return staleDataMinutes; }
+        public void setStaleDataMinutes(int v) { this.staleDataMinutes = v; }
+        public boolean isSimulatorEnabled() { return simulatorEnabled; }
+        public void setSimulatorEnabled(boolean v) { this.simulatorEnabled = v; }
+    }
+
+    /** Camellia Briefing (Gemini script + ElevenLabs audio). */
+    public static class Briefing {
+        private int maxAudioSeconds = 480;
+        private int wordsPerMinute = 150;
+        private int maxScriptAttempts = 3;
+        private String audioDir = "./data/briefings";
+
+        public int getMaxAudioSeconds() { return maxAudioSeconds; }
+        public void setMaxAudioSeconds(int v) { this.maxAudioSeconds = v; }
+        public int getWordsPerMinute() { return wordsPerMinute; }
+        public void setWordsPerMinute(int v) { this.wordsPerMinute = v; }
+        public int getMaxScriptAttempts() { return maxScriptAttempts; }
+        public void setMaxScriptAttempts(int v) { this.maxScriptAttempts = v; }
+        public String getAudioDir() { return audioDir; }
+        public void setAudioDir(String v) { this.audioDir = v; }
+    }
+
+    /** ElevenLabs text-to-speech. The key stays on the server. */
+    public static class ElevenLabs {
+        private String apiKey = "";
+        private String baseUrl = "https://api.elevenlabs.io";
+        private String voiceId = "";
+        private String voiceUseCase = "conversational";
+        private String modelId = "eleven_multilingual_v2";
+        private String outputFormat = "mp3_44100_128";
+        private int maxCharacters = 9500;
+        private double stability = 0.55;
+        private double similarityBoost = 0.75;
+        private double style = 0.0;
+        private double speed = 1.0;
+        private int timeoutSeconds = 180;
+        private int maxRetries = 2;
+
+        public String getApiKey() { return apiKey; }
+        public void setApiKey(String v) { this.apiKey = v; }
+        public String getBaseUrl() { return baseUrl; }
+        public void setBaseUrl(String v) { this.baseUrl = v; }
+        public String getVoiceId() { return voiceId; }
+        public void setVoiceId(String v) { this.voiceId = v; }
+        public String getVoiceUseCase() { return voiceUseCase; }
+        public void setVoiceUseCase(String v) { this.voiceUseCase = v; }
+        public String getModelId() { return modelId; }
+        public void setModelId(String v) { this.modelId = v; }
+        public String getOutputFormat() { return outputFormat; }
+        public void setOutputFormat(String v) { this.outputFormat = v; }
+        public int getMaxCharacters() { return maxCharacters; }
+        public void setMaxCharacters(int v) { this.maxCharacters = v; }
+        public double getStability() { return stability; }
+        public void setStability(double v) { this.stability = v; }
+        public double getSimilarityBoost() { return similarityBoost; }
+        public void setSimilarityBoost(double v) { this.similarityBoost = v; }
+        public double getStyle() { return style; }
+        public void setStyle(double v) { this.style = v; }
+        public double getSpeed() { return speed; }
+        public void setSpeed(double v) { this.speed = v; }
+        public int getTimeoutSeconds() { return timeoutSeconds; }
+        public void setTimeoutSeconds(int v) { this.timeoutSeconds = v; }
+        public int getMaxRetries() { return maxRetries; }
+        public void setMaxRetries(int v) { this.maxRetries = v; }
     }
 
     public static class Rules {

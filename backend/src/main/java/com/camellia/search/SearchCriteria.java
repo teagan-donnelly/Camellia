@@ -38,7 +38,9 @@ public record SearchCriteria(
         CONCEPTS = List.copyOf(c);
     }
 
-    public static final List<String> RECORD_TYPES = Arrays.stream(RecordType.values()).map(Enum::name).toList();
+    /** Searchable (persisted) record types. MONITORING evidence is built on demand and never stored, so it is excluded. */
+    public static final List<String> RECORD_TYPES = Arrays.stream(RecordType.values())
+            .filter(t -> t != RecordType.MONITORING).map(Enum::name).toList();
 
     public static SearchCriteria empty() {
         return new SearchCriteria(null, List.of(), List.of(), List.of(), List.of(), null, null, null, false, false, false, false, 1, "ALL");

@@ -38,7 +38,11 @@ public class AuthorizationService {
      * @param patientIds  accessible patient ids, or {@code null} when the role has network-wide scope
      * @param anesthesia  whether Anesthesia OB flags/alerts are visible
      */
-    public record AccessScope(String userId, Set<String> patientIds, boolean anesthesia) {
+    public record AccessScope(String userId, Set<String> patientIds, boolean anesthesia, boolean flags) {
+
+        public AccessScope(String userId, Set<String> patientIds, boolean anesthesia) {
+            this(userId, patientIds, anesthesia, true);
+        }
 
         public boolean networkWide() {
             return patientIds == null;
@@ -53,7 +57,7 @@ public class AuthorizationService {
         }
 
         public boolean allowsFlag(ClinicalFlag f) {
-            return f != null && allowsPatient(f.patientId()) && allowsRule(f.ruleId());
+            return f != null && flags && allowsPatient(f.patientId()) && allowsRule(f.ruleId());
         }
 
         public boolean allowsAlert(CoordinationAlert a) {
@@ -63,7 +67,7 @@ public class AuthorizationService {
 
     public AccessScope scope(DemoUser user) {
         Set<String> ids = user.role().networkScope() ? null : Set.copyOf(practices.patientIdsForPractices(user.practiceIds()));
-        return new AccessScope(user.id(), ids, user.has(Permission.ANESTHESIA_OB_ALERTS));
+        return new AccessScope(user.id(), ids, user.has(Permission.ANESTHESIA_OB_ALERTS), user.has(Permission.CLINICAL_ALERTS));
     }
 
     // ------------------------------------------------------------------ permission checks

@@ -1,0 +1,74 @@
+{
+  "format": "camellia-import/v1",
+  "_comment": "Synthetic test file. Dates like @D-30T09:00 are Camellia demo tokens (days relative to the demo anchor date); ISO-8601 dates also work.",
+  "organization": {
+    "orgId": "LRMC",
+    "name": "Larkspur Regional Medical Center"
+  },
+  "patient": {
+    "mrn": "LR-412233",
+    "firstName": "Odalys",
+    "lastName": "Brennan",
+    "dateOfBirth": "1979-07-22",
+    "sex": "F"
+  },
+  "encounters": [
+    {
+      "sourceId": "IMP-E-5101",
+      "class": "AMB",
+      "type": "New patient visit",
+      "start": "@D-30T09:00",
+      "department": "Primary Care",
+      "specialty": "Primary Care",
+      "provider": "Dr. Gwen Ibarra, MD",
+      "reason": "Establish primary care; blood pressure follow-up"
+    }
+  ],
+  "labs": [
+    {
+      "sourceId": "IMP-L-5102",
+      "code": "4548-4",
+      "name": "Hemoglobin A1c",
+      "value": "5.6",
+      "unit": "%",
+      "refLow": "4.0",
+      "refHigh": "5.6",
+      "flag": "N",
+      "collected": "@D-30T09:40",
+      "performer": "Larkspur Regional Laboratory",
+      "encounterSourceId": "IMP-E-5101"
+    }
+  ],
+  "conditions": [
+    {
+      "sourceId": "IMP-C-5103",
+      "code": "I10",
+      "display": "Essential hypertension",
+      "onset": "@D-900",
+      "status": "active",
+      "recorder": "Dr. Gwen Ibarra, MD",
+      "specialty": "Primary Care"
+    }
+  ],
+  "medications": [
+    {
+      "sourceId": "IMP-M-5104",
+      "name": "Lisinopril 10 mg tablet",
+      "dosage": "10 mg by mouth once daily",
+      "status": "active",
+      "start": "@D-900",
+      "prescriber": "Dr. Gwen Ibarra, MD"
+    }
+  ],
+  "notes": [
+    {
+      "sourceId": "IMP-N-5105",
+      "type": "Primary care note",
+      "date": "@D-30T10:05",
+      "author": "Dr. Gwen Ibarra, MD",
+      "specialty": "Primary Care",
+      "encounterSourceId": "IMP-E-5101",
+      "text": "New patient establishing care. Blood pressure 128/82 on lisinopril. A1c within range. Continue current medication; follow up in 6 months."
+    }
+  ]
+}

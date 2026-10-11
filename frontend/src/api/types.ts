@@ -229,6 +229,7 @@ export interface AlertSummary {
   sourceOrganizations: string[]
   evidenceCount: number
   acknowledgedBy?: string
+  acknowledgedAt?: string
   contactStatus: 'NOT_STARTED' | 'PLANNED' | 'COMPLETED'
   planningDiscussionOccurred: boolean
   infoNeeded: boolean
@@ -400,8 +401,11 @@ export interface RunResult {
 export type Permission =
   | 'VIEW_PATIENTS' | 'CLINICAL_SEARCH' | 'CLINICAL_ALERTS' | 'REVIEW_FLAGS' | 'GEMINI_ASSISTANT'
   | 'ANESTHESIA_OB_ALERTS' | 'UPDATE_COORDINATION' | 'ADD_COORDINATION_NOTES'
+  | 'IMPORT_RECORDS' | 'CLINICAL_BRIEFING' | 'VIEW_MONITORING' | 'NURSING_MONITORING' | 'DOCUMENT_NURSING_INTERVENTIONS'
+  | 'SIMULATE_DEVICES'
 
-export type NavItem = 'DASHBOARD' | 'PATIENTS' | 'CLINICAL_SEARCH' | 'CLINICAL_ALERTS' | 'ANESTHESIA_OB_ALERTS'
+export type NavItem = 'DASHBOARD' | 'BRIEFING' | 'PATIENTS' | 'CLINICAL_SEARCH' | 'CLINICAL_ALERTS' | 'ANESTHESIA_OB_ALERTS'
+  | 'NURSING_MONITORING'
 
 /** A SIMULATED demo identity (not an authenticated user). */
 export interface SessionUser {
@@ -500,6 +504,23 @@ export interface IntegrationStatus {
     connected: boolean
     session?: Record<string, unknown>
     error?: string
+    /** Why this database is in use. */
+    state?: 'SNOWFLAKE_CONNECTED' | 'SNOWFLAKE_UNAVAILABLE' | 'LOCAL_FALLBACK_SELECTED' | 'CONFIGURATION_MISSING'
+    explanation?: string
+    requestedMode?: string
+    snowflakeSettingsPresent?: boolean
+    missingSettings?: string[]
+    dataNote?: string
+  }
+  elevenlabs?: {
+    configured: boolean
+    modelId: string
+    voiceId?: string
+    voiceName?: string
+    outputFormat: string
+    callsSinceStartup: number
+    failuresSinceStartup: number
+    lastError?: string
   }
   gemini: {
     configured: boolean
@@ -526,4 +547,215 @@ export interface ExtractionResult {
   observationsRejected: number
   rejectionReasons: string[]
   observations: AiObservation[]
+}
+
+// ===================================================================================== Camellia V3
+
+export interface Reading { value: number; unit: string; at: string; quality: string }
+
+export interface MonitoringCard {
+  sessionId: string
+  sessionStatus: 'ACTIVE' | 'STOPPED'
+  deviceStatus: 'CONNECTED' | 'STALE' | 'DISCONNECTED' | 'STOPPED'
+  simulatedNow: string
+  walkingTodayMinutes: number
+  lastActivityAt?: string
+  lastActivityType?: string
+  latestHeartRate?: Reading
+  latestSpo2?: Reading
+  latestSkinTemp?: Reading
+  batteryPct?: number
+  lastSyncAt?: string
+  dataStale: boolean
+  openAlerts: number
+}
+
+export interface EncounterView {
+  encounterId: string
+  encounterType: string
+  inpatient: boolean
+  orgId: string
+  orgName?: string
+  department?: string
+  specialty?: string
+  reason?: string
+  providerName?: string
+  startTime: string
+  endTime?: string
+  ongoing: boolean
+  monitoring?: MonitoringCard
+}
+
+export interface MonitoringAlert {
+  alertId: string
+  sessionId?: string
+  patientId: string
+  encounterId: string
+  alertType: 'MOBILITY_REVIEW' | 'REPOSITIONING_REVIEW' | 'DEVICE_CONNECTIVITY'
+  status: 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED'
+  message: string
+  basis?: string
+  triggeredAt: string
+  updatedAt?: string
+  updatedBy?: string
+  resolution?: string
+}
+
+export interface CarePlan {
+  planId: string
+  mobilityReviewMinutes?: number
+  repositioningIntervalMinutes?: number
+  staleDataMinutes?: number
+  note?: string
+  createdBy?: string
+}
+
+export interface MonitoringDetail {
+  patientId: string
+  patientName: string
+  displayId: string
+  encounter: EncounterView
+  device?: { deviceId: string; model: string; firmware: string; simulated: boolean }
+  plan?: CarePlan
+  card?: MonitoringCard
+  alerts: MonitoringAlert[]
+  timeZone: string
+  notice: string
+  simulatorActions: string[]
+  canSimulate: boolean
+  canDocument: boolean
+}
+
+export interface SeriesPoint { t: string; v: number; quality: string }
+
+export interface ObservationSeries {
+  range: '24h' | '7d' | 'stay'
+  from: string
+  to: string
+  bucket: 'HOUR' | 'DAY'
+  series: Record<'HEART_RATE' | 'SPO2' | 'SKIN_TEMP', SeriesPoint[]>
+  units: Record<string, string>
+  walking: { start: string; label: string; minutes: number }[]
+  simulatedNow: string
+  notice: string
+}
+
+export interface TimelineItem {
+  id: string
+  kind: string
+  type: string
+  label: string
+  source: 'SENSOR' | 'NURSE' | 'SYSTEM'
+  at: string
+  endedAt?: string
+  durationSeconds?: number
+  detail?: string
+  by?: string
+}
+
+export interface NursingQueue {
+  patients: {
+    patientId: string; patientName: string; displayId: string; encounterId: string; orgName?: string; department?: string
+    admittedAt: string; card: MonitoringCard; nextRepositioningDueAt?: string; nextMobilityReviewAt?: string
+  }[]
+  alerts: { alert: MonitoringAlert; patientName: string; displayId?: string; orgName?: string; department?: string }[]
+  notice: string
+}
+
+export interface BriefingSummary { briefingId: string; mode: 'FULL' | 'PRIORITY'; status: string; durationSeconds?: number; createdAt: string }
+
+export interface ShiftView {
+  shiftId: string
+  shiftDate: string
+  startAt: string
+  endAt: string
+  label: string
+  department: string
+  location: string
+  orgName?: string
+  assignedPatients: number
+  authorizedPatients: number
+  excludedPatients: number
+  openItems: number
+  patientNames: string[]
+  latest: Record<string, BriefingSummary>
+}
+
+export interface BriefingSource { type: string; id: string; patientId: string; patientName?: string; label?: string; link?: string }
+
+export interface BriefingSegment { index: number; heading: string; narration: string; patientIds: string[]; startSeconds?: number; sources: BriefingSource[] }
+
+export interface BriefingView {
+  briefingId: string
+  shiftId: string
+  shiftLabel?: string
+  shiftDate?: string
+  shiftStart?: string
+  shiftEnd?: string
+  location?: string
+  providerName: string
+  providerRole: string
+  mode: 'FULL' | 'PRIORITY'
+  status: 'QUEUED' | 'SCRIPTING' | 'SYNTHESIZING' | 'READY' | 'SCRIPT_ONLY' | 'FAILED'
+  statusDetail?: string
+  reused: boolean
+  patientCount: number
+  openAlertCount: number
+  excludedPatients: number
+  durationSeconds?: number
+  estimatedSeconds?: number
+  wordCount?: number
+  title?: string
+  geminiModel?: string
+  ttsProvider?: string
+  ttsModel?: string
+  voiceId?: string
+  audioAvailable: boolean
+  createdAt: string
+  completedAt?: string
+  segments: BriefingSegment[]
+  opening?: string
+  closing?: string
+  notice: string
+}
+
+export interface ImportPreview {
+  valid: boolean
+  errors: string[]
+  warnings: string[]
+  fileName: string
+  fileSha256?: string
+  format?: string
+  organization?: { orgId: string; name?: string; known: boolean }
+  patient?: { mrn: string; firstName: string; lastName: string; dateOfBirth?: string; sex?: string }
+  counts: Record<string, number>
+  totalRecords: number
+  duplicateRecords: number
+  items: { sourceId: string; recordType: string; title: string; date?: string; duplicate: boolean }[]
+  matches: { patientId: string; displayId: string; name: string; dateOfBirth?: string; matchType: string; detail: string }[]
+  suggestedDecision?: 'CREATE_NEW' | 'ATTACH_EXISTING'
+  suggestedPatientId?: string
+  previouslyImported: boolean
+  notice: string
+}
+
+export interface ImportResult {
+  importId: string
+  patientId: string
+  patientName: string
+  displayId: string
+  decision: string
+  recordsInserted: number
+  recordsDuplicate: number
+  recordIds: string[]
+  screeningRun: boolean
+  screeningOutcomes: string[]
+  notice: string
+}
+
+export interface ImportSample { file: string; title: string; description: string; format: string; scenario: string }
+
+export interface ImportBatch {
+  importId: string; fileName: string; sourceFormat: string; orgId: string; patientId: string; matchDecision: string
+  recordsInserted: number; recordsDuplicate: number; status: string; importedBy: string; importedAt: string
 }

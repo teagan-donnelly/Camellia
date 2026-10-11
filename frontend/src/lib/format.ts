@@ -101,3 +101,38 @@ export const initials = (name: string) =>
   name.replace(/^Dr\.\s*/, '').split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase()
 
 export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(' ')
+
+// ---------------------------------------------------------------- hospital-local time (simulated monitoring)
+
+const hospitalFmts = new Map<string, Intl.DateTimeFormat>()
+function hospitalFmt(tz: string, opts: Intl.DateTimeFormatOptions) {
+  const key = tz + JSON.stringify(opts)
+  if (!hospitalFmts.has(key)) hospitalFmts.set(key, new Intl.DateTimeFormat('en-US', { ...opts, timeZone: tz }))
+  return hospitalFmts.get(key)!
+}
+
+/** Monitoring timestamps are stored in UTC and shown in the hospital's local time zone. */
+export function fmtHospital(v: string | null | undefined, tz = 'America/New_York', withDate = true): string {
+  const d = parse(v)
+  if (!d) return '—'
+  return hospitalFmt(tz, withDate
+    ? { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }
+    : { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }).format(d)
+}
+
+/** "2 h 10 min before simulated now" — monitoring uses the simulation clock, not real time. */
+export function sinceSim(v: string | null | undefined, simNow: string | null | undefined): string {
+  const a = parse(v), b = parse(simNow)
+  if (!a || !b) return '—'
+  const mins = Math.round((b.getTime() - a.getTime()) / 60000)
+  if (mins < 1) return 'just now (simulated)'
+  const h = Math.floor(mins / 60), m = mins % 60
+  return `${h ? `${h} h ` : ''}${m} min ago (simulated)`
+}
+
+export const MONITORING_LABEL: Record<string, string> = {
+  MOBILITY_REVIEW: 'Mobility review', REPOSITIONING_REVIEW: 'Repositioning review', DEVICE_CONNECTIVITY: 'Device connectivity',
+  WALKING: 'Walking detected', MOVEMENT: 'Movement detected', POSSIBLE_POSITION_CHANGE: 'Possible position change',
+  INACTIVITY_REVIEW: 'Inactivity review triggered', DEVICE_DISCONNECTED: 'Device disconnected', DEVICE_RECONNECTED: 'Device reconnected',
+  REPOSITIONING_DOCUMENTED: 'Nursing repositioning documented', SESSION_STARTED: 'Monitoring session started', SESSION_STOPPED: 'Monitoring session stopped',
+}

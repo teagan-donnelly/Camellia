@@ -2,22 +2,31 @@ import {
   ArrowLeft, Baby, Bell, Building2, CalendarClock, ChevronRight, FileSearch, FlaskConical, HeartPulse, Pill, Quote, Sparkles,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
-import { useExtraction, usePatient } from '../api/hooks'
-import type { LabResult, PatientProfile as Profile, RecordDto } from '../api/types'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useEncounters, useExtraction, usePatient } from '../api/hooks'
+import { PatientMonitoringCard } from '../components/monitoring'
+import type { EncounterView, LabResult, PatientProfile as Profile, RecordDto } from '../api/types'
 import { AiBadge, AssistantPanel, GeminiThinking } from '../components/ai'
 import { CitationChip, RecordTypeIcon } from '../components/records'
 import { AlertStatusBadge, FlagStatusBadge, PriorityBadge } from '../components/status'
-import { Badge, Button, Card, CardHeader, EmptyState, ErrorBox, KeyValue, Loading, Tabs } from '../components/ui'
+import { Badge, Button, Card, CardHeader, EmptyState, ErrorBox, KeyValue, Loading, Tabs, SynMrn } from '../components/ui'
 import { FORMAT_LABEL, RECORD_TYPE_LABEL, RULE_LABEL, cx, daysLabel, fmtDate, fmtDateTime, initials, titleCase } from '../lib/format'
 import { useApp } from '../state/AppContext'
 
-type Tab = 'overview' | 'timeline' | 'conditions' | 'medications' | 'labs' | 'notes' | 'appointments' | 'flags' | 'ai'
+type Tab = 'overview' | 'stays' | 'timeline' | 'conditions' | 'medications' | 'labs' | 'notes' | 'appointments' | 'flags' | 'ai'
+const TABS: Tab[] = ['overview', 'stays', 'timeline', 'conditions', 'medications', 'labs', 'notes', 'appointments', 'flags', 'ai']
 
 export default function PatientProfile() {
   const { id = '' } = useParams()
   const { data, isLoading, error } = usePatient(id)
-  const [tab, setTab] = useState<Tab>('overview')
+  const encounters = useEncounters(id)
+  // The selected tab lives in the URL (?tab=…), so "Back to Patient Profile" from a monitoring page and a page
+  // refresh both return to the same tab.
+  const [params, setParams] = useSearchParams()
+  const requested = params.get('tab') as Tab | null
+  const tab: Tab = requested && TABS.includes(requested) ? requested : 'overview'
+  const setTab = (t: Tab) => setParams((prev) => { prev.set('tab', t); return prev }, { replace: true })
+  const monitored = (encounters.data ?? []).filter((e) => e.monitoring)
 
   if (isLoading) return <Loading label="Retrieving patient records…" />
   if (error) return <ErrorBox error={error} title="Could not load patient" />
@@ -39,7 +48,7 @@ export default function PatientProfile() {
                   {p.obstetric && <Badge tone="coral"><Baby className="h-3 w-3" />Obstetric · {p.gestationalNote}</Badge>}
                   <Badge tone="outline">Synthetic patient</Badge>
                 </div>
-                <div className="mt-1 text-[13px] text-navy-500">{p.displayId} · {p.patientId} · {p.age} years · {p.sex === 'F' ? 'Female' : p.sex === 'M' ? 'Male' : p.sex} · DOB {fmtDate(p.dateOfBirth)}</div>
+                <div className="mt-1 text-[13px] text-navy-500"><SynMrn id={p.displayId} /> · <span title="Camellia's internal patient key">ID {p.patientId}</span> · {p.age} years · {p.sex === 'F' ? 'Female' : p.sex === 'M' ? 'Male' : p.sex} · DOB {fmtDate(p.dateOfBirth)}</div>
                 {p.summary && <p className="mt-2 max-w-3xl text-[13.5px] leading-relaxed text-navy-700">{p.summary}</p>}
               </div>
               <div className="flex gap-2">
@@ -73,10 +82,18 @@ export default function PatientProfile() {
             </Link>
           ))}
 
+          {/* One card per hospital stay that has a wristband session; nothing for stays without monitoring. */}
+          {monitored.length > 0 && (
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              {monitored.map((e) => <PatientMonitoringCard key={e.encounterId} patientId={p.patientId} encounter={e} fromTab={tab} />)}
+            </div>
+          )}
+
           <Card padded={false}>
             <div className="px-4 pt-2">
               <Tabs<Tab> value={tab} onChange={setTab} tabs={[
                 { id: 'overview', label: 'Overview' },
+                { id: 'stays', label: 'Hospital stays', count: encounters.data?.length },
                 { id: 'timeline', label: 'Timeline', count: data.timeline.length },
                 { id: 'conditions', label: 'Conditions', count: data.conditions.length },
                 { id: 'medications', label: 'Medications', count: data.medications.length },
@@ -89,6 +106,7 @@ export default function PatientProfile() {
             </div>
             <div className="p-4">
               {tab === 'overview' && <Overview data={data} onTab={setTab} />}
+              {tab === 'stays' && <Stays patientId={p.patientId} encounters={encounters.data ?? []} loading={encounters.isLoading} />}
               {tab === 'timeline' && <Timeline records={data.timeline} />}
               {tab === 'conditions' && <Conditions data={data} />}
               {tab === 'medications' && <Medications data={data} />}
@@ -414,5 +432,30 @@ function AiObservations({ data }: { data: Profile }) {
         </div>
       )}
     </div>
+  )
+}
+
+/** All encounters; only stays with a monitoring session link to monitoring details. */
+function Stays({ patientId, encounters, loading }: { patientId: string; encounters: EncounterView[]; loading: boolean }) {
+  if (loading) return <Loading />
+  if (!encounters.length) return <p className="text-[13px] text-navy-400">No encounters recorded.</p>
+  return (
+    <ul className="divide-y divide-line">
+      {encounters.map((e) => (
+        <li key={e.encounterId} className="flex flex-wrap items-start gap-3 py-3">
+          <div className="w-[170px] shrink-0 text-[12.5px] text-navy-500">{fmtDate(e.startTime)}{e.inpatient ? ` – ${e.endTime ? fmtDate(e.endTime) : 'present'}` : ''}</div>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2 text-[13.5px] font-medium text-navy-900">
+              {e.encounterType}{e.ongoing && <Badge tone="coral">Current stay</Badge>}
+              {e.monitoring ? <Badge tone="sage">Wristband monitoring (simulated)</Badge> : e.inpatient ? <Badge tone="outline">No wearable monitoring</Badge> : null}
+            </div>
+            <div className="text-[12.5px] text-navy-600">{e.orgName} · {e.department} · {e.reason}</div>
+          </div>
+          {e.monitoring && (
+            <Link to={`/patients/${patientId}/encounters/${e.encounterId}/monitoring?from=stays`} className="text-[12.5px] font-medium text-coral-700 hover:text-coral-800">View Monitoring Details →</Link>
+          )}
+        </li>
+      ))}
+    </ul>
   )
 }

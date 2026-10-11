@@ -53,12 +53,14 @@ public class ClinicalAiService {
     private final SupportRepository support;
     private final CamelliaProperties.Gemini cfg;
     private final AuthorizationService auth;
+    private final com.camellia.monitoring.MonitoringService monitoring;
 
     public ClinicalAiService(GeminiGateway gemini, ConversationStore conversations, PatientRepository patients,
                              ClinicalDataRepository clinical, FlagRepository flags, AlertRepository alerts,
                              OrganizationRepository organizations, SupportRepository support, CamelliaProperties props,
-                             AuthorizationService auth) {
+                             AuthorizationService auth, com.camellia.monitoring.MonitoringService monitoring) {
         this.auth = auth;
+        this.monitoring = monitoring;
         this.gemini = gemini;
         this.conversations = conversations;
         this.patients = patients;
@@ -395,6 +397,27 @@ public class ClinicalAiService {
                         + "\nHUMAN-ENTERED COORDINATION NOTES (workflow notes, not source records):\n" + noteText;
                 return new Context(t, id, p.patientId(), header, clinical.recordsForPatient(p.patientId()), roles);
             }
+            case "MONITORING" -> {
+                // id = encounter id. Only this hospital stay: its simulated monitoring evidence and the clinical records
+                // documented in the same encounter. Nothing from other encounters is sent to Gemini.
+                var enc = clinical.findEncounter(id).orElse(null);
+                if (enc == null) throw AuthorizationService.denied(null);
+                var scoped = monitoring.resolve(user, enc.patientId(), id);
+                List<ClinicalRecord> candidates = new ArrayList<>(monitoring.evidence(scoped));
+                if (candidates.isEmpty()) throw ApiException.badRequest("This hospital stay has no wearable monitoring data.");
+                clinical.recordsForPatient(enc.patientId()).stream().filter(r -> id.equals(r.encounterId())).forEach(candidates::add);
+                Map<String, String> roles = new HashMap<>();
+                candidates.stream().filter(r -> r.recordId().startsWith("REC-MON-SUM-") || r.recordId().startsWith("REC-MON-MAL-"))
+                        .forEach(r -> roles.put(r.recordId(), "TRIGGER"));
+                String header = patientHeader(scoped.patient()) + "\n\nHOSPITAL STAY IN CONTEXT: " + enc.encounterType() + " at "
+                        + enc.orgId() + ", " + enc.department() + ", admitted " + enc.startTime()
+                        + (enc.endTime() == null ? " (ongoing)" : ", discharged " + enc.endTime()) + ". Reason: " + enc.reason() + "."
+                        + "\nWEARABLE MONITORING DATA IS SIMULATED. Records titled as readings, walking, movement or position change are"
+                        + " device ESTIMATES from a simulated wristband, not validated clinical measurements. Repositioning counts only when"
+                        + " documented by nursing; wrist movement is never proof of repositioning. Missing readings during a disconnection are"
+                        + " not evidence of inactivity. Do not infer fall risk or emergencies. Times are simulated and shown in hospital time.";
+                return new Context(t, id, enc.patientId(), header, candidates, roles);
+            }
             case "SEARCH" -> {
                 if (recordIds == null || recordIds.isEmpty()) throw ApiException.badRequest("recordIds are required for SEARCH context");
                 AccessScope scope = auth.scope(user);
@@ -409,7 +432,7 @@ public class ClinicalAiService {
                         .collect(Collectors.joining("; "));
                 return new Context(t, key, null, header, recs, Map.of());
             }
-            default -> throw ApiException.badRequest("contextType must be PATIENT, FLAG, ALERT or SEARCH");
+            default -> throw ApiException.badRequest("contextType must be PATIENT, FLAG, ALERT, SEARCH or MONITORING");
         }
     }
 

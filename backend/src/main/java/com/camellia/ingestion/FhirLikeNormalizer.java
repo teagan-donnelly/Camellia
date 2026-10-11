@@ -69,11 +69,13 @@ public class FhirLikeNormalizer {
         String dept = text(r.path("department"));
         String cls = textAt(r, "class.code");
         LocalDateTime start = ctx.dateTime(textAt(r, "period.start"));
+        String endToken = textAt(r, "period.end");
+        LocalDateTime end = endToken == null ? null : ctx.dateTime(endToken);
         String symptom = ClinicalTagger.symptomCategory(reason);
         boolean fracture = ClinicalTagger.fractureRelated(reason);
 
         Encounter e = new Encounter(encId, recId, pid, orgId, encounterClass(cls, type), dept, specialty, provider, start,
-                reason, symptom, fracture);
+                reason, symptom, fracture, end);
         out.encounters.add(e);
         Set<String> tags = new TreeSet<>();
         if (fracture) tags.add("FRACTURE");

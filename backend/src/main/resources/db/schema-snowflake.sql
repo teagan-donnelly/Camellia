@@ -293,3 +293,189 @@ CREATE TABLE IF NOT EXISTS AI_CONVERSATION_TURNS (
     MESSAGE_TEXT     VARCHAR,
     CREATED_AT       TIMESTAMP_NTZ
 );
+
+-- =====================================================================================================================
+-- Camellia V3 — additive schema. Existing tables are only extended with nullable columns; nothing is dropped.
+-- =====================================================================================================================
+
+-- Discharge / end time of an encounter (NULL = ongoing or not recorded). Hospital stays use START_TIME..END_TIME.
+ALTER TABLE ENCOUNTERS ADD COLUMN IF NOT EXISTS END_TIME TIMESTAMP_NTZ;
+
+-- Synthetic workforce (seed/clinicians.json). SIMULATED identities — not user accounts with credentials.
+CREATE TABLE IF NOT EXISTS CLINICIANS (
+    USER_ID          VARCHAR(64)  NOT NULL PRIMARY KEY,
+    DISPLAY_NAME     VARCHAR(200) NOT NULL,
+    ROLE             VARCHAR(32)  NOT NULL,
+    DEPARTMENT       VARCHAR(200),
+    ORG_ID           VARCHAR(32),
+    SPECIALTY        VARCHAR(200),
+    CREDENTIALS      VARCHAR(32),
+    IS_DEMO_ACCOUNT  BOOLEAN DEFAULT FALSE,
+    CREATED_AT       TIMESTAMP_NTZ
+);
+CREATE TABLE IF NOT EXISTS CLINICIAN_PRACTICES (
+    USER_ID      VARCHAR(64) NOT NULL,
+    PRACTICE_ID  VARCHAR(32) NOT NULL
+);
+
+-- Simulated provider shifts and the patients assigned to them (Camellia Briefing). Assignments come from here,
+-- never from the AI model.
+CREATE TABLE IF NOT EXISTS PROVIDER_SHIFTS (
+    SHIFT_ID     VARCHAR(48)  NOT NULL PRIMARY KEY,
+    USER_ID      VARCHAR(64)  NOT NULL,
+    SHIFT_DATE   DATE         NOT NULL,
+    START_AT     TIMESTAMP_NTZ NOT NULL,
+    END_AT       TIMESTAMP_NTZ NOT NULL,
+    ORG_ID       VARCHAR(32),
+    DEPARTMENT   VARCHAR(200),
+    LOCATION     VARCHAR(200),
+    SHIFT_LABEL  VARCHAR(100),
+    CREATED_AT   TIMESTAMP_NTZ
+);
+CREATE TABLE IF NOT EXISTS SHIFT_PATIENT_ASSIGNMENTS (
+    SHIFT_ID         VARCHAR(48) NOT NULL,
+    PATIENT_ID       VARCHAR(32) NOT NULL,
+    ASSIGNMENT_ROLE  VARCHAR(100),
+    NOTE             VARCHAR(500)
+);
+
+-- Generated briefings. Audio bytes live in non-public backend storage (path + SHA-256 here); access only through
+-- GET /api/briefings/{id}/audio, which re-checks the requesting user.
+CREATE TABLE IF NOT EXISTS BRIEFINGS (
+    BRIEFING_ID         VARCHAR(48)  NOT NULL PRIMARY KEY,
+    SHIFT_ID            VARCHAR(48)  NOT NULL,
+    USER_ID             VARCHAR(64)  NOT NULL,
+    MODE                VARCHAR(16)  NOT NULL,      -- FULL | PRIORITY
+    STATUS              VARCHAR(32)  NOT NULL,      -- QUEUED | SCRIPTING | SYNTHESIZING | READY | SCRIPT_ONLY | FAILED
+    STATUS_DETAIL       VARCHAR(2000),
+    SOURCE_FINGERPRINT  VARCHAR(64),
+    PATIENT_COUNT       NUMBER(10,0),
+    OPEN_ALERT_COUNT    NUMBER(10,0),
+    EXCLUDED_COUNT      NUMBER(10,0),
+    SCRIPT_JSON         VARCHAR,
+    TRANSCRIPT          VARCHAR,
+    GEMINI_MODEL        VARCHAR(100),
+    TTS_PROVIDER        VARCHAR(32),
+    TTS_MODEL           VARCHAR(100),
+    VOICE_ID            VARCHAR(100),
+    AUDIO_SHA256        VARCHAR(64),
+    AUDIO_PATH          VARCHAR(500),
+    AUDIO_BYTES         NUMBER(12,0),
+    AUDIO_CONTENT_TYPE  VARCHAR(64),
+    DURATION_SECONDS    NUMBER(10,2),
+    TTS_CHARACTERS      NUMBER(10,0),
+    SCRIPT_ATTEMPTS     NUMBER(4,0),
+    CREATED_AT          TIMESTAMP_NTZ,
+    COMPLETED_AT        TIMESTAMP_NTZ
+);
+CREATE TABLE IF NOT EXISTS BRIEFING_SOURCE_REFERENCES (
+    BRIEFING_ID   VARCHAR(48) NOT NULL,
+    SEGMENT_NO    NUMBER(4,0) NOT NULL,
+    PATIENT_ID    VARCHAR(32),
+    SOURCE_TYPE   VARCHAR(32) NOT NULL,      -- RECORD | FLAG | ALERT | APPOINTMENT | MONITORING_ALERT
+    SOURCE_ID     VARCHAR(80) NOT NULL
+);
+
+-- Patient record imports (preview → confirm). Original source identifiers stay on the clinical records.
+CREATE TABLE IF NOT EXISTS IMPORT_BATCHES (
+    IMPORT_ID          VARCHAR(48)  NOT NULL PRIMARY KEY,
+    FILE_NAME          VARCHAR(300),
+    FILE_SHA256        VARCHAR(64),
+    SOURCE_FORMAT      VARCHAR(32),
+    ORG_ID             VARCHAR(32),
+    PATIENT_ID         VARCHAR(32),
+    MATCH_DECISION     VARCHAR(32),      -- CREATE_NEW | ATTACH_EXISTING
+    RECORDS_INSERTED   NUMBER(10,0),
+    RECORDS_DUPLICATE  NUMBER(10,0),
+    STATUS             VARCHAR(32),
+    DETAIL             VARCHAR(2000),
+    IMPORTED_BY        VARCHAR(200),
+    IMPORTED_AT        TIMESTAMP_NTZ
+);
+
+-- Simulated wearable monitoring. Every row carries ENCOUNTER_ID: observations belong to exactly one hospital stay.
+CREATE TABLE IF NOT EXISTS MONITORING_DEVICES (
+    DEVICE_ID      VARCHAR(48)  NOT NULL PRIMARY KEY,
+    MODEL          VARCHAR(200),
+    FIRMWARE       VARCHAR(64),
+    IS_SIMULATED   BOOLEAN DEFAULT TRUE,
+    CREATED_AT     TIMESTAMP_NTZ
+);
+CREATE TABLE IF NOT EXISTS MONITORING_SESSIONS (
+    SESSION_ID       VARCHAR(48)  NOT NULL PRIMARY KEY,
+    PATIENT_ID       VARCHAR(32)  NOT NULL,
+    ENCOUNTER_ID     VARCHAR(64)  NOT NULL,
+    DEVICE_ID        VARCHAR(48)  NOT NULL,
+    STARTED_AT       TIMESTAMP_NTZ NOT NULL,
+    ENDED_AT         TIMESTAMP_NTZ,
+    STATUS           VARCHAR(16)  NOT NULL,      -- ACTIVE | STOPPED
+    CONNECTED        BOOLEAN DEFAULT TRUE,
+    LAST_SYNC_AT     TIMESTAMP_NTZ,
+    BATTERY_PCT      NUMBER(5,1),
+    SIM_CLOCK_AT     TIMESTAMP_NTZ,             -- simulated "now" for this session (separate from real time)
+    SIM_SEED         NUMBER(19,0),
+    SCENARIO         VARCHAR(64),
+    CREATED_AT       TIMESTAMP_NTZ
+);
+CREATE TABLE IF NOT EXISTS SENSOR_OBSERVATIONS (
+    OBSERVATION_ID  VARCHAR(48)  NOT NULL PRIMARY KEY,
+    SESSION_ID      VARCHAR(48)  NOT NULL,
+    PATIENT_ID      VARCHAR(32)  NOT NULL,
+    ENCOUNTER_ID    VARCHAR(64)  NOT NULL,
+    DEVICE_ID       VARCHAR(48)  NOT NULL,
+    OBSERVED_AT     TIMESTAMP_NTZ NOT NULL,
+    OBS_TYPE        VARCHAR(32)  NOT NULL,      -- HEART_RATE | SPO2 | SKIN_TEMP | BATTERY | WALKING_MINUTES
+    VALUE_NUM       NUMBER(10,2),
+    UNIT            VARCHAR(16),
+    SOURCE          VARCHAR(32),                -- SIMULATED_DEVICE
+    QUALITY         VARCHAR(16)                 -- GOOD | FAIR | POOR
+);
+CREATE TABLE IF NOT EXISTS ACTIVITY_EVENTS (
+    EVENT_ID          VARCHAR(48)  NOT NULL PRIMARY KEY,
+    SESSION_ID        VARCHAR(48),
+    PATIENT_ID        VARCHAR(32)  NOT NULL,
+    ENCOUNTER_ID      VARCHAR(64)  NOT NULL,
+    EVENT_TYPE        VARCHAR(48)  NOT NULL,
+    STARTED_AT        TIMESTAMP_NTZ NOT NULL,
+    ENDED_AT          TIMESTAMP_NTZ,
+    DURATION_SECONDS  NUMBER(10,0),
+    SOURCE            VARCHAR(16)  NOT NULL,    -- SENSOR | NURSE | SYSTEM
+    DETAIL            VARCHAR(500),
+    RECORDED_BY       VARCHAR(200)
+);
+CREATE TABLE IF NOT EXISTS MONITORING_CARE_PLANS (
+    PLAN_ID                         VARCHAR(48) NOT NULL PRIMARY KEY,
+    PATIENT_ID                      VARCHAR(32) NOT NULL,
+    ENCOUNTER_ID                    VARCHAR(64) NOT NULL,
+    MOBILITY_REVIEW_MINUTES         NUMBER(6,0),   -- NULL = no mobility plan: mobility alerts never fire
+    REPOSITIONING_INTERVAL_MINUTES  NUMBER(6,0),   -- NULL = no repositioning plan
+    STALE_DATA_MINUTES              NUMBER(6,0),
+    PLAN_NOTE                       VARCHAR(500),
+    CREATED_BY                      VARCHAR(200),
+    CREATED_AT                      TIMESTAMP_NTZ
+);
+CREATE TABLE IF NOT EXISTS NURSING_INTERVENTIONS (
+    INTERVENTION_ID    VARCHAR(48) NOT NULL PRIMARY KEY,
+    PATIENT_ID         VARCHAR(32) NOT NULL,
+    ENCOUNTER_ID       VARCHAR(64) NOT NULL,
+    INTERVENTION_TYPE  VARCHAR(32) NOT NULL,     -- REPOSITIONING
+    PERFORMED_AT       TIMESTAMP_NTZ NOT NULL,
+    DOCUMENTED_BY_ID   VARCHAR(64) NOT NULL,
+    DOCUMENTED_BY      VARCHAR(200) NOT NULL,
+    NOTE               VARCHAR(1000),
+    CREATED_AT         TIMESTAMP_NTZ
+);
+CREATE TABLE IF NOT EXISTS MONITORING_ALERTS (
+    ALERT_ID        VARCHAR(48) NOT NULL PRIMARY KEY,
+    SESSION_ID      VARCHAR(48),
+    PATIENT_ID      VARCHAR(32) NOT NULL,
+    ENCOUNTER_ID    VARCHAR(64) NOT NULL,
+    ALERT_TYPE      VARCHAR(32) NOT NULL,       -- MOBILITY_REVIEW | REPOSITIONING_REVIEW | DEVICE_CONNECTIVITY
+    STATUS          VARCHAR(16) NOT NULL,       -- OPEN | ACKNOWLEDGED | RESOLVED
+    MESSAGE         VARCHAR(1000),
+    BASIS           VARCHAR(1000),
+    TRIGGERED_AT    TIMESTAMP_NTZ NOT NULL,     -- simulated time
+    UPDATED_AT      TIMESTAMP_NTZ,
+    UPDATED_BY      VARCHAR(200),
+    RESOLUTION      VARCHAR(500)
+);

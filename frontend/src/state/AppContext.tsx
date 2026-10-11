@@ -99,7 +99,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   return (
     <Ctx.Provider value={value}>
       {children}
-      <div className="pointer-events-none fixed bottom-4 right-4 z-[60] flex w-[380px] max-w-[calc(100vw-2rem)] flex-col gap-2">
+      <div className="pointer-events-none fixed bottom-4 right-4 z-[var(--layer-toast)] flex w-[380px] max-w-[calc(100vw-2rem)] flex-col gap-2">
         {toasts.map((t) => (
           <div key={t.id} className={cx('pointer-events-auto animate-fade-up flex items-start gap-3 rounded-xl border bg-white px-4 py-3 shadow-lg',
             t.tone === 'error' ? 'border-critical-100' : 'border-line')}>

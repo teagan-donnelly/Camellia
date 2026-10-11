@@ -56,7 +56,7 @@ public final class Dtos {
                                   String involvedSpecialties, List<String> sourceOrganizations, int evidenceCount,
                                   String acknowledgedBy, String contactStatus, boolean planningDiscussionOccurred,
                                   boolean infoNeeded, LocalDateTime updatedAt, String updatedBy,
-                                  LocalDateTime evidenceUpdatedAt, int noteCount) {}
+                                  LocalDateTime evidenceUpdatedAt, int noteCount, LocalDateTime acknowledgedAt) {}
 
     public record AlertDetailDto(AlertSummaryDto alert, PatientSummaryDto patient, FlagDto flag, AppointmentDto encounter,
                                  List<EvidenceDto> evidence, List<CoordinationNote> notes, List<Activity> activity,

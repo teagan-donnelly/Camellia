@@ -9,7 +9,7 @@ import type { AlertDetail, AlertStatus } from '../api/types'
 import { AssistantPanel, FlagExplanationCard } from '../components/ai'
 import { CitationChip, EvidenceList } from '../components/records'
 import { AlertStatusBadge, PriorityBadge } from '../components/status'
-import { Badge, Button, Card, CardHeader, ErrorBox, KeyValue, Loading, Tabs } from '../components/ui'
+import { Badge, Button, Card, CardHeader, ErrorBox, KeyValue, Loading, Tabs, SynMrn } from '../components/ui'
 import { ALERT_STATUS_LABEL, CONTACT_LABEL, NOTE_TYPE_LABEL, cx, daysLabel, fmtDate, fmtDateTime, relative } from '../lib/format'
 import { useApp } from '../state/AppContext'
 
@@ -42,7 +42,7 @@ export default function AlertWorkspace() {
             <h1 className="mt-2 text-[22px] font-semibold tracking-tight text-navy-950">{a.title}</h1>
             <div className="mt-1 text-[14px] text-navy-600">
               <Link to={`/patients/${p.patientId}`} className="font-semibold text-navy-900 hover:text-coral-700">{p.name}</Link>
-              <span className="text-navy-400"> · {p.displayId} · {p.age}y</span>
+              <span className="text-navy-400"> · <SynMrn id={p.displayId} /> · {p.age}y</span>
               {p.obstetric && <span className="ml-2 inline-flex items-center gap-1 text-coral-700"><Baby className="h-3.5 w-3.5" />{p.gestationalNote}{p.estimatedDueDate ? `, EDD ${fmtDate(p.estimatedDueDate)} (est.)` : ''}</span>}
             </div>
           </div>
@@ -161,13 +161,23 @@ function CoordinationPanel({ data }: { data: AlertDetail }) {
   const [body, setBody] = useState('')
   const [pendingStatus, setPendingStatus] = useState<AlertStatus | null>(null)
   const [statusText, setStatusText] = useState('')
+  const [pendingAction, setPendingAction] = useState<string | null>(null)
+  const [lastError, setLastError] = useState<unknown>(null)
   const canEdit = can('UPDATE_COORDINATION')
   const canNote = can('ADD_COORDINATION_NOTES')
 
-  const save = (u: AlertUpdate, msg: string) => update.mutate(u, {
-    onSuccess: () => { toast({ tone: 'success', title: msg, body: 'Saved to the database — persists across refresh and restart.' }); setPendingStatus(null); setStatusText('') },
-    onError: (e) => toast({ tone: 'error', title: 'Update failed', body: (e as Error).message }),
-  })
+  // Every control goes through the same PATCH; the clicked control shows its own spinner and all controls are locked
+  // until the database write finishes, so a double click cannot send conflicting updates.
+  const save = (u: AlertUpdate, msg: string, key = msg) => {
+    setPendingAction(key); setLastError(null)
+    update.mutate(u, {
+      onSuccess: () => { toast({ tone: 'success', title: msg, body: 'Saved to the database — persists across refresh and restart.' }); setPendingStatus(null); setStatusText('') },
+      onError: (e) => { setLastError(e); toast({ tone: 'error', title: 'Update failed', body: (e as Error).message }) },
+      onSettled: () => setPendingAction(null),
+    })
+  }
+  const busy = update.isPending
+  const loadingFor = (key: string) => busy && pendingAction === key
 
   const needsText = pendingStatus === 'DISMISSED' || pendingStatus === 'PLAN_DOCUMENTED'
 
@@ -181,15 +191,21 @@ function CoordinationPanel({ data }: { data: AlertDetail }) {
           </div>
         )}
         {!a.acknowledgedBy && (
-          <Button variant="primary" className="mb-3 w-full" disabled={!canEdit} loading={update.isPending} onClick={() => save({ acknowledge: true }, 'Alert acknowledged')}>
+          <Button variant="primary" className="mb-3 w-full" disabled={!canEdit || busy} loading={loadingFor('ack')} onClick={() => save({ acknowledge: true }, 'Alert acknowledged', 'ack')}>
             <BadgeCheck className="h-4 w-4" /> Acknowledge alert
           </Button>
+        )}
+        {a.acknowledgedBy && (
+          <div className="mb-3 flex items-center gap-1.5 rounded-lg bg-sage-50 px-3 py-2 text-[12.5px] text-sage-700">
+            <BadgeCheck className="h-3.5 w-3.5" /> Acknowledged by {a.acknowledgedBy}{a.acknowledgedAt ? ` · ${fmtDateTime(a.acknowledgedAt)}` : ''}
+          </div>
         )}
         <div className="text-[12px] font-semibold uppercase tracking-wide text-navy-400">Move to</div>
         <div className="mt-1.5 flex flex-wrap gap-1.5">
           {data.allowedTransitions.map((s) => (
-            <Button key={s} size="sm" variant={s === 'DISMISSED' ? 'danger' : pendingStatus === s ? 'navy' : 'secondary'} disabled={!canEdit}
-              onClick={() => (s === 'DISMISSED' || s === 'PLAN_DOCUMENTED') ? setPendingStatus(s) : save({ status: s }, `Status: ${ALERT_STATUS_LABEL[s]}`)}>
+            <Button key={s} size="sm" variant={s === 'DISMISSED' ? 'danger' : pendingStatus === s ? 'navy' : 'secondary'} disabled={!canEdit || busy}
+              loading={loadingFor('status:' + s)}
+              onClick={() => (s === 'DISMISSED' || s === 'PLAN_DOCUMENTED') ? setPendingStatus(s) : save({ status: s }, `Status: ${ALERT_STATUS_LABEL[s]}`, 'status:' + s)}>
               {ALERT_STATUS_LABEL[s]}
             </Button>
           ))}
@@ -201,7 +217,7 @@ function CoordinationPanel({ data }: { data: AlertDetail }) {
               placeholder={pendingStatus === 'DISMISSED' ? 'e.g. Duplicate of existing anesthesia consult; already reviewed in clinic.' : 'e.g. Anesthesia consult completed; plan documented in the L&D record by the obstetric anesthesia team.'}
               className="w-full rounded-lg border border-line bg-white px-3 py-2 text-[13px] focus:border-coral-300 focus:outline-none focus:ring-2 focus:ring-coral-100" />
             <div className="flex gap-2">
-              <Button size="sm" variant={pendingStatus === 'DISMISSED' ? 'danger' : 'navy'} disabled={!statusText.trim()} loading={update.isPending}
+              <Button size="sm" variant={pendingStatus === 'DISMISSED' ? 'danger' : 'navy'} disabled={!statusText.trim() || busy} loading={busy}
                 onClick={() => save(pendingStatus === 'DISMISSED' ? { status: 'DISMISSED', reason: statusText } : { status: 'PLAN_DOCUMENTED', note: statusText },
                   `Status: ${ALERT_STATUS_LABEL[pendingStatus!]}`)}>Confirm</Button>
               <Button size="sm" variant="ghost" onClick={() => { setPendingStatus(null); setStatusText('') }}>Cancel</Button>
@@ -213,18 +229,20 @@ function CoordinationPanel({ data }: { data: AlertDetail }) {
             <div className="mb-1.5 flex items-center gap-1.5 text-[12.5px] font-medium text-navy-700"><Phone className="h-3.5 w-3.5 text-navy-400" />Contact with referring provider</div>
             <div className="flex rounded-lg bg-navy-50 p-0.5 text-[12.5px]">
               {(['NOT_STARTED', 'PLANNED', 'COMPLETED'] as const).map((c) => (
-                <button key={c} disabled={!canEdit || update.isPending} onClick={() => save({ contactStatus: c }, `Contact: ${CONTACT_LABEL[c]}`)}
+                <button key={c} disabled={!canEdit || busy} aria-pressed={a.contactStatus === c} onClick={() => save({ contactStatus: c }, `Contact: ${CONTACT_LABEL[c]}`)}
                   className={cx('flex-1 rounded-md px-2 py-1.5 font-medium disabled:cursor-not-allowed', a.contactStatus === c ? 'bg-white text-navy-900 shadow-sm' : 'text-navy-500 hover:text-navy-800')}>
                   {CONTACT_LABEL[c]}
                 </button>
               ))}
             </div>
           </div>
-          <Toggle label="Planning discussion occurred" checked={a.planningDiscussionOccurred} disabled={!canEdit || update.isPending}
+          <Toggle label="Planning discussion occurred" checked={a.planningDiscussionOccurred} disabled={!canEdit || busy}
             onChange={(v) => save({ planningDiscussionOccurred: v }, v ? 'Planning discussion recorded' : 'Planning discussion cleared')} />
-          <Toggle label="Further information needed" checked={a.infoNeeded} disabled={!canEdit || update.isPending}
+          <Toggle label="Further information needed" checked={a.infoNeeded} disabled={!canEdit || busy}
             onChange={(v) => save({ infoNeeded: v }, v ? 'Marked: information needed' : 'Cleared: information needed')} />
         </div>
+        {busy && <div className="mt-3 text-[12px] text-navy-500" role="status">Saving to the database…</div>}
+        {lastError != null && !busy && <div className="mt-3"><ErrorBox error={lastError} title="That change was not saved" /></div>}
       </Card>
 
       <Card>

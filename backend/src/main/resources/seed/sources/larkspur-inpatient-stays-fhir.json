@@ -1,0 +1,303 @@
+{
+ "resourceType": "Bundle",
+ "type": "collection",
+ "meta": {
+  "source": "LRMC",
+  "tag": [
+   {
+    "display": "SYNTHETIC DEMO DATA — NOT REAL PATIENTS"
+   }
+  ]
+ },
+ "entry": [
+  {
+   "resource": {
+    "resourceType": "Encounter",
+    "id": "E-94010",
+    "subject": {
+     "reference": "Patient/LR-210556"
+    },
+    "class": {
+     "code": "IMP"
+    },
+    "type": [
+     {
+      "text": "Inpatient admission"
+     }
+    ],
+    "serviceType": {
+     "text": "General Surgery"
+    },
+    "period": {
+     "start": "@D-270T07:30",
+     "end": "@D-267T11:00"
+    },
+    "participant": [
+     {
+      "individual": {
+       "display": "Dr. Priscilla Haldane, MD"
+      }
+     }
+    ],
+    "reasonCode": [
+     {
+      "text": "Elective laparoscopic cholecystectomy"
+     }
+    ],
+    "department": "Surgical Unit 3B"
+   }
+  },
+  {
+   "resource": {
+    "resourceType": "DocumentReference",
+    "id": "D-94011",
+    "subject": {
+     "reference": "Patient/LR-210556"
+    },
+    "type": {
+     "text": "Discharge summary"
+    },
+    "date": "@D-267T10:30",
+    "author": [
+     {
+      "display": "Dr. Priscilla Haldane, MD"
+     }
+    ],
+    "context": {
+     "encounter": [
+      {
+       "reference": "Encounter/E-94010"
+      }
+     ],
+     "practiceSetting": {
+      "text": "General Surgery"
+     }
+    },
+    "content": [
+     {
+      "attachment": {
+       "contentType": "text/plain",
+       "text": "Uncomplicated laparoscopic cholecystectomy for symptomatic gallstones. Ambulating independently by post-operative day 1. Tolerating diet. Discharged home with routine wound care instructions. No wearable monitoring was used during this stay."
+      }
+     }
+    ]
+   }
+  },
+  {
+   "resource": {
+    "resourceType": "Encounter",
+    "id": "E-94310",
+    "subject": {
+     "reference": "Patient/LR-210556"
+    },
+    "class": {
+     "code": "IMP"
+    },
+    "type": [
+     {
+      "text": "Inpatient admission"
+     }
+    ],
+    "serviceType": {
+     "text": "Hospital Medicine"
+    },
+    "period": {
+     "start": "@D-2T14:10"
+    },
+    "participant": [
+     {
+      "individual": {
+       "display": "Dr. Owen Castellane, MD"
+      }
+     }
+    ],
+    "reasonCode": [
+     {
+      "text": "Community-acquired pneumonia"
+     }
+    ],
+    "department": "Medical-Surgical Unit 4 West"
+   }
+  },
+  {
+   "resource": {
+    "resourceType": "DocumentReference",
+    "id": "D-94311",
+    "subject": {
+     "reference": "Patient/LR-210556"
+    },
+    "type": {
+     "text": "Admission history and physical"
+    },
+    "date": "@D-2T16:40",
+    "author": [
+     {
+      "display": "Dr. Owen Castellane, MD"
+     }
+    ],
+    "context": {
+     "encounter": [
+      {
+       "reference": "Encounter/E-94310"
+      }
+     ],
+     "practiceSetting": {
+      "text": "Hospital Medicine"
+     }
+    },
+    "content": [
+     {
+      "attachment": {
+       "contentType": "text/plain",
+       "text": "Admitted with community-acquired pneumonia, right lower lobe, confirmed on chest radiograph. Started on intravenous antibiotics. Oxygen saturation 93% on room air at admission, improving. Lives independently; uses a cane outdoors. Plan: antibiotics, incentive spirometry, early mobilization."
+      }
+     }
+    ]
+   }
+  },
+  {
+   "resource": {
+    "resourceType": "DocumentReference",
+    "id": "D-94312",
+    "subject": {
+     "reference": "Patient/LR-210556"
+    },
+    "type": {
+     "text": "Nursing care plan — mobility"
+    },
+    "date": "@D-2T19:15",
+    "author": [
+     {
+      "display": "Jordan Lee, RN"
+     }
+    ],
+    "context": {
+     "encounter": [
+      {
+       "reference": "Encounter/E-94310"
+      }
+     ],
+     "practiceSetting": {
+      "text": "Nursing"
+     }
+    },
+    "content": [
+     {
+      "attachment": {
+       "contentType": "text/plain",
+       "text": "Mobility plan: ambulate in the hallway with assistance at least every 4 hours while awake. Fall precautions in place. A wearable activity band (pilot, simulated) was applied to the left wrist to support activity review; band readings are device estimates and do not replace nursing assessment."
+      }
+     }
+    ]
+   }
+  },
+  {
+   "resource": {
+    "resourceType": "Encounter",
+    "id": "E-94355",
+    "subject": {
+     "reference": "Patient/LR-115870"
+    },
+    "class": {
+     "code": "IMP"
+    },
+    "type": [
+     {
+      "text": "Inpatient admission"
+     }
+    ],
+    "serviceType": {
+     "text": "Cardiology"
+    },
+    "period": {
+     "start": "@D-1T09:40"
+    },
+    "participant": [
+     {
+      "individual": {
+       "display": "Dr. Rafael Chen, MD"
+      }
+     }
+    ],
+    "reasonCode": [
+     {
+      "text": "Congestive heart failure exacerbation"
+     }
+    ],
+    "department": "Telemetry Unit 5 East"
+   }
+  },
+  {
+   "resource": {
+    "resourceType": "DocumentReference",
+    "id": "D-94356",
+    "subject": {
+     "reference": "Patient/LR-115870"
+    },
+    "type": {
+     "text": "Admission history and physical"
+    },
+    "date": "@D-1T11:20",
+    "author": [
+     {
+      "display": "Dr. Rafael Chen, MD"
+     }
+    ],
+    "context": {
+     "encounter": [
+      {
+       "reference": "Encounter/E-94355"
+      }
+     ],
+     "practiceSetting": {
+      "text": "Cardiology"
+     }
+    },
+    "content": [
+     {
+      "attachment": {
+       "contentType": "text/plain",
+       "text": "Admitted for congestive heart failure exacerbation with lower-extremity edema and weight gain of 3 kg over one week. Started on intravenous diuretic. Daily weights and strict intake and output ordered."
+      }
+     }
+    ]
+   }
+  },
+  {
+   "resource": {
+    "resourceType": "DocumentReference",
+    "id": "D-94357",
+    "subject": {
+     "reference": "Patient/LR-115870"
+    },
+    "type": {
+     "text": "Nursing care plan — mobility"
+    },
+    "date": "@D-1T13:05",
+    "author": [
+     {
+      "display": "Jordan Lee, RN"
+     }
+    ],
+    "context": {
+     "encounter": [
+      {
+       "reference": "Encounter/E-94355"
+      }
+     ],
+     "practiceSetting": {
+      "text": "Nursing"
+     }
+    },
+    "content": [
+     {
+      "attachment": {
+       "contentType": "text/plain",
+       "text": "Mobility plan: ambulate with assistance at least every 6 hours while awake as tolerated. A wearable activity band (pilot, simulated) was applied; nursing staff were asked to report any device connectivity problems."
+      }
+     }
+    ]
+   }
+  }
+ ]
+}

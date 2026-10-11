@@ -3,8 +3,8 @@
 --
 -- Builds on 00_account_setup.sql. Additive only: no DROP, REPLACE or TRUNCATE, and no data changes.
 -- Run it as the admin user you created when signing up (ACCOUNTADMIN, SYSADMIN and SECURITYADMIN),
--- AFTER a backend from the feature/serverless-architecture branch (or later) has started once against Snowflake,
--- so all 22 CLINICAL tables exist, including AI_CONVERSATION_TURNS.
+-- AFTER a backend from the feature/camellia-v3 branch (or later) has started once against Snowflake, so all CLINICAL
+-- tables exist (37 schema statements: the original tables plus AI_CONVERSATION_TURNS and the V3 tables).
 --
 -- Choose before running:
 --   * <PASTE_RUNTIME_PUBLIC_KEY_BODY> in step 4 (SERVERLESS_ARCHITECTURE.md §8.6 generates the key pair)
@@ -13,8 +13,9 @@
 -- Result:
 --   CAMELLIA_APP          existing role, now the OWNER/DEPLOY role: creates tables, seeds and resets demo data.
 --                         Used by local development and the camellia-jobs function only. Never internet-facing.
---   CAMELLIA_RUNTIME      new: what the internet-facing API needs. Reads every app table, writes only the
---                         workflow tables below. No DDL, and no inserts/deletes on source medical records.
+--   CAMELLIA_RUNTIME      new: what the internet-facing API needs. Reads every app table, writes only what the
+--                         features below need. No DDL; source medical records can be added (imports) but never
+--                         updated or deleted.
 --   CAMELLIA_RUNTIME_SVC  new key-pair service user that holds ONLY CAMELLIA_RUNTIME.
 --   CAMELLIA_READER       new read-only role for teammates exploring the data in Snowsight.
 --   CAMELLIA_API_WH       new XSMALL warehouse for API traffic, with short statement timeouts. New warehouses in
@@ -79,9 +80,36 @@ GRANT INSERT         ON TABLE CAMELLIA_DEMO.CLINICAL.ANALYSIS_RUNS       TO ROLE
 GRANT INSERT, DELETE ON TABLE CAMELLIA_DEMO.CLINICAL.AI_OBSERVATIONS     TO ROLE CAMELLIA_RUNTIME; -- Gemini extraction replaces a patient's set
 GRANT INSERT         ON TABLE CAMELLIA_DEMO.CLINICAL.INTEGRATION_CHECKS  TO ROLE CAMELLIA_RUNTIME; -- database read/write check
 GRANT INSERT, DELETE ON TABLE CAMELLIA_DEMO.CLINICAL.AI_CONVERSATION_TURNS TO ROLE CAMELLIA_RUNTIME; -- chat history; expired turns deleted
--- Deliberately NOT granted: any write on HEALTHCARE_ORGANIZATIONS, PATIENTS, PATIENT_SOURCE_IDENTIFIERS, PRACTICES,
--- PATIENT_PRACTICE_ASSOCIATIONS, ENCOUNTERS, CLINICAL_RECORDS, LAB_RESULTS, MEDICAL_CONDITIONS, MEDICATIONS,
--- APPOINTMENTS or DEMO_METADATA, and CREATE TABLE. Those belong to seeding/ingestion (CAMELLIA_APP).
+
+-- 3c) Camellia V3 features.
+--     Camellia Briefing: metadata and source references (audio bytes are stored outside the database).
+GRANT INSERT, UPDATE ON TABLE CAMELLIA_DEMO.CLINICAL.BRIEFINGS                  TO ROLE CAMELLIA_RUNTIME;
+GRANT INSERT, DELETE ON TABLE CAMELLIA_DEMO.CLINICAL.BRIEFING_SOURCE_REFERENCES TO ROLE CAMELLIA_RUNTIME;
+--     Patient record import (Clinical Data Coordinator role): imports only ADD rows; they never update or delete
+--     existing source records. Drop these grants if imports should run only through the owner role.
+GRANT INSERT ON TABLE CAMELLIA_DEMO.CLINICAL.IMPORT_BATCHES                TO ROLE CAMELLIA_RUNTIME;
+GRANT INSERT ON TABLE CAMELLIA_DEMO.CLINICAL.HEALTHCARE_ORGANIZATIONS      TO ROLE CAMELLIA_RUNTIME;
+GRANT INSERT ON TABLE CAMELLIA_DEMO.CLINICAL.PATIENTS                      TO ROLE CAMELLIA_RUNTIME;
+GRANT INSERT ON TABLE CAMELLIA_DEMO.CLINICAL.PATIENT_SOURCE_IDENTIFIERS    TO ROLE CAMELLIA_RUNTIME;
+GRANT INSERT ON TABLE CAMELLIA_DEMO.CLINICAL.PATIENT_PRACTICE_ASSOCIATIONS TO ROLE CAMELLIA_RUNTIME;
+GRANT INSERT ON TABLE CAMELLIA_DEMO.CLINICAL.CLINICAL_RECORDS              TO ROLE CAMELLIA_RUNTIME;
+GRANT INSERT ON TABLE CAMELLIA_DEMO.CLINICAL.ENCOUNTERS                    TO ROLE CAMELLIA_RUNTIME;
+GRANT INSERT ON TABLE CAMELLIA_DEMO.CLINICAL.LAB_RESULTS                   TO ROLE CAMELLIA_RUNTIME;
+GRANT INSERT ON TABLE CAMELLIA_DEMO.CLINICAL.MEDICAL_CONDITIONS            TO ROLE CAMELLIA_RUNTIME;
+GRANT INSERT ON TABLE CAMELLIA_DEMO.CLINICAL.MEDICATIONS                   TO ROLE CAMELLIA_RUNTIME;
+GRANT INSERT ON TABLE CAMELLIA_DEMO.CLINICAL.APPOINTMENTS                  TO ROLE CAMELLIA_RUNTIME;
+--     Simulated wearable monitoring, nursing documentation and the simulator (DELETE is used only by the simulator's
+--     per-stay "reset scenario"; revoke it, and set CAMELLIA_SIMULATOR_ENABLED=false, outside demos).
+GRANT INSERT                 ON TABLE CAMELLIA_DEMO.CLINICAL.MONITORING_DEVICES    TO ROLE CAMELLIA_RUNTIME;
+GRANT INSERT, UPDATE, DELETE ON TABLE CAMELLIA_DEMO.CLINICAL.MONITORING_SESSIONS   TO ROLE CAMELLIA_RUNTIME;
+GRANT INSERT, DELETE         ON TABLE CAMELLIA_DEMO.CLINICAL.SENSOR_OBSERVATIONS   TO ROLE CAMELLIA_RUNTIME;
+GRANT INSERT, DELETE         ON TABLE CAMELLIA_DEMO.CLINICAL.ACTIVITY_EVENTS       TO ROLE CAMELLIA_RUNTIME;
+GRANT INSERT, DELETE         ON TABLE CAMELLIA_DEMO.CLINICAL.MONITORING_CARE_PLANS TO ROLE CAMELLIA_RUNTIME;
+GRANT INSERT, DELETE         ON TABLE CAMELLIA_DEMO.CLINICAL.NURSING_INTERVENTIONS TO ROLE CAMELLIA_RUNTIME;
+GRANT INSERT, UPDATE, DELETE ON TABLE CAMELLIA_DEMO.CLINICAL.MONITORING_ALERTS     TO ROLE CAMELLIA_RUNTIME;
+-- Deliberately NOT granted: UPDATE or DELETE on any source-record table, any write on PRACTICES, CLINICIANS,
+-- CLINICIAN_PRACTICES, PROVIDER_SHIFTS, SHIFT_PATIENT_ASSIGNMENTS or DEMO_METADATA, and CREATE TABLE. Those belong to
+-- seeding (CAMELLIA_APP).
 
 -- 3c) Reader: SELECT only, on the jobs warehouse. Grant it to teammates' own Snowflake users, e.g.
 --     GRANT ROLE CAMELLIA_READER TO USER <TEAMMATE_USER>;

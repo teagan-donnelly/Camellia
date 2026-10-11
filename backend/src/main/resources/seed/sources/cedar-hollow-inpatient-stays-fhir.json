@@ -1,0 +1,194 @@
+{
+ "resourceType": "Bundle",
+ "type": "collection",
+ "meta": {
+  "source": "CHCH",
+  "tag": [
+   {
+    "display": "SYNTHETIC DEMO DATA — NOT REAL PATIENTS"
+   }
+  ]
+ },
+ "entry": [
+  {
+   "resource": {
+    "resourceType": "Encounter",
+    "id": "E-71230",
+    "subject": {
+     "reference": "Patient/CH-3871190"
+    },
+    "class": {
+     "code": "AMB"
+    },
+    "type": [
+     {
+      "text": "Post-operative follow-up"
+     }
+    ],
+    "serviceType": {
+     "text": "General Surgery"
+    },
+    "period": {
+     "start": "@D-210T10:00"
+    },
+    "participant": [
+     {
+      "individual": {
+       "display": "Dr. Imogen Ashby, MD"
+      }
+     }
+    ],
+    "reasonCode": [
+     {
+      "text": "Post-cholecystectomy wound check"
+     }
+    ],
+    "department": "Surgical Clinic"
+   }
+  },
+  {
+   "resource": {
+    "resourceType": "DocumentReference",
+    "id": "D-71231",
+    "subject": {
+     "reference": "Patient/CH-3871190"
+    },
+    "type": {
+     "text": "Clinic note"
+    },
+    "date": "@D-210T10:30",
+    "author": [
+     {
+      "display": "Dr. Imogen Ashby, MD"
+     }
+    ],
+    "context": {
+     "encounter": [
+      {
+       "reference": "Encounter/E-71230"
+      }
+     ],
+     "practiceSetting": {
+      "text": "General Surgery"
+     }
+    },
+    "content": [
+     {
+      "attachment": {
+       "contentType": "text/plain",
+       "text": "Incisions well healed. Returned to usual activities. No further surgical follow-up needed."
+      }
+     }
+    ]
+   }
+  },
+  {
+   "resource": {
+    "resourceType": "Encounter",
+    "id": "E-77420",
+    "subject": {
+     "reference": "Patient/CH-4588120"
+    },
+    "class": {
+     "code": "IMP"
+    },
+    "type": [
+     {
+      "text": "Inpatient admission"
+     }
+    ],
+    "serviceType": {
+     "text": "Neurosurgery"
+    },
+    "period": {
+     "start": "@D-1T16:00"
+    },
+    "participant": [
+     {
+      "individual": {
+       "display": "Dr. Tomasz Varga, MD"
+      }
+     }
+    ],
+    "reasonCode": [
+     {
+      "text": "Post-operative care after lumbar discectomy"
+     }
+    ],
+    "department": "Surgical Unit 2 North"
+   }
+  },
+  {
+   "resource": {
+    "resourceType": "DocumentReference",
+    "id": "D-77421",
+    "subject": {
+     "reference": "Patient/CH-4588120"
+    },
+    "type": {
+     "text": "Operative note"
+    },
+    "date": "@D-1T14:30",
+    "author": [
+     {
+      "display": "Dr. Tomasz Varga, MD"
+     }
+    ],
+    "context": {
+     "encounter": [
+      {
+       "reference": "Encounter/E-77420"
+      }
+     ],
+     "practiceSetting": {
+      "text": "Neurosurgery"
+     }
+    },
+    "content": [
+     {
+      "attachment": {
+       "contentType": "text/plain",
+       "text": "L4-L5 microdiscectomy performed without complication. Estimated blood loss minimal. Transferred to the surgical unit."
+      }
+     }
+    ]
+   }
+  },
+  {
+   "resource": {
+    "resourceType": "DocumentReference",
+    "id": "D-77422",
+    "subject": {
+     "reference": "Patient/CH-4588120"
+    },
+    "type": {
+     "text": "Nursing care plan — positioning"
+    },
+    "date": "@D-1T17:10",
+    "author": [
+     {
+      "display": "Avery Quinlan, RN"
+     }
+    ],
+    "context": {
+     "encounter": [
+      {
+       "reference": "Encounter/E-77420"
+      }
+     ],
+     "practiceSetting": {
+      "text": "Nursing"
+     }
+    },
+    "content": [
+     {
+      "attachment": {
+       "contentType": "text/plain",
+       "text": "Bed rest for 24 hours per surgeon order; log-roll repositioning every 2 hours, documented by nursing. No ambulation plan until the surgeon clears it. A wearable activity band (pilot, simulated) was applied; wrist movement is not used as proof of repositioning."
+      }
+     }
+    ]
+   }
+  }
+ ]
+}

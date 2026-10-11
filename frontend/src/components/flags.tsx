@@ -4,7 +4,7 @@ import type { FlagHit } from '../api/types'
 import { fmtDate, relative } from '../lib/format'
 import { CitationChip } from './records'
 import { AlertStatusBadge, FlagStatusBadge, PriorityBadge } from './status'
-import { Badge } from './ui'
+import { Badge, SynMrn } from './ui'
 
 /** One clinical alert (flag) search result. Source-record chips open the original record. */
 export function FlagHitCard({ hit }: { hit: FlagHit }) {
@@ -19,7 +19,7 @@ export function FlagHitCard({ hit }: { hit: FlagHit }) {
             {hit.alertId && <Badge tone="coral"><Bell className="h-3 w-3" />Anesthesia OB alert</Badge>}
           </div>
           <div className="mt-1 text-[13px] text-navy-500">
-            <Link to={`/patients/${hit.patientId}`} className="font-medium text-navy-800 hover:text-coral-700">{hit.patientName}</Link> · {hit.displayId}
+            <Link to={`/patients/${hit.patientId}`} className="font-medium text-navy-800 hover:text-coral-700">{hit.patientName}</Link> · <SynMrn id={hit.displayId} />
           </div>
           <p className="mt-2 line-clamp-2 text-[13.5px] leading-relaxed text-navy-700">{hit.detectionReason}</p>
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-navy-500">

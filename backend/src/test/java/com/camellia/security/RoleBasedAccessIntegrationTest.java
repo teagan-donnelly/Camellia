@@ -119,7 +119,8 @@ class RoleBasedAccessIntegrationTest {
         // The legacy header is no longer trusted.
         mvc.perform(get("/api/patients").header("X-Camellia-User", "maya.ellison")).andExpect(status().isUnauthorized());
         mvc.perform(json(post("/api/session"), "{\"userId\":\"nobody\"}")).andExpect(status().isBadRequest());
-        mvc.perform(get("/api/session/users")).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(6));
+        // Only the representative demo accounts are offered in the switcher (the full workforce has 101 identities).
+        mvc.perform(get("/api/session/users")).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(7));
     }
 
     // ------------------------------------------------------------------ A, B: practice-scoped physician
@@ -315,7 +316,8 @@ class RoleBasedAccessIntegrationTest {
         as("alex.kim", get("/api/search?q=platelet")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.patients[*].patientId", not(hasItem("CAM-P-1001"))));
 
-        as("alex.kim", get("/api/session")).andExpect(jsonPath("$.navigation", contains("DASHBOARD", "PATIENTS", "CLINICAL_SEARCH", "CLINICAL_ALERTS")));
+        as("alex.kim", get("/api/session")).andExpect(jsonPath("$.navigation",
+                contains("DASHBOARD", "BRIEFING", "PATIENTS", "CLINICAL_SEARCH", "CLINICAL_ALERTS")));
         as("taylor.morgan", get("/api/session")).andExpect(jsonPath("$.navigation", hasItem("ANESTHESIA_OB_ALERTS")))
                 .andExpect(jsonPath("$.permissions", not(hasItem("UPDATE_COORDINATION"))));
     }

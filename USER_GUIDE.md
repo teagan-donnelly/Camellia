@@ -29,6 +29,12 @@ including the role-based experience: what you see depends on the simulated demo 
 16. [Switching the simulated user and what each role sees](#16-switching-the-simulated-user-and-what-each-role-sees)
 17. [Exploring the broader search and pattern features](#17-exploring-the-broader-search-and-pattern-features)
 18. [Troubleshooting](#18-troubleshooting)
+19. [Camellia Briefing (audio shift handoff)](#19-camellia-briefing-audio-shift-handoff)
+20. [Wearable monitoring in a patient's hospital stay](#20-wearable-monitoring-in-a-patients-hospital-stay)
+21. [Nursing Monitoring queue and documenting repositioning](#21-nursing-monitoring-queue-and-documenting-repositioning)
+22. [Simulated Device Controls](#22-simulated-device-controls)
+23. [Importing patient records](#23-importing-patient-records)
+24. [What the database badge means](#24-what-the-database-badge-means)
 
 ---
 
@@ -512,3 +518,131 @@ These examples assume a network-wide user such as Maya Ellison or Jordan Lee.
 | Upcoming encounters show as in the past | The demo was seeded long ago. Use **Demo & integrations → Reset demo data**. |
 | *Not available to your role* | The current demo user can't access that page or item. Switch users in the top-right corner. |
 | *Could not start a demo session* | The backend isn't reachable or rejected the request. Check that it is running, then click **Try again**. |
+
+---
+
+## 19. Camellia Briefing (audio shift handoff)
+
+**Who:** any clinical demo user with simulated shifts — Maya Ellison (CRNA), Dr. Daniel Brooks, Taylor Morgan (L&D),
+Jordan Lee (RN), Dr. Alex Kim, Dr. Sarah Mitchell. **Where:** sidebar → **Camellia Briefing**, or the Briefing card at the
+top of the Dashboard.
+
+1. Pick a shift in **Your shifts** (date, department, number of patients, open items). If some assigned patients are
+   outside your access scope you will see "*N excluded*" — those patients never appear in your briefing or reach Gemini.
+2. Choose **Full Shift Briefing** (opening, patient count, upcoming encounters, documented findings, open alerts,
+   outstanding coordination tasks, closing) or **Priority Alerts Only** (high-priority items only).
+3. Click **Generate**. Watch the stages: *Gemini prepares the script* → *ElevenLabs generates the audio* → *Ready to play*.
+4. Play with the player: play/pause, rewind or skip 15 s, drag the progress bar, change speed (0.75×–2×). Each transcript
+   segment has **Play from m:ss** to jump to it.
+5. The **Transcript** lists every segment with its sources. Record sources open the original record; flags and alerts open
+   their pages; monitoring reviews open the patient's monitored stay.
+6. **Regenerate** creates a new briefing. Clicking Generate again when nothing in the source records changed reuses the
+   existing one (no new API calls).
+
+The card shows the briefing date, provider, shift, patient count, open items, audio duration (measured, never more than
+8 minutes) and generation time. If ElevenLabs is not configured the status is **Transcript only** — the Gemini script is
+shown and no substitute voice is used. A briefing is visible only to the user who generated it.
+
+> Prototype with synthetic patients. A real deployment would need privacy safeguards before anyone listened to
+> identifiable patient information in public or while driving.
+
+## 20. Wearable monitoring in a patient's hospital stay
+
+**Who:** clinical roles within their patient scope (Dr. Kim sees Practice A patients; nurses and anesthesia roles see all).
+**Try it with:** Jordan Lee, RN → **Patients** → **Dolores Fenwick**.
+
+- Above the tabs, a **Patient Monitoring** card appears *only* for hospital stays with a wristband session: hospital, stay
+  dates, walking today, last detected activity, latest heart rate and SpO₂, device status. If readings are not current the
+  card says so and greys the values.
+- The **Hospital stays** tab lists every encounter. Dolores has a January surgical stay and a March clinic visit without
+  monitoring, and the current pneumonia admission with monitoring — readings appear only under the current stay.
+- **View Monitoring Details →** opens `/patients/{id}/encounters/{encounterId}/monitoring`:
+  summary tiles, a **Range** filter (last 24 hours, last 7 days, entire stay — always clipped to this stay), charts for
+  walking minutes, heart rate, SpO₂ and skin temperature (hover for exact values, **Table** for a table view), nursing
+  reviews, the activity timeline (sensor estimates vs. nursing documentation vs. system events), device and care-plan
+  details, and the Gemini assistant limited to this stay.
+- **← Back to Patient Profile** returns to the same patient and the tab you came from. Refreshing the page works.
+
+Times are shown in hospital time (Eastern). The simulation has its own clock ("Simulated time now"). All values are
+simulated device estimates, not clinical measurements.
+
+Example questions for the assistant: *How much has this patient walked today? When was their last activity? Show their
+heart rate trend. Why was the mobility alert generated? Has repositioning been documented?*
+
+## 21. Nursing Monitoring queue and documenting repositioning
+
+**Who:** Jordan Lee, RN and Taylor Morgan, RN (L&D). **Where:** sidebar → **Nursing Monitoring** (badge = open reviews).
+
+The queue shows counts (monitored patients, open mobility reviews, repositioning reviews due, device concerns), the open
+reviews (each opens the patient's specific stay), and a table of monitored stays with device status, walking today, last
+sync and the next repositioning due time.
+
+Review types:
+- **Mobility review** — only when the care plan sets a mobility interval and no walking was detected for that long (with a
+  connected device). Walking resolves it.
+- **Repositioning review** — no *documented* repositioning within the care-plan interval. Wrist movement never counts.
+- **Device connectivity** — the band is disconnected or not syncing. This is about the device, not the patient.
+
+On a stay's monitoring page: **Acknowledge** or **Mark reviewed** a review; in **Document repositioning** add an optional
+note and click **Record repositioning** (saved with your name at the current simulated time; it resolves an open
+repositioning review).
+
+## 22. Simulated Device Controls
+
+**Who:** RN and L&D nurse demo users. **Where:** the amber card on a stay's monitoring page. Every button calls the Java
+backend, which generates and stores synthetic data.
+
+- **Start / Stop session**, **Walking (6 min)**, **Vital-sign reading**, **Movement**, **Possible position change**,
+  **Disconnect / Reconnect device**.
+- **Advance simulated time** (15 min – 8 h): generates readings for the skipped period (if connected) and re-evaluates the
+  review rules.
+- **Trigger inactivity review** / **Trigger repositioning review**: advance just past the care-plan interval.
+- **Reset scenario**: restores the seeded scenario for this stay only.
+
+Seeded scenarios: Dolores Fenwick (Larkspur, mobility plan every 4 h), Henry Castellan (Cedar Hollow, bed rest,
+repositioning every 2 h), Frances Albright (Larkspur, wristband disconnected).
+
+## 23. Importing patient records
+
+**Who:** Riley Okafor (Clinical Data Coordinator). **Where:** **Patients → Import records**, or the Dashboard card.
+
+1. **Choose a file:** upload `.json`/`.csv` (max 1 MB) or click a sample (download icon to save it). Samples:
+   1. *New patient (Camellia JSON)* — no match → create.
+   2. *More records for an existing patient (CSV)* — exact Cedar Hollow MRN match → attach to Caleb Wren.
+   3. *Records from a second hospital (FHIR)* — Magnolia Bay Medical Center (new organization); Elias Navarro is only a
+      *possible* match (same name and birth date) → you must decide.
+   4. *New obstetric patient with a reviewable finding (FHIR)* — create, run screening → an Anesthesia OB review flag and alert.
+   5. *Invalid file* — rejected with specific errors; nothing is imported.
+2. **Preview:** detected format, patient and source MRN, source organization (and whether it is new), record counts, the
+   record list (duplicates marked), warnings and errors.
+3. **Confirm the patient:** attach to a listed match or create a new patient (optionally registering it with Practice A or B,
+   which controls which physicians can see it). Leave **Run clinical screening** on.
+4. **Import** → a summary with links to the patient profile and their records in search.
+
+Re-importing the same file adds nothing. Supported formats:
+
+- **FHIR R4 JSON** — a Bundle with one `Patient` (identifier = source MRN, name, birthDate, gender), optional
+  `Organization` (identifier = org id like `MBMC`, name), and `Encounter`, `Observation`, `Condition`,
+  `MedicationStatement`, `DocumentReference`, `DiagnosticReport`, `Appointment` resources with ids.
+- **Camellia JSON** — `{"format": "camellia-import/v1", "organization": {...}, "patient": {...}, "encounters": [],
+  "labs": [], "conditions": [], "medications": [], "notes": [], "appointments": []}` (see sample 1).
+- **CSV** — one row per item with columns `record_type, source_id, patient_mrn, patient_first_name, patient_last_name,
+  patient_birth_date, patient_sex, org_id, org_name, date, end_date, code, name, value, unit, ref_low, ref_high, flag,
+  text, provider, department, status, encounter_source_id, encounter_class`; `record_type` is ENCOUNTER, LAB, CONDITION,
+  MEDICATION, NOTE or APPOINTMENT; one patient and one organization per file (see sample 2).
+
+Dates may be ISO-8601 (`2026-10-01`, `2026-10-01T08:30`, with or without offset) or Camellia demo tokens (`@D-12T13:40`
+= 12 days before the demo anchor date). This is a synthetic-data demonstration of the ingestion path, not an EHR link.
+
+## 24. What the database badge means
+
+| Badge | Meaning |
+|---|---|
+| **Snowflake** | Connected to Snowflake; all reads and writes go there. |
+| **Snowflake unavailable** | Configured and connected at startup, but the latest check failed. |
+| **Local DB (selected)** | `CAMELLIA_DB_MODE=local` chose the local H2 database on purpose, even if Snowflake settings exist. |
+| **Local DB — Snowflake not configured** | No Snowflake account is configured; the System page lists the missing settings by name. |
+
+The local H2 database is a separate copy of the synthetic data — changes there do not appear in Snowflake. Teammates
+who do not have the Snowflake private key can run with `CAMELLIA_DB_MODE=local`.
+

@@ -9,6 +9,36 @@ _Last updated: 2026-10-10 (role-based access iteration)._
 - 🟠 **Partially implemented.**
 - ⛔ **Not implemented.**
 
+## Camellia V3 (branch `feature/camellia-v3`, 2026-10-11)
+
+Rollback point: tag `pre-camellia-v3`.
+
+| Area | Status | How it was verified |
+|---|---|---|
+| Profile dropdown above page content | Done | Browser test (Chromium): 0 of 35 sample points covered on Clinical Search, the coordination board and the alert workspace, at 1440 px and 390 px; Escape closes it; selecting a user switches identity |
+| Coordination actions | Done (feedback fix) | Every action persisted in the browser on H2 and on **live Snowflake** (acknowledge, contact, both toggles, note, Coordination Needed, Plan Documented, Resolved; dismiss with reason on H2). Each Snowflake write took 3.5–6 s — the root cause of the "nothing happens" reports |
+| Database status (4 states) | Done | Integration test + live Snowflake: `SNOWFLAKE_CONNECTED`; real read/write check verified |
+| Synthetic identifiers documented | Done | README "Patient identifiers"; UI labels `MRN SYN-…` |
+| 100 synthetic clinicians | Done | Test: 40/30/15/10/5 + 1 coordinator; re-seeding does not duplicate; 7 demo accounts in the switcher |
+| Patient import (FHIR JSON, Camellia JSON, CSV) | Done | Tests + API run on H2 **and Snowflake**: create, attach, duplicate skip, MRN conflict, invalid file, unauthorized, screening creates an OB flag/alert, imported data in search |
+| Camellia Briefing — shifts, retrieval, scoping, validation, duration loop, caching, privacy | Done | Tests with scripted Gemini + fake ElevenLabs |
+| Camellia Briefing — **live Gemini** scripts | Verified | Live runs (H2 and Snowflake) for Maya (Full), Jordan (Priority), Dr. Kim (Full, 1 excluded patient never mentioned); answers came from the fallback model `gemini-3.5-flash-lite` |
+| Camellia Briefing — **live ElevenLabs** audio | **Not verified** | No `ELEVENLABS_API_KEY` was available. The client calls the documented `POST /v1/text-to-speech/{voice_id}/with-timestamps` and `GET /v2/voices` with `xi-api-key`; until a key is configured briefings are *Transcript only* |
+| Encounter-scoped monitoring, charts, timeline, cards | Done | Tests + API checks on H2 and Snowflake; browser test of card → detail → refresh → back to the same tab |
+| Nursing review rules (mobility, repositioning, connectivity), de-duplication | Done | Tests + API checks on H2 and Snowflake |
+| Simulator (backend, persisted, seeded, own clock) | Done | Tests; persistence confirmed across a backend restart on Snowflake |
+| Gemini monitoring conversations | Done | **Live Gemini**: three questions on Dolores' stay; every citation was a `REC-MON-…` record or a note from the same stay |
+| HARDWARE_ARCHITECTURE.md | Done | Documentation (facts vs. assumptions labeled) |
+
+Test totals: **73 backend tests pass** (`./mvnw test`), frontend `npm run build` passes.
+
+Found and fixed during live testing: an admission with no recorded discharge time (3½ years old) was briefed as a current
+stay; open-ended stays now count as current only within 30 days.
+
+Not done / limitations: ElevenLabs live audio (no key); runtime-role SQL (`10_…sql`) not yet run in Snowflake; briefing
+audio is stored on local disk (needs object storage for serverless); the monitoring REST surface has no device-ingest
+endpoint (the simulator writes rows directly); nurse scope is the prototype's network-wide scope.
+
 ## Live verification (2026-10-10)
 
 Both sponsor integrations have now been verified live against the team's accounts.

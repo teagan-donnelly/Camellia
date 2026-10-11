@@ -87,4 +87,16 @@ body {
 .animate-petal { animation: petal-spin 6s linear infinite; transform-origin: 50% 50%; }
 
 @keyframes fade-up { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+/*
+ * Stacking layers — the one z-index scale for the whole app. Floating UI (menus, popovers) renders in a portal on <body>
+ * (see components/Popover.tsx), so page content that creates its own stacking context can never cover it.
+ *   header < popover < drawer (record viewer) < toast
+ */
+:root {
+  --layer-header: 20;
+  --layer-popover: 40;
+  --layer-drawer: 50;
+  --layer-toast: 60;
+}
+
 .animate-fade-up { animation: fade-up .25s ease-out both; }

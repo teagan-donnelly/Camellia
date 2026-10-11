@@ -205,3 +205,47 @@ on it."*
 - **"Duplicates?"** Each flag has a stable dedup key and an evidence fingerprint. Re-runs update, never duplicate.
 - **If Gemini is rate-limited live:** the UI shows a clear error. Retry, or show the saved flag explanation, which is
   cached with its timestamp.
+
+---
+
+# Camellia V3 — combined demo (≈ 9–10 min)
+
+**Prepare (10 min before):** backend on Snowflake with `GEMINI_API_KEY` and `ELEVENLABS_API_KEY` set; System page shows
+*Snowflake connected*, *Gemini live*, *ElevenLabs API key configured*. As Maya, open **Demo & integrations → Reset demo
+data** so dates are relative to today (this also resets imports and monitoring). Pre-generate one Full Shift Briefing for
+Maya so playback is instant (generation takes about a minute with ElevenLabs).
+
+1. **The problem (45 s).** An obstetric patient with a serious condition reached the anesthesia team late; the team needed
+   history, specialists and a plan, and relied on messages, spreadsheets and watchlists. Camellia finds that information
+   first. *(Dashboard as Maya Ellison, CRNA.)*
+2. **Existing intelligence (60 s).** Clinical Search → *"pregnant patients anesthesia should know about"* (Gemini turns it
+   into structured criteria; Snowflake runs parameterized SQL). Open Ava's anesthesia alert, show cited evidence.
+3. **Import a record (75 s).** Switch to **Riley Okafor** → Patients → **Import records** → sample *New obstetric patient
+   with a reviewable finding*. Show the preview (format, organization, records, *no existing match*). Create the patient,
+   keep screening on → result: **OB anesthesia review created**. *"New information enters Camellia through one
+   normalization path — no Epic connection is claimed."*
+4. **The finding appears (30 s).** Switch to **Maya** → Anesthesia OB Alerts: Noemi Castillo is in the queue with cited
+   platelet results.
+5. **Personal briefing (90 s).** Sidebar → **Camellia Briefing** → today's shift → **Full Shift Briefing** → Generate (or
+   open the pre-generated one). Point at the stages: *Snowflake* supplied the shift assignments and records; *Gemini* wrote a
+   cited script; *ElevenLabs* produced the narration. Play 30–40 s, open the transcript, click a source citation. Switch to
+   **Priority Alerts Only** to show the shorter version. *"Duration is measured, never over eight minutes."*
+6. **Monitored hospital stay (60 s).** Switch to **Jordan Lee, RN** → Patients → **Dolores Fenwick**: one Patient Monitoring
+   card (current admission) — her January stay has no wristband, so no card and no readings there. Open **View Monitoring
+   Details**.
+7. **Simulated sensor event (45 s).** In **Simulated Device Controls** click **Walking (6 min)**: the walking chart, heart
+   rate and timeline update with timestamped observations. *"Clearly labeled simulation — the Java backend generates and
+   stores the data; the proposed wristband is in HARDWARE_ARCHITECTURE.md."*
+8. **Nursing review (60 s).** Click **Trigger inactivity review** → a *Mobility review suggested* notification appears
+   (only because Dolores' care plan sets a 4-hour mobility interval). Optional: **Disconnect device** + advance time → only a
+   *device connectivity* review — missing data is never called inactivity.
+9. **Document an intervention (45 s).** Open **Henry Castellan** (Nursing Monitoring queue → his stay). Show that wrist
+   movement does not clear the repositioning review; type a note in **Document repositioning** → **Record repositioning** →
+   the review resolves, and the timeline shows *Nursing documentation — Jordan Lee, RN*.
+10. **Back to the patient (10 s).** **← Back to Patient Profile** returns to the same patient and tab.
+11. **Close (30 s).** Gemini: grounded search, scripts and Q&A with validated citations. Snowflake: the system of record for
+    records, shifts, briefings, imports and every monitoring observation. ElevenLabs: the spoken briefing. Everything is
+    synthetic; the wristband is a simulation of a proposed design; nothing is clinically validated.
+
+**If ElevenLabs is not configured:** the briefing shows *Transcript only*; say so plainly and show the transcript and
+citations. Never play browser speech as if it were ElevenLabs.

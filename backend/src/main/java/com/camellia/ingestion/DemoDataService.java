@@ -7,6 +7,9 @@ import com.camellia.repository.OrganizationRepository;
 import com.camellia.repository.PatientRepository;
 import com.camellia.repository.PracticeRepository;
 import com.camellia.repository.SupportRepository;
+import com.camellia.repository.WorkforceRepository;
+import com.camellia.monitoring.MonitoringService;
+import com.camellia.security.DemoDirectory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ClassPathResource;
@@ -42,7 +45,10 @@ public class DemoDataService {
             new Source("seed/sources/bellwether-practicesuite-export.json", "BWHA", LegacyPracticeJsonNormalizer.FORMAT),
             new Source("seed/sources/northgate-lab-feed.hl7", "NDL", Hl7v2LabNormalizer.FORMAT),
             new Source("seed/sources/cedar-hollow-fhir.json", "CHCH", FhirLikeNormalizer.FORMAT),
-            new Source("seed/sources/riverbend-urgent-care-notes.txt", "RUC", PlainTextNoteNormalizer.FORMAT));
+            new Source("seed/sources/riverbend-urgent-care-notes.txt", "RUC", PlainTextNoteNormalizer.FORMAT),
+            // V3: hospital stays (current admissions with simulated wristbands, plus earlier stays without monitoring).
+            new Source("seed/sources/larkspur-inpatient-stays-fhir.json", "LRMC", FhirLikeNormalizer.FORMAT),
+            new Source("seed/sources/cedar-hollow-inpatient-stays-fhir.json", "CHCH", FhirLikeNormalizer.FORMAT));
 
     static final Source INCOMING_LAB = new Source("seed/incoming/northgate-update-marlowe.hl7", "NDL", Hl7v2LabNormalizer.FORMAT);
 
@@ -52,9 +58,14 @@ public class DemoDataService {
     private final SupportRepository support;
     private final PracticeRepository practices;
     private final CamelliaProperties props;
+    private final WorkforceRepository workforce;
+    private final MonitoringService monitoring;
 
     public DemoDataService(OrganizationRepository orgs, PatientRepository patients, ClinicalDataRepository clinical,
-                           SupportRepository support, PracticeRepository practices, CamelliaProperties props) {
+                           SupportRepository support, PracticeRepository practices, CamelliaProperties props,
+                           WorkforceRepository workforce, MonitoringService monitoring) {
+        this.workforce = workforce;
+        this.monitoring = monitoring;
         this.orgs = orgs;
         this.practices = practices;
         this.patients = patients;
@@ -78,9 +89,12 @@ public class DemoDataService {
         Set<String> existingPatients = patients.existingIds();
         List<Patient> newPatients = ps.patients.stream().filter(p -> !existingPatients.contains(p.patientId())).toList();
         patients.insertAll(newPatients);
-        Set<String> newIds = new HashSet<>();
-        newPatients.forEach(p -> newIds.add(p.patientId()));
-        patients.insertIdentifiers(ps.identifiers.stream().filter(i -> newIds.contains(i.patientId())).toList());
+        // Source identifiers are inserted when missing (also for existing patients, e.g. a new organization's MRN).
+        Set<String> existingIdentifiers = new HashSet<>();
+        patients.findIdentifiers().forEach(i -> existingIdentifiers.add(i.patientId() + "|" + i.orgId()));
+        patients.insertIdentifiers(ps.identifiers.stream()
+                .filter(i -> existingPatients.contains(i.patientId()) || newPatients.stream().anyMatch(p -> p.patientId().equals(i.patientId())))
+                .filter(i -> !existingIdentifiers.contains(i.patientId() + "|" + i.orgId())).toList());
 
         // Practices and patient registrations (role-based access). Inserted when missing, so existing databases
         // seeded before practices existed are upgraded in place.
@@ -92,10 +106,13 @@ public class DemoDataService {
         practices.insertAssociations(ps.associations.stream()
                 .filter(a -> !existingAssoc.contains(a.patientId() + "|" + a.practiceId())).toList());
 
+        seedWorkforce(anchor);
+
         NormalizedBatch all = new NormalizedBatch();
         SourceContext ctx = new SourceContext(anchor, ps.index(), LocalDateTime.now());
         for (Source s : SOURCES) all.addAll(normalize(s, ctx));
         int[] inserted = persistMissing(all);
+        monitoring.seedBaseline(anchor);
 
         support.putMeta(META_ANCHOR, anchor.toString());
         support.putMeta(META_SEEDED_AT, LocalDateTime.now().toString());
@@ -127,6 +144,11 @@ public class DemoDataService {
 
     // ------------------------------------------------------------------ internals
 
+    /** The demo anchor date currently in effect (dates in synthetic files are relative to it). */
+    public LocalDate currentAnchor() {
+        return resolveAnchor();
+    }
+
     NormalizedBatch normalize(Source s, SourceContext ctx) {
         boolean hl7 = Hl7v2LabNormalizer.FORMAT.equals(s.format());
         String content = RelativeDates.render(read(s.resource()), ctx.anchor(), hl7);
@@ -139,8 +161,8 @@ public class DemoDataService {
         };
     }
 
-    /** Returns {inserted, alreadyPresent} counted on CLINICAL_RECORDS. */
-    private int[] persistMissing(NormalizedBatch b) {
+    /** Persists the records of a batch that are not stored yet. Returns {inserted, alreadyPresent} (CLINICAL_RECORDS). */
+    public int[] persistMissing(NormalizedBatch b) {
         Set<String> existing = clinical.existingRecordIds();
         Predicate<String> isNew = id -> !existing.contains(id);
         List<ClinicalRecord> records = b.records.stream().filter(r -> isNew.test(r.recordId())).toList();
@@ -151,6 +173,38 @@ public class DemoDataService {
         clinical.insertMedications(b.medications.stream().filter(m -> isNew.test(m.recordId())).toList());
         clinical.insertAppointments(b.appointments.stream().filter(a -> isNew.test(a.recordId())).toList());
         return new int[]{records.size(), b.records.size() - records.size()};
+    }
+
+    /** 100 synthetic clinicians (+ one administrative account), practice memberships and simulated shifts. */
+    private void seedWorkforce(LocalDate anchor) {
+        Set<String> existing = workforce.existingClinicianIds();
+        workforce.insertClinicians(DemoDirectory.CLINICIANS.stream().filter(c -> !existing.contains(c.user().id())).toList());
+        Set<String> links = workforce.existingClinicianPracticeKeys();
+        List<String[]> newLinks = new ArrayList<>();
+        for (DemoDirectory.Clinician c : DemoDirectory.CLINICIANS) {
+            for (String pr : c.user().practiceIds()) {
+                if (!links.contains(c.user().id() + "|" + pr)) newLinks.add(new String[]{c.user().id(), pr});
+            }
+        }
+        workforce.insertClinicianPractices(newLinks);
+
+        Set<String> shifts = workforce.existingShiftIds();
+        List<WorkforceRepository.Shift> newShifts = new ArrayList<>();
+        List<WorkforceRepository.Assignment> newAssignments = new ArrayList<>();
+        for (JsonNode n : Json.parse(read("seed/shifts.json"))) {
+            String id = text(n.path("shiftId"));
+            if (shifts.contains(id)) continue;
+            LocalDateTime start = RelativeDates.dateTime(text(n.path("start")), anchor);
+            newShifts.add(new WorkforceRepository.Shift(id, text(n.path("userId")), start.toLocalDate(), start,
+                    RelativeDates.dateTime(text(n.path("end")), anchor), text(n.path("orgId")), text(n.path("department")),
+                    text(n.path("location")), text(n.path("label"))));
+            for (JsonNode a : n.path("patients")) {
+                newAssignments.add(new WorkforceRepository.Assignment(id, text(a.path("patientId")), text(a.path("role")),
+                        text(a.path("note"))));
+            }
+        }
+        workforce.insertShifts(newShifts);
+        workforce.insertAssignments(newAssignments);
     }
 
     private LocalDate resolveAnchor() {
