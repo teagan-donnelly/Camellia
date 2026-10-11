@@ -1,0 +1,7 @@
+target/
+data/
+.env.local
+*.p8
+*.pem
+.idea/
+*.iml
