@@ -1,5 +1,5 @@
 import { ArrowRight, CircleCheck, ClipboardList, FileText, NotebookPen, Sparkles, Workflow } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAlert } from '../api/hooks'
 import type { AlertStatus, AlertSummary } from '../api/types'
@@ -17,9 +17,24 @@ const COLUMNS: AlertStatus[] = ['NEW', 'UNDER_REVIEW', 'COORDINATION_NEEDED', 'P
  */
 export function CoordinationBoard({ data }: { data: AlertSummary[] }) {
   const [selected, setSelected] = useState<string | null>(null)
+  const summaryRef = useRef<HTMLDivElement>(null)
+  const scrollPending = useRef(false)
   useEffect(() => {
     if (!selected && data.length) setSelected(data[0].alertId)
   }, [data, selected])
+  // The summary sits below the board, often off-screen: bring it into view so the click visibly does something. Scroll
+  // again once it has loaded, because the page is shorter while it loads.
+  const showSummary = () => summaryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  const select = (alertId: string) => {
+    setSelected(alertId)
+    scrollPending.current = true
+    requestAnimationFrame(showSummary)
+  }
+  const onSummaryLoaded = () => {
+    if (!scrollPending.current) return
+    scrollPending.current = false
+    requestAnimationFrame(showSummary)
+  }
 
   return (
     <div>
@@ -37,8 +52,8 @@ export function CoordinationBoard({ data }: { data: AlertSummary[] }) {
                   </div>
                   <div className="space-y-2">
                     {items.map((a) => (
-                      <button key={a.alertId} onClick={() => setSelected(a.alertId)}
-                        className={cx('w-full rounded-lg border bg-white p-3 text-left transition-shadow hover:shadow-sm', selected === a.alertId ? 'border-coral-300 ring-2 ring-coral-100' : 'border-line')}>
+                      <button key={a.alertId} onClick={() => select(a.alertId)} aria-pressed={selected === a.alertId}
+                        className={cx('w-full rounded-lg border bg-white p-3 text-left transition-shadow hover:shadow-md', selected === a.alertId ? 'border-coral-300 ring-2 ring-coral-100' : 'border-line hover:border-coral-200')}>
                         <div className="text-[13.5px] font-semibold text-navy-900">{a.patientName}</div>
                         <div className="mt-0.5 text-[12px] text-navy-500">{a.encounterType} · {daysLabel(a.daysUntilEncounter)}</div>
                         <div className="mt-2 flex flex-wrap gap-1">
@@ -57,20 +72,24 @@ export function CoordinationBoard({ data }: { data: AlertSummary[] }) {
               <div className="rounded-xl bg-navy-50/40 p-2.5">
                 <div className="mb-2 px-1 text-[12.5px] font-semibold text-navy-500">Dismissed</div>
                 {data.filter((a) => a.status === 'DISMISSED').map((a) => (
-                  <button key={a.alertId} onClick={() => setSelected(a.alertId)} className="mb-2 w-full rounded-lg border border-line bg-white p-3 text-left text-[13px] text-navy-600">{a.patientName}</button>
+                  <button key={a.alertId} onClick={() => select(a.alertId)} aria-pressed={selected === a.alertId} className="mb-2 w-full rounded-lg border border-line bg-white p-3 text-left text-[13px] text-navy-600 hover:border-coral-200">{a.patientName}</button>
                 ))}
               </div>
             )}
           </div>
-          {selected && <Summary alertId={selected} />}
+          <div ref={summaryRef} className="scroll-mt-4">{selected && <Summary alertId={selected} onLoaded={onSummaryLoaded} />}</div>
         </>
       )}
     </div>
   )
 }
 
-function Summary({ alertId }: { alertId: string }) {
+function Summary({ alertId, onLoaded }: { alertId: string; onLoaded: () => void }) {
   const { data, isLoading, error } = useAlert(alertId)
+  const loaded = !!data
+  useEffect(() => {
+    if (loaded) onLoaded()
+  }, [loaded, alertId, onLoaded])
   if (isLoading) return <Loading />
   if (error) return <ErrorBox error={error} />
   if (!data) return null

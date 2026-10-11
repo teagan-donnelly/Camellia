@@ -212,3 +212,55 @@ Test totals: **79 backend tests pass** (`./mvnw clean test`), frontend `npm run 
 
 Not done / limitations: no OCR for scanned PDFs; no document delete, versioning or virus scanning; document files live on
 local disk; the runtime-role grants for the two new tables are in `10_…sql` but that script has still not been run.
+
+## Debugging and regression pass (2026-10-11)
+
+| Issue | Root cause | Fix | Verified |
+|---|---|---|---|
+| Any demo user (and anyone on a public link) could wipe the database with *Reset demo data* | `/api/admin/reset-demo` checked only the deployment flag, not the user's role | New `MANAGE_DEMO_DATA` permission (Clinical Data Coordinator only); the button is shown only to that role | `DemoResetIntegrationTest`; live Snowflake: Maya gets 403; browser: nurse sees no button, Riley's reset works |
+| Reset deleted user-added data: imported records/patients, uploaded documents (rows and files), import history | `deleteAllDemoData` emptied every table | Reset deletes workflow state plus only the rows whose ids come from the seed files, then re-seeds; imports, uploads, import history, organizations and identifiers are kept | `DemoResetIntegrationTest` (two resets: no duplicates, imports and both uploads intact, files still downloadable) |
+| Clinical Search page and header search shown to the data coordinator, who has no search permission | `/search`, `/flags`, `/flags/:id` had no route guard; the header search bar rendered for every role | Route guards for those pages; header search only with `CLINICAL_SEARCH` (the API already returned 403) | Browser crawl: 7 roles × 16 routes, 0 issues |
+| "Back" from a stay opened in the Nursing Monitoring queue went to the patient profile | The back link always pointed to the profile | Queue links carry `from=queue`; Back returns to the queue, with a separate *Patient profile* link | Browser action test |
+| An acknowledged nursing review did not say who acknowledged it | Only resolutions were shown | "Acknowledged by … · time" line | Browser action test (persists after reload) |
+
+Checked with no defect found:
+- **Authorization:** role × endpoint matrix of 28 endpoints × 7 users. Nursing queue, alert status, repositioning and
+  simulator calls are nurse-only; practice scope applies to profiles, records, traits, documents, monitoring and Gemini
+  chat; no session → 401.
+- **Data integrity (live Snowflake, read-only):** 27 integrity checks with 0 violations — no duplicate records, patients,
+  traits, shifts, roster rows, documents or clinicians; every sensor reading, event, intervention, alert, trait and
+  document matches its patient, stay and session; interventions inside their stay and by a known user; no duplicate
+  open alerts or flags.
+- **Nursing scenarios (27 API checks):** upcoming repositioning (due in 25 min) → overdue at the right simulated time
+  (125 min, interval 120) → documenting moves the next due time to +120 min; future times rejected; sensor position
+  changes never count; mobility review after 245 min, walking raises the count and resolves it; disconnection produces
+  only a device review, never inactivity; acknowledgements persist; per-stay clocks; stay reset touches only its stay.
+
+Not present in Camellia (not implemented, not tested): a "Patient Care Needs" page (the nursing workflow is **Nursing
+Monitoring**), possible-fall alerts (fall detection is deliberately out of scope), and walking goals such as "1 of 3
+walks". Remaining lint: 8 React style warnings (intentional state resets in effects, `Date` in render), no errors.
+
+Tests: **80 backend tests pass** (`./mvnw clean test`); frontend type-check and `npm run build` pass; `oxlint`: 0 errors.
+
+## Hosting and fixes (2026-10-11, afternoon)
+
+The backend moved from a laptop behind a Cloudflare quick tunnel to Render, so https://camellia-snowy.vercel.app works
+with no computer on. See the README's *Hosted demo* section and [deploy/render/README.md](deploy/render/README.md).
+
+| Issue | Root cause | Fix | Verified |
+|---|---|---|---|
+| The public link broke whenever the laptop slept or the tunnel closed | The backend ran on the laptop | Render web service from `backend/Dockerfile` (free plan, JVM sized for 512 MB); Vercel's `/api` proxy points at Render | Live: 7 demo users sign in, every role check matches, pages and assets load, Snowflake connected |
+| Render deploys could not find the Snowflake key | The secret file was not attached yet, and a non-root container user may not read `/etc/secrets` | Entrypoint uses the first `.p8`/`.pem` secret file (or `SNOWFLAKE_PRIVATE_KEY`), logs the secret file names when none is found, and runs as root | Deploy logs; health reports `SNOWFLAKE` |
+| Briefing audio answered "not available to your account" on Render | Briefings were reused although their audio file was on another machine or erased by a restart; the path check answered 403 | 410 with a regenerate hint; generating makes a new briefing when the audio is not stored on this server | `CamelliaV3IntegrationTest` (deleted audio → 410, then a fresh briefing); live 410 |
+| Gemini failed with HTTP 401 | The committed key was disabled after the repository became public: it worked until 06:04 UTC and was rejected from 10:58 UTC, with Google returning "API key not valid" on both Gemini endpoints | New key kept out of the repository (Render environment variable, `backend/.env.local` locally); dead key removed from `backend/.env`; the error names the likely cause | Live: Gemini check and AI search through the UI. Isolated copy with the new key: search, alert chat with a follow-up, patient chat, flag explanation, extraction, search summary and briefing script all pass with cited records |
+| The header said "Gemini live" while every call failed | The badge reflected configuration only | Shows "Gemini error" with the reason until a call succeeds | Browser check |
+| Anesthesia alert cards and the coordination board looked unclickable | Tailwind v4 gives buttons the arrow cursor; a board card click only updated a summary below the fold | Pointer cursor for enabled buttons app-wide; a board card click scrolls its summary into view; hover highlight | Live browser runs as the CRNA, L&D nurse and anesthesiologist: queue rows, *Review*, board cards, *Open review workspace*, dashboard cards |
+
+Demo risks:
+- **Gemini latency:** Google's main model (`gemini-3.8-flash`) answered in 6–60 s under high demand; the backup
+  (`gemini-3.5-flash-lite`) answered in 1–3 s. Setting `GEMINI_MODEL=gemini-3.5-flash-lite` on Render trades some
+  capability for speed.
+- **ElevenLabs quota:** 8,863 of 10,000 free characters used; it resets on 2026-11-10. When it runs out, briefings
+  still show their transcript, with a note that the audio failed.
+- **ElevenLabs key** is still in the committed `backend/.env`, so it is public and could be disabled like the Gemini key.
+- **Render free plan:** sleeps when idle and keeps uploads and briefing audio only until it restarts.

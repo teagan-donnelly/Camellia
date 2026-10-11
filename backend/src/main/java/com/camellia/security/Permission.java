@@ -15,6 +15,8 @@ public enum Permission {
     ADD_COORDINATION_NOTES,
     /** Preview and import synthetic patient record files. */
     IMPORT_RECORDS,
+    /** Reset the demo dataset (destructive for workflow state; imported data and uploads are kept). */
+    MANAGE_DEMO_DATA,
     /** Upload PDF / Word documents to a patient (viewing them only needs access to the patient). */
     UPLOAD_DOCUMENTS,
     /** Generate and play Camellia Briefings for one's own simulated shifts. */

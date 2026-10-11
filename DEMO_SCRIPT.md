@@ -9,8 +9,8 @@ Lines in *italics* are things to say; **bold** lines are actions to take.
 
 1. Backend running, with the log line `Camellia ready on Snowflake`. Frontend running.
 2. Header badges read **Snowflake** (green) and **Gemini live** (coral).
-3. **Demo & integrations → Reset demo data**, so encounters are relative to today and no notes are left over from
-   rehearsal.
+3. As **Riley Okafor**, **Demo & integrations → Reset demo data**, so encounters are relative to today and no notes are
+   left over from rehearsal (imported records and uploaded documents are kept). Then switch back to Maya.
 4. On the same page, click **Run read / write check** and **Send live test request** once. This warms up the Snowflake
    warehouse and confirms the Gemini key works.
 5. Demo user: **Maya Ellison, CRNA** (top right). If you rehearsed the role-switching segment, switch back to her.
@@ -211,9 +211,16 @@ on it."*
 # Camellia V3 — combined demo (≈ 9–10 min)
 
 **Prepare (10 min before):** backend on Snowflake with `GEMINI_API_KEY` and `ELEVENLABS_API_KEY` set; System page shows
-*Snowflake connected*, *Gemini live*, *ElevenLabs API key configured*. As Maya, open **Demo & integrations → Reset demo
-data** so dates are relative to today (this also resets imports and monitoring). Pre-generate one Full Shift Briefing for
+*Snowflake connected*, *Gemini live*, *ElevenLabs API key configured*. As Riley Okafor, open **Demo & integrations → Reset demo
+data** so dates are relative to today (this resets monitoring and workflow state; imports and uploads are kept), then
+switch to Maya. Pre-generate one Full Shift Briefing for
 Maya so playback is instant (generation takes about a minute with ElevenLabs).
+
+**On the hosted link** (https://camellia-snowy.vercel.app): open it a few minutes early, because the free Render backend
+sleeps after 15 idle minutes and takes about a minute to wake. Generate the briefing within 15 minutes of presenting and
+keep the site in use, because its audio file is lost if the backend sleeps. The free ElevenLabs plan has 10,000
+characters a month and a full briefing uses about 2,000, so avoid test generations. If Gemini answers slowly, Google's
+main model is busy: the app retries, then switches to the backup model for three minutes.
 
 1. **The problem (45 s).** An obstetric patient with a serious condition reached the anesthesia team late; the team needed
    history, specialists and a plan, and relied on messages, spreadsheets and watchlists. Camellia finds that information

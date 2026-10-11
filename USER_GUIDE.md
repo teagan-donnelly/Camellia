@@ -451,9 +451,10 @@ staff the encounter but didn't build the plan.
   - **Simulate incoming lab result (Ava Marlowe)** ingests a new HL7 platelet result dated yesterday from Northgate and
     re-runs screening. The existing alert is updated (*New evidence*, plus a system note); no duplicate alert is
     created. Running it again inserts nothing.
-  - **Reset demo data** (asks for confirmation) deletes all demo data, notes and statuses, re-seeds the dataset
-    anchored to today, and re-runs screening. Use it before a presentation. The screening summary shown afterwards
-    counts only what your role may see.
+  - **Reset demo data** (Clinical Data Coordinator only; asks for confirmation) restores the seeded demo data anchored
+    to today, clears notes, statuses, alerts, briefings and monitoring changes, and re-runs screening. Imported records
+    and uploaded documents are kept. Use it before a presentation. Other roles see a note that reset is limited to the
+    coordinator.
 - **Safety & access:** a summary of what the prototype is and isn't.
 
 ## 16. Switching the simulated user and what each role sees
@@ -515,7 +516,7 @@ These examples assume a network-wide user such as Maya Ellison or Jordan Lee.
 | Red toast saying the backend is unreachable, or a *Backend offline* badge | Start the backend in `backend/` and wait for `Camellia ready`. |
 | *Local fallback DB* badge | Snowflake isn't configured. Fill in the `SNOWFLAKE_*` values in `backend/.env` and restart. |
 | Backend stops with "Snowflake configuration is incomplete" | The message lists exactly what's missing. Fix `backend/.env`, or set `CAMELLIA_DB_MODE=local`. |
-| *Gemini not configured* | Set `GEMINI_API_KEY` in `backend/.env` and restart. |
+| *Gemini not configured* | Set `GEMINI_API_KEY` in `backend/.env.local` (or as a Render environment variable for the hosted backend) and restart. Never commit the key: Google disables keys in public repositories. |
 | "Gemini rate limit or quota reached" | Wait a moment and retry. Free-tier keys have per-minute limits. |
 | "Model … is not available" | Set `GEMINI_MODEL` to a model your key can use and restart. |
 | Upcoming encounters show as in the past | The demo was seeded long ago. Use **Demo & integrations → Reset demo data**. |

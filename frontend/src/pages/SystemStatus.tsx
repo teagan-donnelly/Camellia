@@ -17,7 +17,7 @@ export default function SystemStatus() {
   const [err, setErr] = useState<{ where: string; e: unknown } | null>(null)
   const invalidate = useInvalidateWorkflow()
   const qc = useQueryClient()
-  const { toast } = useApp()
+  const { toast, can } = useApp()
 
   async function act(where: string, fn: () => Promise<void>) {
     setBusy(where); setErr(null)
@@ -132,17 +132,23 @@ export default function SystemStatus() {
                   <p className="mt-1.5 text-[12px] text-navy-500">Ingests a new Northgate HL7 platelet result dated yesterday and re-runs screening. The existing alert is updated with the new evidence — no duplicate alert is created. Running it again inserts nothing.</p>
                 </div>
                 <div className="border-t border-line pt-4">
-                  <Button variant="danger" loading={busy === 'reset'} onClick={() => {
-                    if (!window.confirm('Delete all demo data, workflow statuses and notes, then re-seed anchored to today?')) return
-                    act('reset', async () => {
-                      await post('/admin/reset-demo')
-                      invalidate(); qc.invalidateQueries({ queryKey: keys.status })
-                      toast({ tone: 'success', title: 'Demo data reset', body: 'Re-seeded and re-screened with today as the anchor date.' })
-                    })
-                  }}>
-                    <RotateCcw className="h-4 w-4" /> Reset demo data
-                  </Button>
-                  <p className="mt-1.5 text-[12px] text-navy-500">Use before a presentation so upcoming encounters are relative to today. This removes all notes and status changes.</p>
+                  {can('MANAGE_DEMO_DATA') ? (
+                    <>
+                      <Button variant="danger" loading={busy === 'reset'} onClick={() => {
+                        if (!window.confirm('Restore the seeded demo data anchored to today? All workflow statuses, notes, alerts, briefings and monitoring changes are cleared. Imported records and uploaded documents are kept.')) return
+                        act('reset', async () => {
+                          await post('/admin/reset-demo')
+                          invalidate(); qc.invalidateQueries({ queryKey: keys.status })
+                          toast({ tone: 'success', title: 'Demo data reset', body: 'Re-seeded and re-screened with today as the anchor date.' })
+                        })
+                      }}>
+                        <RotateCcw className="h-4 w-4" /> Reset demo data
+                      </Button>
+                      <p className="mt-1.5 text-[12px] text-navy-500">Use before a presentation so upcoming encounters are relative to today. This clears notes, status changes, briefings and monitoring changes; imported records and uploaded documents are kept.</p>
+                    </>
+                  ) : (
+                    <p className="text-[12.5px] text-navy-500">Resetting the demo data is limited to the Clinical Data Coordinator (Riley Okafor).</p>
+                  )}
                 </div>
                 {(err?.where === 'lab' || err?.where === 'reset') && <ErrorBox error={err.e} />}
               </div>

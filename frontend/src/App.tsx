@@ -39,9 +39,9 @@ export default function App() {
         <Route path="/patients/:patientId/encounters/:encounterId/monitoring" element={<RequirePermission permission="VIEW_MONITORING" message="Wearable monitoring is not available to your role."><MonitoringDetail /></RequirePermission>} />
         <Route path="/briefing" element={<RequirePermission permission="CLINICAL_BRIEFING" message="Camellia Briefing is available to clinical roles."><Briefing /></RequirePermission>} />
         <Route path="/monitoring" element={<RequirePermission permission="NURSING_MONITORING" message="The nursing monitoring queue is available to nursing roles."><NursingMonitoring /></RequirePermission>} />
-        <Route path="/search" element={<ClinicalSearch />} />
-        <Route path="/flags" element={<ClinicalFlags />} />
-        <Route path="/flags/:id" element={<FlagDetail />} />
+        <Route path="/search" element={<RequirePermission permission="CLINICAL_SEARCH" message="Clinical Search is available to clinical roles."><ClinicalSearch /></RequirePermission>} />
+        <Route path="/flags" element={<RequirePermission permission="CLINICAL_ALERTS" message="Clinical Alerts are available to clinical roles."><ClinicalFlags /></RequirePermission>} />
+        <Route path="/flags/:id" element={<RequirePermission permission="CLINICAL_ALERTS" message="Clinical Alerts are available to clinical roles."><FlagDetail /></RequirePermission>} />
         <Route path="/alerts" element={<RequirePermission permission="ANESTHESIA_OB_ALERTS" message={ANESTHESIA_ONLY}><AnesthesiaAlerts /></RequirePermission>} />
         <Route path="/alerts/:id" element={<RequirePermission permission="ANESTHESIA_OB_ALERTS" message={ANESTHESIA_ONLY}><AlertWorkspace /></RequirePermission>} />
         <Route path="/coordination" element={<Navigate to="/alerts?tab=board" replace />} />

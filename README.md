@@ -30,11 +30,12 @@
 10. [Snowflake setup](#snowflake-setup)
 11. [Gemini setup](#gemini-setup)
 12. [Running the app](#running-the-app)
-13. [Demo patient scenarios](#demo-patient-scenarios)
-14. [Testing](#testing)
-15. [Known limitations](#known-limitations)
-16. [Future development](#future-development)
-17. [Documentation map](#documentation-map)
+13. [Hosted demo (Vercel + Render)](#hosted-demo-vercel--render)
+14. [Demo patient scenarios](#demo-patient-scenarios)
+15. [Testing](#testing)
+16. [Known limitations](#known-limitations)
+17. [Future development](#future-development)
+18. [Documentation map](#documentation-map)
 
 ---
 
@@ -114,6 +115,9 @@ search, dashboards and Gemini retrieval, so a restricted record is never read, s
 V3 permissions: **Camellia Briefing** — all five clinical roles, own shifts only. **Monitoring data** — all clinical roles
 within their patient scope (physicians: their practices). **Nursing Monitoring queue, documenting repositioning and the
 device simulator** — RN and L&D nurse. **Import** — Clinical Data Coordinator only.
+
+**Reset demo data** is limited to the Clinical Data Coordinator (Riley Okafor). Because every demo identity can be
+selected by anyone, a shared or public deployment should also set `CAMELLIA_DEMO_ADMIN_ENABLED=false`.
 
 V3.1 permissions: **Obesity traits** — the five clinical roles, within their patient scope (not the data coordinator).
 **Upload documents** — physicians, RNs, L&D nurses and the data coordinator; **view/download documents** — anyone who can
@@ -286,7 +290,7 @@ AI text is ever produced.
 ## Gemini setup
 
 1. Create an API key at <https://aistudio.google.com/apikey>.
-2. Put it in `backend/.env` as `GEMINI_API_KEY=…`. Optionally change `GEMINI_MODEL`.
+2. Put it in `backend/.env.local` (git-ignored) as `GEMINI_API_KEY=…`, and for the hosted backend set it as a Render environment variable. Never commit it: Google disables keys published in a public repository. Optionally change `GEMINI_MODEL`.
 3. Restart the backend. The header badge changes to **"Gemini live"**.
 4. Verify under **Demo & integrations → Send live test request**. This makes a real API call and shows the model,
    latency, token counts and response.
@@ -320,10 +324,35 @@ Open **http://localhost:5173**. The Vite dev server proxies `/api` to the backen
 Useful extras:
 
 - `GET http://localhost:8080/api/integrations/status`: which database and AI mode is active
-- **Demo & integrations → Reset demo data**: re-seeds with today as the date anchor. Run this before presenting so
-  upcoming encounters are relative to the demo day.
+- **Demo & integrations → Reset demo data** *(Riley Okafor, Clinical Data Coordinator, only)*: restores the seeded
+  demo data with today as the date anchor and clears workflow state. Imported records and uploaded documents are kept.
+  Run this before presenting so upcoming encounters are relative to the demo day.
 - **Demo & integrations → Simulate incoming lab result**: a new HL7 platelet result for Patient A, used to demonstrate
   re-evaluation without duplicate alerts.
+
+## Hosted demo (Vercel + Render)
+
+**Public link: https://camellia-snowy.vercel.app.** It runs without anyone's computer being on.
+
+| Part | Where it runs | How it is set up |
+|---|---|---|
+| Frontend | Vercel (static build) | `deploy/vercel/deploy.sh <backend-url>` builds it and proxies `/api` to the backend, so the session cookie stays same-site |
+| Backend | Render web service `camellia-backend` (Docker, free plan): https://camellia-backend-cw24.onrender.com | `backend/Dockerfile`, deploying branch `feature/camellia-v3`; settings and secrets in [deploy/render/README.md](deploy/render/README.md) |
+| Data and AI | Snowflake, Gemini, ElevenLabs | Same Snowflake database as local runs |
+
+The Snowflake private key is a Render secret file, and `GEMINI_API_KEY`, `CAMELLIA_DEMO_SESSION_SECRET` and
+`CAMELLIA_CORS_ORIGINS` are Render environment variables. Locally, the Gemini key goes in the git-ignored
+`backend/.env.local`. Never commit a Gemini key: Google disables keys published in a public repository.
+
+After pushing changes:
+
+1. **Backend:** in the Render dashboard, open `camellia-backend` → **Manual Deploy → Deploy latest commit**. Render reads
+   the public repository without its GitHub app, so a push alone does not redeploy it.
+2. **Frontend:** `deploy/vercel/deploy.sh https://camellia-backend-cw24.onrender.com`.
+
+On the free plan the backend sleeps after 15 minutes without requests, and the next request waits about a minute while
+it starts. Its disk is temporary, so uploaded documents and briefing audio are lost when it restarts or sleeps (their
+Snowflake rows remain; downloads report that the file is gone, and briefings are regenerated).
 
 ## Demo patient scenarios
 
@@ -405,9 +434,11 @@ npm run build          # type-check + production build
 - **Search** uses keyword and concept matching (no semantic or vector search yet).
 - **Uploaded documents** are stored on the backend's disk (not in Snowflake; metadata and extracted text are). Scanned
   PDFs have no selectable text and are not OCR-processed, so they are stored and viewable but not searchable. There is no
-  virus scanning, versioning or delete. *Reset demo data* removes all uploads.
+  virus scanning, versioning or delete. *Reset demo data* keeps uploads and imported records.
 - **Obesity traits** come only from coded diagnoses in the synthetic records (no BMI calculation or free-text inference).
 - **Shift schedule** is synthetic and read-only (no shift requests or trades).
+- **Hosted backend** runs on Render's free plan: it sleeps when idle (about a minute to wake) and keeps uploaded
+  documents and briefing audio only until it restarts. See [Hosted demo](#hosted-demo-vercel--render).
 
 ## Future development
 

@@ -29,7 +29,7 @@ public enum Role {
                     UPDATE_COORDINATION, ADD_COORDINATION_NOTES, CLINICAL_BRIEFING, VIEW_MONITORING)),
     /** Administrative demo role: brings synthetic records into Camellia. No clinical workflows or AI. */
     DATA_COORDINATOR("Clinical Data Coordinator", true,
-            EnumSet.of(VIEW_PATIENTS, IMPORT_RECORDS, UPLOAD_DOCUMENTS));
+            EnumSet.of(VIEW_PATIENTS, IMPORT_RECORDS, UPLOAD_DOCUMENTS, MANAGE_DEMO_DATA));
 
     private final String label;
     private final boolean networkScope;

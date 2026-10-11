@@ -10,7 +10,6 @@ import com.camellia.repository.SupportRepository;
 import com.camellia.repository.WorkforceRepository;
 import com.camellia.monitoring.MonitoringService;
 import com.camellia.traits.TraitService;
-import com.camellia.documents.DocumentService;
 import com.camellia.security.DemoDirectory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,14 +62,11 @@ public class DemoDataService {
     private final WorkforceRepository workforce;
     private final MonitoringService monitoring;
     private final TraitService traits;
-    private final DocumentService documents;
 
     public DemoDataService(OrganizationRepository orgs, PatientRepository patients, ClinicalDataRepository clinical,
                            SupportRepository support, PracticeRepository practices, CamelliaProperties props,
-                           WorkforceRepository workforce, MonitoringService monitoring, TraitService traits,
-                           DocumentService documents) {
+                           WorkforceRepository workforce, MonitoringService monitoring, TraitService traits) {
         this.traits = traits;
-        this.documents = documents;
         this.workforce = workforce;
         this.monitoring = monitoring;
         this.orgs = orgs;
@@ -130,10 +126,19 @@ public class DemoDataService {
         return new SeedResult(anchor, newOrgs.size(), newPatients.size(), inserted[0], inserted[1], all.warnings);
     }
 
-    /** Deletes all synthetic demo data and workflow state, then re-seeds anchored to today. */
+    /**
+     * Restores the seeded demo dataset anchored to today and clears workflow state (statuses, notes, alerts, monitoring,
+     * briefings). Imported records, uploaded documents and import history are kept: only rows whose ids come from the
+     * seed files are removed from the patient and record tables.
+     */
     public synchronized SeedResult resetAndReseed() {
-        support.deleteAllDemoData();
-        documents.deleteAllFiles();
+        LocalDate anchor = resolveAnchor();   // record ids do not depend on the anchor
+        PatientSeed ps = loadPatients(anchor);
+        SourceContext ctx = new SourceContext(anchor, ps.index(), LocalDateTime.now());
+        Set<String> seedRecordIds = new HashSet<>();
+        for (Source s : SOURCES) normalize(s, ctx).records.forEach(r -> seedRecordIds.add(r.recordId()));
+        normalize(INCOMING_LAB, ctx).records.forEach(r -> seedRecordIds.add(r.recordId()));
+        support.resetDemoData(ps.patients.stream().map(Patient::patientId).toList(), seedRecordIds);
         return seed();
     }
 
