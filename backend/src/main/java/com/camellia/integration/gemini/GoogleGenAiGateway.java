@@ -114,6 +114,13 @@ public class GoogleGenAiGateway implements GeminiGateway {
                 } catch (GeminiException e) {
                     last = e;
                     recordFailure(e.getMessage());
+                    // An overloaded model often stops answering instead of returning 503. Waiting another full timeout
+                    // on the same model rarely helps, so a timeout moves straight on to the fallback model.
+                    if (isTimeout(e) && model.equals(cfg.getModel()) && models.size() > 1) {
+                        log.warn("Gemini {} on {} did not respond within {} s; switching to fallback model",
+                                request.operation(), model, cfg.getTimeoutSeconds());
+                        break;
+                    }
                     if (!isTransient(e)) throw e;
                     if (attempt < cfg.getMaxRetries()) {
                         long backoff = 1500L * (1L << attempt);
@@ -166,7 +173,8 @@ public class GoogleGenAiGateway implements GeminiGateway {
             throw map(e, model);
         } catch (GenAiIOException e) {
             throw new GeminiException(HttpStatus.GATEWAY_TIMEOUT, "GEMINI_UNREACHABLE",
-                    "Could not reach Gemini within " + cfg.getTimeoutSeconds() + " s. Check network access and try again.", e);
+                    "Gemini (" + model + ") did not respond within " + cfg.getTimeoutSeconds()
+                            + " s. It may be overloaded, or network access may be blocked. Try again in a moment.", e);
         } catch (GeminiException e) {
             throw e;
         } catch (RuntimeException e) {
@@ -189,6 +197,10 @@ public class GoogleGenAiGateway implements GeminiGateway {
         boolean fits(long nowMs, long neededMs) {
             return deadlineMs == Long.MAX_VALUE || nowMs + neededMs <= deadlineMs;
         }
+    }
+
+    static boolean isTimeout(GeminiException e) {
+        return e.code().equals("GEMINI_UNREACHABLE");
     }
 
     static boolean isTransient(GeminiException e) {
