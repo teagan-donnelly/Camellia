@@ -171,8 +171,10 @@ function IntegrationPills() {
   const navigate = useNavigate()
   const db = data?.database
   const gem = data?.gemini
+  // lastError is cleared by the next successful call, so it marks a key or service that is failing right now.
+  const gemFailing = !!gem?.configured && !!gem.lastError
   return (
-    <button onClick={() => navigate('/system')} className="hidden items-center gap-1.5 lg:flex" title="Integration status">
+    <button onClick={() => navigate('/system')} className="hidden items-center gap-1.5 lg:flex" title={gemFailing ? `Integration status. Gemini: ${gem.lastError}` : 'Integration status'}>
       <span className={cx('inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-medium ring-1 ring-inset',
         isError || (db && !db.connected) ? 'bg-critical-50 text-critical-700 ring-critical-100'
           : db?.isSnowflake ? 'bg-sage-50 text-sage-700 ring-sage-200' : 'bg-amber-50 text-amber-700 ring-amber-200')}>
@@ -183,9 +185,10 @@ function IntegrationPills() {
               : db.state === 'LOCAL_FALLBACK_SELECTED' ? 'Local DB (selected)' : 'Local DB — Snowflake not configured'}
       </span>
       <span className={cx('inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-medium ring-1 ring-inset',
-        gem?.configured ? 'bg-coral-50 text-coral-700 ring-coral-200' : 'bg-amber-50 text-amber-700 ring-amber-200')}>
+        gemFailing ? 'bg-critical-50 text-critical-700 ring-critical-100'
+          : gem?.configured ? 'bg-coral-50 text-coral-700 ring-coral-200' : 'bg-amber-50 text-amber-700 ring-amber-200')}>
         <Sparkles className="h-3.5 w-3.5" />
-        {!gem ? 'Gemini…' : gem.configured ? 'Gemini live' : 'Gemini not configured'}
+        {!gem ? 'Gemini…' : gemFailing ? 'Gemini error' : gem.configured ? 'Gemini live' : 'Gemini not configured'}
       </span>
     </button>
   )
