@@ -14,7 +14,7 @@ Data stays in Snowflake; Render only runs the server.
 | Plan | Free (512 MB; the JVM flags in the Dockerfile are sized for it) |
 | Health check path | `/api/health` |
 
-The image includes the committed `backend/.env` (Snowflake account settings, Gemini and ElevenLabs keys). Environment
+The image includes the committed `backend/.env` (Snowflake account settings and the ElevenLabs key). Environment
 variables set on Render override it.
 
 ## Secrets and variables to set in the Render dashboard
@@ -22,6 +22,7 @@ variables set on Render override it.
 | Name | Where | Value |
 |---|---|---|
 | `snowflake_key.p8` | **Secret File** (Environment → Secret Files) | The contents of the Snowflake private key file for `CAMELLIA_SVC` |
+| `GEMINI_API_KEY` | Environment variable | A Gemini API key from https://aistudio.google.com/apikey. Never commit it: Google disables keys published in a public repository |
 | `CAMELLIA_CORS_ORIGINS` | Environment variable | `https://camellia-snowy.vercel.app` |
 | `CAMELLIA_DEMO_SESSION_SECRET` | Environment variable | Any long random string, so demo sign-ins survive restarts |
 

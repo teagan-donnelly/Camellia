@@ -227,7 +227,8 @@ public class GoogleGenAiGateway implements GeminiGateway {
         }
         if (code == 401 || code == 403) {
             return new GeminiException(HttpStatus.BAD_GATEWAY, "GEMINI_AUTH_FAILED",
-                    "Gemini rejected the API key (HTTP " + code + "). Verify GEMINI_API_KEY.", e);
+                    "Gemini rejected the API key (HTTP " + code + "). The key is invalid or was disabled (Google disables keys "
+                            + "published in a public repository). Create a new key and set GEMINI_API_KEY outside the repository.", e);
         }
         if (code == 404) {
             return new GeminiException(HttpStatus.BAD_GATEWAY, "GEMINI_MODEL_NOT_FOUND",

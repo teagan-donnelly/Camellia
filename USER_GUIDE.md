@@ -516,7 +516,7 @@ These examples assume a network-wide user such as Maya Ellison or Jordan Lee.
 | Red toast saying the backend is unreachable, or a *Backend offline* badge | Start the backend in `backend/` and wait for `Camellia ready`. |
 | *Local fallback DB* badge | Snowflake isn't configured. Fill in the `SNOWFLAKE_*` values in `backend/.env` and restart. |
 | Backend stops with "Snowflake configuration is incomplete" | The message lists exactly what's missing. Fix `backend/.env`, or set `CAMELLIA_DB_MODE=local`. |
-| *Gemini not configured* | Set `GEMINI_API_KEY` in `backend/.env` and restart. |
+| *Gemini not configured* | Set `GEMINI_API_KEY` in `backend/.env.local` (or as a Render environment variable for the hosted backend) and restart. Never commit the key: Google disables keys in public repositories. |
 | "Gemini rate limit or quota reached" | Wait a moment and retry. Free-tier keys have per-minute limits. |
 | "Model … is not available" | Set `GEMINI_MODEL` to a model your key can use and restart. |
 | Upcoming encounters show as in the past | The demo was seeded long ago. Use **Demo & integrations → Reset demo data**. |

@@ -289,7 +289,7 @@ AI text is ever produced.
 ## Gemini setup
 
 1. Create an API key at <https://aistudio.google.com/apikey>.
-2. Put it in `backend/.env` as `GEMINI_API_KEY=…`. Optionally change `GEMINI_MODEL`.
+2. Put it in `backend/.env.local` (git-ignored) as `GEMINI_API_KEY=…`, and for the hosted backend set it as a Render environment variable. Never commit it: Google disables keys published in a public repository. Optionally change `GEMINI_MODEL`.
 3. Restart the backend. The header badge changes to **"Gemini live"**.
 4. Verify under **Demo & integrations → Send live test request**. This makes a real API call and shows the model,
    latency, token counts and response.
