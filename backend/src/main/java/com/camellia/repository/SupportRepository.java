@@ -7,6 +7,8 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -125,17 +127,40 @@ public class SupportRepository {
 
     // ------------------------------------------------------------ demo reset
 
-    /** Removes all demo data (synthetic) so it can be re-seeded with a fresh date anchor. */
-    public void deleteAllDemoData() {
-        for (String table : List.of("PATIENT_TRAITS", "PATIENT_DOCUMENTS", "UNIT_SHIFT_SCHEDULE",
-                "BRIEFING_SOURCE_REFERENCES", "BRIEFINGS", "SHIFT_PATIENT_ASSIGNMENTS", "PROVIDER_SHIFTS",
-                "SENSOR_OBSERVATIONS", "ACTIVITY_EVENTS", "MONITORING_ALERTS", "NURSING_INTERVENTIONS", "MONITORING_CARE_PLANS",
-                "MONITORING_SESSIONS", "MONITORING_DEVICES", "IMPORT_BATCHES", "CLINICIAN_PRACTICES", "CLINICIANS",
-                "AI_CONVERSATION_TURNS", "COORDINATION_NOTES", "ALERT_EVIDENCE", "COORDINATION_ALERTS", "FLAG_EVIDENCE",
-                "CLINICAL_FLAGS", "AI_OBSERVATIONS", "ACTIVITY_LOG", "ANALYSIS_RUNS", "APPOINTMENTS", "MEDICATIONS",
-                "MEDICAL_CONDITIONS", "LAB_RESULTS", "ENCOUNTERS", "CLINICAL_RECORDS", "PATIENT_SOURCE_IDENTIFIERS",
-                "PATIENT_PRACTICE_ASSOCIATIONS", "PRACTICES", "PATIENTS", "HEALTHCARE_ORGANIZATIONS", "DEMO_METADATA")) {
+    /** Workflow and derived state: always rebuilt by seeding, screening and the simulator. */
+    static final List<String> WORKFLOW_TABLES = List.of("PATIENT_TRAITS", "UNIT_SHIFT_SCHEDULE",
+            "BRIEFING_SOURCE_REFERENCES", "BRIEFINGS", "SHIFT_PATIENT_ASSIGNMENTS", "PROVIDER_SHIFTS",
+            "SENSOR_OBSERVATIONS", "ACTIVITY_EVENTS", "MONITORING_ALERTS", "NURSING_INTERVENTIONS", "MONITORING_CARE_PLANS",
+            "MONITORING_SESSIONS", "MONITORING_DEVICES", "CLINICIAN_PRACTICES", "CLINICIANS",
+            "AI_CONVERSATION_TURNS", "COORDINATION_NOTES", "ALERT_EVIDENCE", "COORDINATION_ALERTS", "FLAG_EVIDENCE",
+            "CLINICAL_FLAGS", "AI_OBSERVATIONS", "ACTIVITY_LOG", "ANALYSIS_RUNS", "DEMO_METADATA");
+
+    /** Source-record tables, keyed by the record they were normalized from. */
+    static final List<String> RECORD_TABLES = List.of("APPOINTMENTS", "MEDICATIONS", "MEDICAL_CONDITIONS", "LAB_RESULTS",
+            "ENCOUNTERS", "CLINICAL_RECORDS");
+
+    /**
+     * Removes the seeded demo dataset and all workflow state so it can be re-seeded with a fresh date anchor. Only rows
+     * whose ids come from the seed files are deleted from the patient and record tables; data people added is kept:
+     * imported patients and records, uploaded documents, import history, organizations, identifiers and practice
+     * registrations.
+     */
+    public void resetDemoData(Collection<String> seedPatientIds, Collection<String> seedRecordIds) {
+        for (String table : WORKFLOW_TABLES) {
             jdbc.update("DELETE FROM " + table);
+        }
+        for (String table : RECORD_TABLES) {
+            deleteIn(table, "RECORD_ID", seedRecordIds);
+        }
+        deleteIn("PATIENTS", "PATIENT_ID", seedPatientIds);
+    }
+
+    private void deleteIn(String table, String column, Collection<String> ids) {
+        List<String> all = List.copyOf(ids);
+        for (int i = 0; i < all.size(); i += 500) {
+            List<String> chunk = all.subList(i, Math.min(all.size(), i + 500));
+            jdbc.update("DELETE FROM " + table + " WHERE " + column + " IN (" + String.join(", ", Collections.nCopies(chunk.size(), "?")) + ")",
+                    chunk.toArray());
         }
     }
 

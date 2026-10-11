@@ -37,7 +37,6 @@ import java.time.LocalDateTime;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
-import java.util.stream.Stream;
 
 /**
  * Uploaded patient documents (PDF, DOCX, DOC). Type and size are validated here, on the backend, from the file's
@@ -242,23 +241,6 @@ public class DocumentService {
         } catch (IOException e) {
             throw new ApiException(org.springframework.http.HttpStatus.NOT_FOUND, "DOCUMENT_FILE_MISSING",
                     "The stored file for this document is no longer available on this server.");
-        }
-    }
-
-    /** Deletes every stored file (demo reset). Metadata rows are deleted with the rest of the demo data. */
-    public void deleteAllFiles() {
-        Path dir = dir();
-        if (!Files.isDirectory(dir)) return;
-        try (Stream<Path> files = Files.list(dir)) {
-            files.filter(Files::isRegularFile).forEach(f -> {
-                try {
-                    Files.deleteIfExists(f);
-                } catch (IOException e) {
-                    log.warn("Could not delete stored document {}: {}", f.getFileName(), e.getMessage());
-                }
-            });
-        } catch (IOException e) {
-            log.warn("Could not list document storage: {}", e.getMessage());
         }
     }
 

@@ -10,6 +10,7 @@ import com.camellia.repository.OrganizationRepository;
 import com.camellia.search.SearchCriteria;
 import com.camellia.security.AuthorizationService;
 import com.camellia.security.DemoUser;
+import com.camellia.security.Permission;
 import com.camellia.security.DemoDirectory;
 import com.camellia.web.ApiException;
 import org.springframework.http.HttpStatus;
@@ -74,10 +75,14 @@ public class SystemController {
         return m;
     }
 
-    /** Deletes all demo data and workflow state, re-seeds anchored to today, and re-runs screening. Reports only counts. */
+    /**
+     * Restores the seeded demo data anchored to today, clears workflow state and re-runs screening; imported records and
+     * uploaded documents are kept. Only the administrative data coordinator role may run it. Reports only counts.
+     */
     @PostMapping("/admin/reset-demo")
     public Map<String, Object> reset(DemoUser user) {
         requireDemoAdmin();
+        auth.requirePermission(user, Permission.MANAGE_DEMO_DATA);
         DemoDataService.SeedResult seed = demoData.resetAndReseed();
         integrations.forgetAnchorDate();
         AnalysisService.RunResult run = FlagController.scoped(analysis.run(user.name() + " (demo reset)"), auth.scope(user));

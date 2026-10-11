@@ -106,9 +106,10 @@ function Sidebar() {
 }
 
 function TopBar() {
+  const { can } = useApp()
   return (
     <header className="relative z-[var(--layer-header)] flex h-[60px] shrink-0 items-center gap-3 border-b border-line bg-white/80 px-4 backdrop-blur sm:px-6">
-      <CommandSearch />
+      {can('CLINICAL_SEARCH') ? <CommandSearch /> : <div className="flex-1" />}
       <div className="ml-auto flex items-center gap-2">
         <IntegrationPills />
         <UserSwitcher />

@@ -25,9 +25,15 @@ export default function MonitoringDetail() {
   const { data, isLoading, error } = useMonitoring(patientId, encounterId)
   const { can } = useApp()
 
-  // Back always returns to the same patient's profile (and the tab the user came from), never the patient list.
-  const back = <Link to={`/patients/${patientId}?tab=${encodeURIComponent(fromTab)}`}
-    className="mb-4 inline-flex items-center gap-1 text-[13px] text-navy-500 hover:text-navy-800"><ArrowLeft className="h-3.5 w-3.5" /> Back to Patient Profile</Link>
+  // Back returns to where the user came from: the Nursing Monitoring queue, or the same patient's profile tab.
+  const fromQueue = fromTab === 'queue'
+  const back = (
+    <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px]">
+      <Link to={fromQueue ? '/monitoring' : `/patients/${patientId}?tab=${encodeURIComponent(fromTab)}`}
+        className="inline-flex items-center gap-1 text-navy-500 hover:text-navy-800"><ArrowLeft className="h-3.5 w-3.5" /> {fromQueue ? 'Back to Nursing Monitoring' : 'Back to Patient Profile'}</Link>
+      {fromQueue && <Link to={`/patients/${patientId}?tab=stays`} className="text-navy-500 hover:text-navy-800">Patient profile</Link>}
+    </div>
+  )
 
   if (isLoading) return <>{back}<Loading label="Loading monitoring for this hospital stay…" /></>
   if (error) return <>{back}<ErrorBox error={error} title="Monitoring is not available" /></>
@@ -194,6 +200,7 @@ function AlertsCard({ data }: { data: Detail }) {
               <p className="mt-1.5 text-[13px] text-navy-800">{a.message}</p>
               {a.basis && <p className="mt-0.5 text-[12px] text-navy-500">Basis: {a.basis}</p>}
               {a.resolution && <p className="mt-0.5 text-[12px] text-sage-700">{a.resolution} — {a.updatedBy}</p>}
+              {a.status === 'ACKNOWLEDGED' && a.updatedBy && <p className="mt-0.5 text-[12px] text-navy-600">Acknowledged by {a.updatedBy}{a.updatedAt ? ` · ${fmtHospital(a.updatedAt, tz)}` : ''}</p>}
               {can('NURSING_MONITORING') && a.status !== 'RESOLVED' && (
                 <div className="mt-2 flex gap-2">
                   {a.status === 'OPEN' && <Button size="sm" loading={update.isPending && update.variables?.id === a.alertId && update.variables.status === 'ACKNOWLEDGED'}

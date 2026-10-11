@@ -33,7 +33,7 @@ export default function NursingMonitoring() {
               <ul className="divide-y divide-line">
                 {open.map(({ alert: a, patientName, displayId, orgName, department }) => (
                   <li key={a.alertId}>
-                    <Link to={`/patients/${a.patientId}/encounters/${a.encounterId}/monitoring?from=stays`} className="flex items-start gap-3 py-3 hover:bg-canvas">
+                    <Link to={`/patients/${a.patientId}/encounters/${a.encounterId}/monitoring?from=queue`} className="flex items-start gap-3 py-3 hover:bg-canvas">
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="text-[14px] font-semibold text-navy-900">{patientName}</span>
@@ -70,7 +70,7 @@ export default function NursingMonitoring() {
                         <td className="pr-3 text-navy-600">{fmtHospital(p.card.lastSyncAt)}</td>
                         <td className={cx('pr-3', p.nextRepositioningDueAt && p.nextRepositioningDueAt <= p.card.simulatedNow ? 'font-medium text-amber-700' : 'text-navy-600')}>
                           {p.nextRepositioningDueAt ? fmtHospital(p.nextRepositioningDueAt) : '—'}</td>
-                        <td><Link to={`/patients/${p.patientId}/encounters/${p.encounterId}/monitoring?from=stays`} className="text-[12.5px] font-medium text-coral-700">Open</Link></td>
+                        <td><Link to={`/patients/${p.patientId}/encounters/${p.encounterId}/monitoring?from=queue`} className="text-[12.5px] font-medium text-coral-700">Open</Link></td>
                       </tr>
                     ))}
                   </tbody>
