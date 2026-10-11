@@ -201,7 +201,8 @@ public class ClinicalAiService {
         try {
             GeminiGateway.Reply reply = gemini.generateJson(new GeminiGateway.Request("interpret-search", Prompts.INTERPRET_SEARCH,
                     List.of(Turn.user(prompt)), AiSchemas.searchCriteria(SearchCriteria.CONCEPTS, SearchCriteria.RECORD_TYPES,
-                    orgs.stream().map(Organization::orgId).toList(), all.stream().map(Patient::patientId).toList(), flagCategories)));
+                    orgs.stream().map(Organization::orgId).toList(), all.stream().map(Patient::patientId).toList(), flagCategories,
+                    SearchCriteria.TRAITS)));
             Map<String, Object> raw = parseObject(reply.text());
             SearchCriteria c = new SearchCriteria(query, strings(raw.get("keywords")), strings(raw.get("concepts")),
                     strings(raw.get("recordTypes")), strings(raw.get("organizationIds")),
@@ -209,7 +210,7 @@ public class ClinicalAiService {
                     blankToNull(raw.get("dateTo"), null), bool(raw.get("obstetricOnly")), bool(raw.get("upcomingDeliveryOnly")),
                     bool(raw.get("multipleOrganizationsOnly")), bool(raw.get("openFlagsOnly")),
                     raw.get("minMatchesPerPatient") instanceof Number n ? n.intValue() : 1,
-                    raw.get("matchMode") == null ? "ANY" : raw.get("matchMode").toString());
+                    raw.get("matchMode") == null ? "ANY" : raw.get("matchMode").toString(), strings(raw.get("traits")));
             String target = "FLAGS".equals(String.valueOf(raw.get("searchTarget"))) ? "FLAGS" : "RECORDS";
             FlagSearchCriteria fc = null;
             if (target.equals("FLAGS")) {

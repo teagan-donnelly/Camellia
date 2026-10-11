@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { get, patch, post } from './client'
+import { api, get, patch, post } from './client'
 import type {
   AiAnswer, AlertDetail, AlertSummary, CoordinationNote, Dashboard, ExtractionResult, Facets, FlagDto, FlagSearchCriteria,
   FlagSearchResult, IntegrationStatus, Interpretation, Meta, PatientProfile, PatientSummary, RecordDetail, RuleDescriptor, RunResult,
   SearchCriteria, SearchResult, Session, SessionUser,
+  PatientDocument, PatientTrait, ShiftSchedule,
   BriefingView, EncounterView, ImportBatch, ImportSample, MonitoringDetail, NursingQueue, ObservationSeries, ShiftView, TimelineItem,
 } from './types'
 
@@ -184,3 +185,36 @@ export const useImportSamples = (enabled = true) =>
 
 export const useImportHistory = (enabled = true) =>
   useQuery({ queryKey: ['import-history'], queryFn: () => get<ImportBatch[]>('/import/history'), enabled })
+
+// ---------------------------------------------------------------- V3.1
+
+/** Diagnosis-derived traits. Only requested for clinical roles (the server enforces the same rule). */
+export const usePatientTraits = (patientId: string, enabled: boolean) =>
+  useQuery({ queryKey: ['patient-traits', patientId], queryFn: () => get<PatientTrait[]>(`/patients/${patientId}/traits`), enabled })
+
+export const usePatientDocuments = (patientId: string) =>
+  useQuery({ queryKey: ['patient-documents', patientId], queryFn: () => get<PatientDocument[]>(`/patients/${patientId}/documents`) })
+
+export function useUploadDocument(patientId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ file, title, encounterId }: { file: File; title?: string; encounterId?: string }) => {
+      const form = new FormData()
+      form.append('file', file)
+      if (title) form.append('title', title)
+      if (encounterId) form.append('encounterId', encounterId)
+      return api<PatientDocument>(`/patients/${patientId}/documents`, { method: 'POST', body: form })
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['patient-documents', patientId] })
+      qc.invalidateQueries({ queryKey: keys.dashboard })
+    },
+  })
+}
+
+/** Authorized file URL (the server re-checks access on every request; nothing is cached). */
+export const documentFileUrl = (documentId: string, download = false) =>
+  `/api/documents/${encodeURIComponent(documentId)}/file${download ? '?download=true' : ''}`
+
+export const useShiftSchedule = () =>
+  useQuery({ queryKey: ['shift-schedule'], queryFn: () => get<ShiftSchedule>('/shifts/schedule'), staleTime: 5 * 60_000 })

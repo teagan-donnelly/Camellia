@@ -14,6 +14,12 @@ spring:
   # The DataSource is built by com.camellia.config.DataSourceConfig (Snowflake, or the labeled local fallback).
   jackson:
     default-property-inclusion: non_null
+  # Uploaded patient documents. Slightly above camellia.documents.max-upload-mb so the application's own size check
+  # (with a clear message) runs first; anything larger is rejected by the servlet container with HTTP 413.
+  servlet:
+    multipart:
+      max-file-size: 12MB
+      max-request-size: 13MB
 
 server:
   port: ${PORT:8080}
@@ -112,6 +118,13 @@ camellia:
     speed: 1.0
     timeout-seconds: ${ELEVENLABS_TIMEOUT_SECONDS:180}
     max-retries: ${ELEVENLABS_MAX_RETRIES:2}
+
+  documents:
+    # Non-public storage for uploaded PDF/DOCX/DOC files (served only through the authorized /api/documents/{id}/file).
+    storage-dir: ${CAMELLIA_DOCUMENTS_DIR:./data/documents}
+    max-upload-mb: ${CAMELLIA_DOCUMENTS_MAX_MB:10}
+    # Extracted text kept for authorized clinical search (never sent to Gemini).
+    max-extracted-chars: 200000
 
   jobs:
     # Enables POST /events, the non-HTTP entry point for scheduled and operator jobs (seeding, screening, demo reset).

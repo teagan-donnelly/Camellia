@@ -9,6 +9,7 @@ import com.camellia.security.AuthorizationService;
 import com.camellia.security.DemoUser;
 import com.camellia.security.Permission;
 import com.camellia.service.ClinicalViewService;
+import com.camellia.traits.TraitService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,10 +25,12 @@ public class PatientController {
     private final AuthorizationService auth;
     private final ClinicalDataRepository clinical;
     private final com.camellia.monitoring.MonitoringService monitoring;
+    private final TraitService traits;
 
     public PatientController(ClinicalViewService views, ClinicalAiService ai, AuthorizationService auth, ClinicalDataRepository clinical,
-                             com.camellia.monitoring.MonitoringService monitoring) {
+                             com.camellia.monitoring.MonitoringService monitoring, TraitService traits) {
         this.monitoring = monitoring;
+        this.traits = traits;
         this.views = views;
         this.ai = ai;
         this.auth = auth;
@@ -58,6 +61,12 @@ public class PatientController {
         auth.requirePatient(user, id);
         return views.patientProfile(id, auth.scope(user)).timeline().stream()
                 .filter(r -> type == null || type.isBlank() || r.recordType().equalsIgnoreCase(type)).toList();
+    }
+
+    /** Structured traits derived from coded diagnoses (clinical roles only). */
+    @GetMapping("/patients/{id}/traits")
+    public List<TraitService.TraitView> traits(DemoUser user, @PathVariable String id) {
+        return traits.forPatient(user, id);
     }
 
     @GetMapping("/patients/{id}/appointments")

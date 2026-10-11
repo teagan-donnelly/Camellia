@@ -2,6 +2,7 @@ package com.camellia.search;
 
 import com.camellia.ingestion.ClinicalTagger;
 import com.camellia.model.Patient;
+import com.camellia.traits.TraitService;
 
 import java.util.*;
 
@@ -76,18 +77,32 @@ public final class RuleBasedQueryInterpreter {
             }
         }
 
+        List<String> traits = traits(q);
         List<String> keywords = new ArrayList<>();
         if (concepts.isEmpty() && recordTypes.isEmpty()) {
             for (String w : q.replaceAll("[^a-z0-9 \\-]", " ").split("\\s+")) {
-                if (w.length() >= 3 && !STOPWORDS.contains(w) && patients.stream().noneMatch(p -> p.lastName().equalsIgnoreCase(w)
-                        || p.firstName().equalsIgnoreCase(w))) {
+                if (w.length() >= 3 && !STOPWORDS.contains(w) && !(traits.size() > 0 && TRAIT_WORDS.contains(w))
+                        && patients.stream().noneMatch(p -> p.lastName().equalsIgnoreCase(w) || p.firstName().equalsIgnoreCase(w))) {
                     keywords.add(w);
                 }
             }
         }
-        boolean anyFilter = !concepts.isEmpty() || !recordTypes.isEmpty() || !keywords.isEmpty() || obstetric || upcomingDelivery || multiOrg;
+        boolean anyFilter = !concepts.isEmpty() || !recordTypes.isEmpty() || !keywords.isEmpty() || obstetric || upcomingDelivery
+                || multiOrg || !traits.isEmpty();
         if (!anyFilter && patientId == null) keywords.add(q.trim());
         return new SearchCriteria(query, keywords, new ArrayList<>(concepts), recordTypes, List.of(), patientId, null, null,
-                obstetric, upcomingDelivery, multiOrg, false, min, "ANY");
+                obstetric, upcomingDelivery, multiOrg, false, min, "ANY", traits);
+    }
+
+    private static final Set<String> TRAIT_WORDS = Set.of("obesity", "obese", "morbid", "morbidly", "severe", "class", "iii");
+
+    /**
+     * "morbid / severe / class 3 obesity" means the morbid-obesity trait only; any other mention of obesity means both
+     * traits (a patient with morbid obesity also has obesity). Package-visible for tests.
+     */
+    static List<String> traits(String q) {
+        if (!q.contains("obes")) return List.of();
+        boolean morbid = q.contains("morbid") || q.contains("severe obes") || q.contains("class 3") || q.contains("class iii");
+        return morbid ? List.of(TraitService.MORBID_OBESITY) : List.of(TraitService.OBESITY, TraitService.MORBID_OBESITY);
     }
 }

@@ -15,6 +15,8 @@ public enum Permission {
     ADD_COORDINATION_NOTES,
     /** Preview and import synthetic patient record files. */
     IMPORT_RECORDS,
+    /** Upload PDF / Word documents to a patient (viewing them only needs access to the patient). */
+    UPLOAD_DOCUMENTS,
     /** Generate and play Camellia Briefings for one's own simulated shifts. */
     CLINICAL_BRIEFING,
     /** Read encounter-scoped wearable monitoring data (within the user's patient scope). */

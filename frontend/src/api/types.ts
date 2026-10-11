@@ -331,6 +331,8 @@ export interface SearchCriteria {
   openFlagsOnly?: boolean
   minMatchesPerPatient?: number
   matchMode?: 'ANY' | 'ALL'
+  /** Structured patient traits (exact match per trait). */
+  traits?: TraitCode[]
 }
 
 export interface Interpretation {
@@ -377,6 +379,22 @@ export interface SearchResult {
     records: RecordHit[]
   }[]
   truncated: boolean
+  /** Keyword matches in uploaded documents (never sent to Gemini). */
+  documents?: DocumentHit[]
+}
+
+export interface DocumentHit {
+  documentId: string
+  patientId: string
+  patientName: string
+  patientDisplayId?: string
+  title: string
+  fileName: string
+  fileType: DocumentFileType
+  uploadedAt: string
+  uploadedBy: string
+  encounterId?: string
+  snippet: string
 }
 
 export interface RuleDescriptor {
@@ -402,7 +420,7 @@ export type Permission =
   | 'VIEW_PATIENTS' | 'CLINICAL_SEARCH' | 'CLINICAL_ALERTS' | 'REVIEW_FLAGS' | 'GEMINI_ASSISTANT'
   | 'ANESTHESIA_OB_ALERTS' | 'UPDATE_COORDINATION' | 'ADD_COORDINATION_NOTES'
   | 'IMPORT_RECORDS' | 'CLINICAL_BRIEFING' | 'VIEW_MONITORING' | 'NURSING_MONITORING' | 'DOCUMENT_NURSING_INTERVENTIONS'
-  | 'SIMULATE_DEVICES'
+  | 'SIMULATE_DEVICES' | 'UPLOAD_DOCUMENTS'
 
 export type NavItem = 'DASHBOARD' | 'BRIEFING' | 'PATIENTS' | 'CLINICAL_SEARCH' | 'CLINICAL_ALERTS' | 'ANESTHESIA_OB_ALERTS'
   | 'NURSING_MONITORING'
@@ -758,4 +776,69 @@ export interface ImportSample { file: string; title: string; description: string
 export interface ImportBatch {
   importId: string; fileName: string; sourceFormat: string; orgId: string; patientId: string; matchDecision: string
   recordsInserted: number; recordsDuplicate: number; status: string; importedBy: string; importedAt: string
+}
+
+// ---------------------------------------------------------------- V3.1: traits, documents, shift schedule
+
+export type TraitCode = 'OBESITY' | 'MORBID_OBESITY'
+
+export interface PatientTrait {
+  traitId: string
+  traitCode: TraitCode
+  label: string
+  status: 'ACTIVE' | 'INACTIVE'
+  codeSystem?: string
+  code?: string
+  codeDisplay?: string
+  encounterId?: string
+  orgId?: string
+  sourceRecordId?: string
+  recordedAt?: string
+  recordedBy?: string
+}
+
+export type DocumentFileType = 'PDF' | 'DOCX' | 'DOC'
+
+export interface PatientDocument {
+  documentId: string
+  patientId: string
+  encounterId?: string
+  title: string
+  fileName: string
+  fileType: DocumentFileType
+  sizeBytes: number
+  /** EXTRACTED = searchable text; NO_TEXT = e.g. a scanned PDF (no OCR); FAILED = text could not be read. */
+  textStatus: 'EXTRACTED' | 'NO_TEXT' | 'FAILED'
+  textChars?: number
+  pageCount?: number
+  uploadedAt: string
+  uploadedBy: string
+  duplicateOf?: string
+}
+
+export interface ScheduleShift {
+  scheduleId: string
+  label: string
+  orgName: string
+  department: string
+  unit: string
+  startAt: string
+  endAt: string
+  status: 'SCHEDULED' | 'OPEN'
+  timing: 'IN_PROGRESS' | 'UPCOMING' | 'COMPLETED'
+  staffed?: number
+  target?: number
+  coverage?: 'FULL' | 'SHORT' | 'UNDERSTAFFED'
+  note?: string
+  linkedShiftId?: string
+  briefingAvailable: boolean
+}
+
+export interface ShiftSchedule {
+  timeZone: string
+  now: string
+  current?: ScheduleShift
+  next?: ScheduleShift
+  myShifts: ScheduleShift[]
+  openShifts: ScheduleShift[]
 }

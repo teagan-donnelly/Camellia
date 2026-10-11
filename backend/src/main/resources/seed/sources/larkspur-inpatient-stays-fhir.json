@@ -298,6 +298,72 @@
      }
     ]
    }
+  },
+  {
+   "resource": {
+    "resourceType": "Condition",
+    "id": "C-94315",
+    "subject": {
+     "reference": "Patient/LR-210556"
+    },
+    "encounter": {
+     "reference": "Encounter/E-94310"
+    },
+    "code": {
+     "coding": [
+      {
+       "system": "ICD-10-CM",
+       "code": "E66.01",
+       "display": "Morbid (severe) obesity due to excess calories"
+      }
+     ]
+    },
+    "clinicalStatus": {
+     "coding": [
+      {
+       "code": "active"
+      }
+     ]
+    },
+    "onsetDateTime": "@D-2",
+    "recorder": {
+     "display": "Dr. Owen Castellane, MD"
+    },
+    "specialty": "Hospital Medicine"
+   }
+  },
+  {
+   "resource": {
+    "resourceType": "Condition",
+    "id": "C-94360",
+    "subject": {
+     "reference": "Patient/LR-115870"
+    },
+    "encounter": {
+     "reference": "Encounter/E-94355"
+    },
+    "code": {
+     "coding": [
+      {
+       "system": "ICD-10-CM",
+       "code": "E66.9",
+       "display": "Obesity, unspecified"
+      }
+     ]
+    },
+    "clinicalStatus": {
+     "coding": [
+      {
+       "code": "active"
+      }
+     ]
+    },
+    "onsetDateTime": "@D-1",
+    "recorder": {
+     "display": "Dr. Rafael Chen, MD"
+    },
+    "specialty": "Cardiology"
+   }
   }
  ]
 }

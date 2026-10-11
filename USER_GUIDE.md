@@ -35,6 +35,9 @@ including the role-based experience: what you see depends on the simulated demo 
 22. [Simulated Device Controls](#22-simulated-device-controls)
 23. [Importing patient records](#23-importing-patient-records)
 24. [What the database badge means](#24-what-the-database-badge-means)
+25. [Patient traits: obesity and morbid obesity](#25-patient-traits-obesity-and-morbid-obesity)
+26. [Patient documents (PDF and Word)](#26-patient-documents-pdf-and-word)
+27. [Shift schedule on the dashboard](#27-shift-schedule-on-the-dashboard)
 
 ---
 
@@ -222,7 +225,7 @@ Click **Keyword**, type words (all of them must appear) and/or use the filters.
 
 ### Filters (both modes)
 
-**Patient**, **Organization**, **Record type**, **From** and **To** dates, and **Clear filters**. In Ask Gemini mode the
+**Patient**, **Organization**, **Record type**, **Patient trait** (obesity or morbid obesity, see [§25](#25-patient-traits-obesity-and-morbid-obesity)), **From** and **To** dates, and **Clear filters**. In Ask Gemini mode the
 filters override whatever Gemini chose.
 
 > No results do not mean a condition is absent. They only mean the available records did not match.
@@ -646,3 +649,50 @@ Dates may be ISO-8601 (`2026-10-01`, `2026-10-01T08:30`, with or without offset)
 The local H2 database is a separate copy of the synthetic data — changes there do not appear in Snowflake. Teammates
 who do not have the Snowflake private key can run with `CAMELLIA_DB_MODE=local`.
 
+## 25. Patient traits: obesity and morbid obesity
+
+**Who:** clinical roles (physicians within their practice, nurses, CRNAs, anesthesiologists). The Clinical Data
+Coordinator does not see traits.
+
+- **Where they come from.** A trait exists only when the patient's record has a coded ICD-10-CM diagnosis: *Obesity*
+  (for example E66.9) or *Morbid (severe) obesity* (E66.01, E66.2, E66.813). Free-text notes, wearable data and
+  monitoring never create or change a trait.
+- **On the patient profile**, under the summary, *Documented traits* shows one chip per trait with its code. *During a
+  hospital stay* means the diagnosis was documented during a specific encounter. Click a chip to open the diagnosis
+  record.
+- **Finding patients.** In Clinical Search choose **Patient trait** → *Obesity* or *Morbid (severe) obesity* (each matches
+  only that trait), or ask *"Which patients have documented morbid obesity?"*. A general *"obesity"* question includes
+  both traits, because morbid obesity is a form of obesity. A keyword search for *obesity* finds the diagnosis records
+  themselves.
+- Traits are reference information. They never create alerts and do not appear in the Nursing Monitoring queue.
+
+**Try it** (as Jordan Lee): Clinical Search → Keyword → Patient trait *Morbid (severe) obesity* → Search. Dolores Fenwick
+and Henry Castellan are listed. Caleb Wren and Frances Albright have *Obesity*.
+
+## 26. Patient documents (PDF and Word)
+
+**Where:** patient profile → **Documents** tab, or **Hospital stays** → **Upload document** next to a stay (the stay is
+pre-selected).
+
+- **Upload** (physicians, nurses, L&D nurses and the Clinical Data Coordinator): choose a `.pdf`, `.docx` or `.doc` file
+  up to 10 MB, optionally a title and an encounter, then **Upload document**. The server checks the file's actual
+  content, so a renamed file is rejected with a clear message. Uploading the same file again keeps both copies and the
+  confirmation says so; nothing is ever overwritten.
+- **The list** shows title, file name, size, pages, upload time (hospital time) and who uploaded it, the encounter, and
+  whether its text is searchable. *No selectable text* usually means a scanned PDF (no OCR in this prototype).
+- **View** opens a PDF in a new tab; **Download** saves any document. Both links check your access every time, so a
+  copied link does not work for someone who cannot see the patient.
+- **Search.** Clinical Search lists matching documents in a separate *Uploaded documents* section (keyword matches in the
+  text, title or file name). Documents are **not** sent to Gemini: they are excluded from the AI summary and the
+  assistant.
+- Anesthesia roles can view and download documents but not upload them.
+
+## 27. Shift schedule on the dashboard
+
+**Who:** users with scheduled shifts (in the demo: Jordan Lee and Taylor Morgan).
+
+- **My shifts:** the *Current shift* (while one is in progress) and the *Next shift*, each with date, hours, unit,
+  staffing coverage and a link to the shift briefing when one is available, followed by **Later this week**.
+- **Open shifts in your units:** staffing gaps posted in your own units only.
+- **Coverage** is always written out: *Fully staffed · 6/6 staffed*, *Short 1 · 5/6 staffed*, *Short 2 · 4/6 staffed*.
+- Times are hospital wall-clock time (ET). The schedule is synthetic and read-only.

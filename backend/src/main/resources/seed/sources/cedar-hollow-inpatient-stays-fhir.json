@@ -189,6 +189,39 @@
      }
     ]
    }
+  },
+  {
+   "resource": {
+    "resourceType": "Condition",
+    "id": "C-77425",
+    "subject": {
+     "reference": "Patient/CH-4588120"
+    },
+    "encounter": {
+     "reference": "Encounter/E-77420"
+    },
+    "code": {
+     "coding": [
+      {
+       "system": "ICD-10-CM",
+       "code": "E66.01",
+       "display": "Morbid (severe) obesity due to excess calories"
+      }
+     ]
+    },
+    "clinicalStatus": {
+     "coding": [
+      {
+       "code": "active"
+      }
+     ]
+    },
+    "onsetDateTime": "@D-1",
+    "recorder": {
+     "display": "Dr. Tomasz Varga, MD"
+    },
+    "specialty": "Neurosurgery"
+   }
   }
  ]
 }

@@ -37,11 +37,12 @@ public class SearchController {
                                @RequestParam(required = false) String recordType,
                                @RequestParam(required = false) String concept,
                                @RequestParam(required = false) String from,
-                               @RequestParam(required = false) String to) {
+                               @RequestParam(required = false) String to,
+                               @RequestParam(required = false) String trait) {
         auth.requirePermission(user, Permission.CLINICAL_SEARCH);
         List<String> keywords = q == null || q.isBlank() ? List.of() : Arrays.stream(q.trim().split("\\s+")).toList();
         SearchCriteria c = new SearchCriteria(q, keywords, csv(concept), csv(recordType), csv(orgId), patientId, from, to,
-                false, false, false, false, 1, "ALL");
+                false, false, false, false, 1, "ALL", csv(trait));
         if (!c.hasAnyFilter()) throw ApiException.badRequest("Provide a search term or at least one filter.");
         return search.search(c, auth.scope(user));
     }

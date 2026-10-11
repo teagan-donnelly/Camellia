@@ -479,3 +479,64 @@ CREATE TABLE IF NOT EXISTS MONITORING_ALERTS (
     UPDATED_BY      VARCHAR(200),
     RESOLUTION      VARCHAR(500)
 );
+
+-- V3.1: structured patient traits derived from coded diagnoses (never from free text or monitoring data).
+-- One row per source diagnosis; TRAIT_ID is deterministic (TRT-<condition id>), so re-seeding never duplicates.
+CREATE TABLE IF NOT EXISTS PATIENT_TRAITS (
+    TRAIT_ID          VARCHAR(80)  NOT NULL PRIMARY KEY,
+    PATIENT_ID        VARCHAR(32)  NOT NULL,
+    ENCOUNTER_ID      VARCHAR(64),                -- set when the diagnosis was documented during a specific encounter
+    TRAIT_CODE        VARCHAR(32)  NOT NULL,      -- OBESITY | MORBID_OBESITY
+    TRAIT_LABEL       VARCHAR(100) NOT NULL,
+    CODE_SYSTEM       VARCHAR(32),
+    CODE              VARCHAR(16),
+    CODE_DISPLAY      VARCHAR(300),
+    ORG_ID            VARCHAR(32),
+    SOURCE_RECORD_ID  VARCHAR(64),
+    CONDITION_ID      VARCHAR(64),
+    STATUS            VARCHAR(16)  NOT NULL,      -- ACTIVE | INACTIVE
+    RECORDED_AT       TIMESTAMP_NTZ,
+    RECORDED_BY       VARCHAR(200),
+    CREATED_AT        TIMESTAMP_NTZ
+);
+
+-- V3.1: uploaded patient documents (PDF, DOCX, DOC). Bytes live in non-public backend storage (STORAGE_KEY);
+-- access only through the authorized /api/documents/{id}/file endpoint. Extracted text is never sent to Gemini.
+CREATE TABLE IF NOT EXISTS PATIENT_DOCUMENTS (
+    DOCUMENT_ID        VARCHAR(48)   NOT NULL PRIMARY KEY,
+    PATIENT_ID         VARCHAR(32)   NOT NULL,
+    ENCOUNTER_ID       VARCHAR(64),
+    TITLE              VARCHAR(300),
+    ORIGINAL_FILENAME  VARCHAR(300)  NOT NULL,
+    FILE_TYPE          VARCHAR(8)    NOT NULL,     -- PDF | DOCX | DOC
+    CONTENT_TYPE       VARCHAR(120)  NOT NULL,
+    SIZE_BYTES         NUMBER(12,0)  NOT NULL,
+    SHA256             VARCHAR(64)   NOT NULL,
+    STORAGE_KEY        VARCHAR(200)  NOT NULL,
+    TEXT_STATUS        VARCHAR(16)   NOT NULL,     -- EXTRACTED | NO_TEXT | FAILED
+    TEXT_CHARS         NUMBER(10,0),
+    EXTRACTED_TEXT     VARCHAR(1000000),
+    PAGE_COUNT         NUMBER(6,0),
+    UPLOADED_AT        TIMESTAMP_NTZ NOT NULL,
+    UPLOADED_BY_ID     VARCHAR(64)   NOT NULL,
+    UPLOADED_BY        VARCHAR(200)  NOT NULL
+);
+
+-- V3.1: unit shift roster for the dashboard (own shifts later in the week, open shifts, staffing coverage).
+-- Separate from PROVIDER_SHIFTS, which holds the briefing shifts with patient assignments (LINKED_SHIFT_ID).
+CREATE TABLE IF NOT EXISTS UNIT_SHIFT_SCHEDULE (
+    SCHEDULE_ID       VARCHAR(48)  NOT NULL PRIMARY KEY,
+    USER_ID           VARCHAR(64),                -- NULL = open shift
+    LINKED_SHIFT_ID   VARCHAR(48),
+    ORG_ID            VARCHAR(32),
+    DEPARTMENT        VARCHAR(200),
+    UNIT              VARCHAR(200),
+    SHIFT_LABEL       VARCHAR(100),
+    START_AT          TIMESTAMP_NTZ NOT NULL,
+    END_AT            TIMESTAMP_NTZ NOT NULL,
+    STATUS            VARCHAR(16)  NOT NULL,      -- SCHEDULED | OPEN
+    STAFFED_COUNT     NUMBER(4,0),
+    TARGET_COUNT      NUMBER(4,0),
+    NOTE              VARCHAR(300),
+    CREATED_AT        TIMESTAMP_NTZ
+);

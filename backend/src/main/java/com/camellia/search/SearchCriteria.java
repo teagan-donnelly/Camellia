@@ -2,6 +2,7 @@ package com.camellia.search;
 
 import com.camellia.ingestion.ClinicalTagger;
 import com.camellia.model.RecordType;
+import com.camellia.traits.TraitService;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.time.LocalDate;
@@ -26,7 +27,20 @@ public record SearchCriteria(
         Boolean multipleOrganizationsOnly,
         Boolean openFlagsOnly,
         Integer minMatchesPerPatient,
-        String matchMode) {
+        String matchMode,
+        List<String> traits) {
+
+    /** Criteria without a patient-trait filter. */
+    public SearchCriteria(String text, List<String> keywords, List<String> concepts, List<String> recordTypes,
+                          List<String> organizationIds, String patientId, String dateFrom, String dateTo, Boolean obstetricOnly,
+                          Boolean upcomingDeliveryOnly, Boolean multipleOrganizationsOnly, Boolean openFlagsOnly,
+                          Integer minMatchesPerPatient, String matchMode) {
+        this(text, keywords, concepts, recordTypes, organizationIds, patientId, dateFrom, dateTo, obstetricOnly,
+                upcomingDeliveryOnly, multipleOrganizationsOnly, openFlagsOnly, minMatchesPerPatient, matchMode, List.of());
+    }
+
+    /** Structured patient traits (PATIENT_TRAITS) that can filter a search; each matches only its own trait code. */
+    public static final List<String> TRAITS = List.copyOf(TraitService.LABELS.keySet());
 
     /** Concepts the search engine understands (tags assigned deterministically during ingestion). */
     public static final List<String> CONCEPTS;
@@ -80,17 +94,22 @@ public record SearchCriteria(
         String to = validDate(dateTo, warnings);
         int min = minMatchesPerPatient == null ? 1 : Math.max(1, Math.min(10, minMatchesPerPatient));
         String mode = "ANY".equalsIgnoreCase(matchMode) ? "ANY" : "ALL";
+        List<String> tr = new ArrayList<>();
+        for (String x : nz(traits)) {
+            String u = x == null ? "" : x.trim().toUpperCase(Locale.ROOT);
+            if (TRAITS.contains(u)) { if (!tr.contains(u)) tr.add(u); } else if (!u.isEmpty()) warnings.add("Ignored unknown patient trait '" + x + "'");
+        }
         String t = text == null ? null : (text.length() > 500 ? text.substring(0, 500) : text);
         return new SearchCriteria(t, kw, cs, rt, orgs, pid, from, to, Boolean.TRUE.equals(obstetricOnly),
                 Boolean.TRUE.equals(upcomingDeliveryOnly), Boolean.TRUE.equals(multipleOrganizationsOnly),
-                Boolean.TRUE.equals(openFlagsOnly), min, mode);
+                Boolean.TRUE.equals(openFlagsOnly), min, mode, tr);
     }
 
     public boolean hasAnyFilter() {
         return !nz(keywords).isEmpty() || !nz(concepts).isEmpty() || !nz(recordTypes).isEmpty() || !nz(organizationIds).isEmpty()
                 || patientId != null || dateFrom != null || dateTo != null || Boolean.TRUE.equals(obstetricOnly)
                 || Boolean.TRUE.equals(upcomingDeliveryOnly) || Boolean.TRUE.equals(multipleOrganizationsOnly)
-                || Boolean.TRUE.equals(openFlagsOnly);
+                || Boolean.TRUE.equals(openFlagsOnly) || !nz(traits).isEmpty();
     }
 
     private static String validDate(String d, List<String> warnings) {

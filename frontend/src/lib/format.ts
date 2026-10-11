@@ -136,3 +136,25 @@ export const MONITORING_LABEL: Record<string, string> = {
   INACTIVITY_REVIEW: 'Inactivity review triggered', DEVICE_DISCONNECTED: 'Device disconnected', DEVICE_RECONNECTED: 'Device reconnected',
   REPOSITIONING_DOCUMENTED: 'Nursing repositioning documented', SESSION_STARTED: 'Monitoring session started', SESSION_STOPPED: 'Monitoring session stopped',
 }
+
+// ---------------------------------------------------------------- V3.1: shift schedule, documents, traits
+
+const weekdayFmt = new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })
+const timeFmt = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' })
+
+/** Shift times are hospital wall-clock values (no offset), so they are formatted as-is: "Sat, Oct 11". */
+export const fmtWeekday = (v?: string | null) => (parse(v) ? weekdayFmt.format(parse(v)!) : '—')
+/** "7:00 AM" (hospital wall-clock time). */
+export const fmtTime = (v?: string | null) => (parse(v) ? timeFmt.format(parse(v)!) : '—')
+
+export function fmtBytes(n: number): string {
+  if (n < 1024) return `${n} B`
+  if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`
+}
+
+export const DOCUMENT_TEXT_LABEL: Record<string, string> = {
+  EXTRACTED: 'Text searchable',
+  NO_TEXT: 'No selectable text',
+  FAILED: 'Text not readable',
+}

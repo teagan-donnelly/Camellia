@@ -205,6 +205,10 @@
       "appointmentType": { "text": "Scheduled repeat cesarean delivery (39w0d)" }, "serviceCategory": { "text": "Obstetrics" },
       "department": "Labor & Delivery — Operating Room 1", "start": "@D+47T07:30",
       "participant": [{ "actor": { "display": "Dr. Helena Voss, MD" } }],
-      "description": "Planned repeat cesarean delivery. Referring practice: Bellwether Women's Health Associates. Prior delivery occurred at Cedar Hollow Community Hospital." } }
+      "description": "Planned repeat cesarean delivery. Referring practice: Bellwether Women's Health Associates. Prior delivery occurred at Cedar Hollow Community Hospital." } },
+    { "resource": { "resourceType": "Condition", "id": "C-70560", "subject": { "reference": "Patient/LR-190023" },
+      "code": { "coding": [{ "system": "ICD-10-CM", "code": "E66.9", "display": "Obesity, unspecified" }] },
+      "clinicalStatus": { "coding": [{ "code": "active" }] }, "onsetDateTime": "@D-610",
+      "recorder": { "display": "Dr. Aisha Corbin, MD" }, "specialty": "Orthopedics" } }
   ]
 }

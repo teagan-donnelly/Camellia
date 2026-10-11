@@ -1,10 +1,11 @@
 import {
-  ArrowLeft, Baby, Bell, Building2, CalendarClock, ChevronRight, FileSearch, FlaskConical, HeartPulse, Pill, Quote, Sparkles,
+  ArrowLeft, Baby, Bell, Building2, CalendarClock, ChevronRight, FileSearch, FlaskConical, HeartPulse, Pill, Quote, Sparkles, Upload,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useEncounters, useExtraction, usePatient } from '../api/hooks'
 import { PatientMonitoringCard } from '../components/monitoring'
+import { PatientDocuments, TraitChips } from '../components/documents'
 import type { EncounterView, LabResult, PatientProfile as Profile, RecordDto } from '../api/types'
 import { AiBadge, AssistantPanel, GeminiThinking } from '../components/ai'
 import { CitationChip, RecordTypeIcon } from '../components/records'
@@ -13,8 +14,8 @@ import { Badge, Button, Card, CardHeader, EmptyState, ErrorBox, KeyValue, Loadin
 import { FORMAT_LABEL, RECORD_TYPE_LABEL, RULE_LABEL, cx, daysLabel, fmtDate, fmtDateTime, initials, titleCase } from '../lib/format'
 import { useApp } from '../state/AppContext'
 
-type Tab = 'overview' | 'stays' | 'timeline' | 'conditions' | 'medications' | 'labs' | 'notes' | 'appointments' | 'flags' | 'ai'
-const TABS: Tab[] = ['overview', 'stays', 'timeline', 'conditions', 'medications', 'labs', 'notes', 'appointments', 'flags', 'ai']
+type Tab = 'overview' | 'stays' | 'timeline' | 'conditions' | 'medications' | 'labs' | 'notes' | 'documents' | 'appointments' | 'flags' | 'ai'
+const TABS: Tab[] = ['overview', 'stays', 'timeline', 'conditions', 'medications', 'labs', 'notes', 'documents', 'appointments', 'flags', 'ai']
 
 export default function PatientProfile() {
   const { id = '' } = useParams()
@@ -25,7 +26,9 @@ export default function PatientProfile() {
   const [params, setParams] = useSearchParams()
   const requested = params.get('tab') as Tab | null
   const tab: Tab = requested && TABS.includes(requested) ? requested : 'overview'
-  const setTab = (t: Tab) => setParams((prev) => { prev.set('tab', t); return prev }, { replace: true })
+  const setTab = (t: Tab) => setParams((prev) => { prev.set('tab', t); prev.delete('encounter'); return prev }, { replace: true })
+  /** Opens the Documents tab with an encounter preselected for upload (from the Hospital stays tab). */
+  const uploadFor = (encounterId: string) => setParams((prev) => { prev.set('tab', 'documents'); prev.set('encounter', encounterId); return prev }, { replace: true })
   const monitored = (encounters.data ?? []).filter((e) => e.monitoring)
 
   if (isLoading) return <Loading label="Retrieving patient records…" />
@@ -50,6 +53,7 @@ export default function PatientProfile() {
                 </div>
                 <div className="mt-1 text-[13px] text-navy-500"><SynMrn id={p.displayId} /> · <span title="Camellia's internal patient key">ID {p.patientId}</span> · {p.age} years · {p.sex === 'F' ? 'Female' : p.sex === 'M' ? 'Male' : p.sex} · DOB {fmtDate(p.dateOfBirth)}</div>
                 {p.summary && <p className="mt-2 max-w-3xl text-[13.5px] leading-relaxed text-navy-700">{p.summary}</p>}
+                <TraitChips patientId={p.patientId} />
               </div>
               <div className="flex gap-2">
                 <Link to={`/search?patientId=${p.patientId}`}><Button size="sm"><FileSearch className="h-3.5 w-3.5" />Search records</Button></Link>
@@ -84,7 +88,7 @@ export default function PatientProfile() {
 
           {/* One card per hospital stay that has a wristband session; nothing for stays without monitoring. */}
           {monitored.length > 0 && (
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className={cx('grid grid-cols-1 gap-4', monitored.length > 1 && 'lg:grid-cols-2')}>
               {monitored.map((e) => <PatientMonitoringCard key={e.encounterId} patientId={p.patientId} encounter={e} fromTab={tab} />)}
             </div>
           )}
@@ -99,6 +103,7 @@ export default function PatientProfile() {
                 { id: 'medications', label: 'Medications', count: data.medications.length },
                 { id: 'labs', label: 'Labs', count: data.labs.length },
                 { id: 'notes', label: 'Notes', count: notes.length },
+                { id: 'documents', label: 'Documents' },
                 { id: 'appointments', label: 'Appointments', count: data.appointments.length },
                 { id: 'flags', label: 'Flags', count: data.flags.length },
                 { id: 'ai', label: <span className="inline-flex items-center gap-1"><Sparkles className="h-3.5 w-3.5 text-coral-500" />AI observations</span>, count: data.aiObservations.length },
@@ -106,12 +111,14 @@ export default function PatientProfile() {
             </div>
             <div className="p-4">
               {tab === 'overview' && <Overview data={data} onTab={setTab} />}
-              {tab === 'stays' && <Stays patientId={p.patientId} encounters={encounters.data ?? []} loading={encounters.isLoading} />}
+              {tab === 'stays' && <Stays patientId={p.patientId} encounters={encounters.data ?? []} loading={encounters.isLoading} onUpload={uploadFor} />}
               {tab === 'timeline' && <Timeline records={data.timeline} />}
               {tab === 'conditions' && <Conditions data={data} />}
               {tab === 'medications' && <Medications data={data} />}
               {tab === 'labs' && <Labs labs={data.labs} names={data.organizationNames} />}
               {tab === 'notes' && <Timeline records={notes} expanded />}
+              {tab === 'documents' && <PatientDocuments key={params.get('encounter') ?? ''} patientId={p.patientId} encounters={encounters.data ?? []}
+                initialEncounterId={params.get('encounter') ?? undefined} />}
               {tab === 'appointments' && <Appointments data={data} />}
               {tab === 'flags' && <Flags data={data} />}
               {tab === 'ai' && <AiObservations data={data} />}
@@ -250,7 +257,8 @@ function Timeline({ records, expanded }: { records: RecordDto[]; expanded?: bool
 function Conditions({ data }: { data: Profile }) {
   if (!data.conditions.length) return <EmptyState title="No documented conditions" />
   return (
-    <table className="w-full text-left text-[13.5px]">
+    <div className="-mx-4 overflow-x-auto px-4">
+    <table className="w-full min-w-[620px] text-left text-[13.5px]">
       <thead className="text-[11.5px] uppercase tracking-wide text-navy-500"><tr><th className="py-2">Condition</th><th>Status</th><th>Onset</th><th>Recorded by</th><th>Source</th></tr></thead>
       <tbody className="divide-y divide-line">
         {data.conditions.map((c) => (
@@ -264,6 +272,7 @@ function Conditions({ data }: { data: Profile }) {
         ))}
       </tbody>
     </table>
+    </div>
   )
 }
 
@@ -436,14 +445,17 @@ function AiObservations({ data }: { data: Profile }) {
 }
 
 /** All encounters; only stays with a monitoring session link to monitoring details. */
-function Stays({ patientId, encounters, loading }: { patientId: string; encounters: EncounterView[]; loading: boolean }) {
+function Stays({ patientId, encounters, loading, onUpload }: {
+  patientId: string; encounters: EncounterView[]; loading: boolean; onUpload: (encounterId: string) => void
+}) {
+  const { can } = useApp()
   if (loading) return <Loading />
   if (!encounters.length) return <p className="text-[13px] text-navy-400">No encounters recorded.</p>
   return (
     <ul className="divide-y divide-line">
       {encounters.map((e) => (
         <li key={e.encounterId} className="flex flex-wrap items-start gap-3 py-3">
-          <div className="w-[170px] shrink-0 text-[12.5px] text-navy-500">{fmtDate(e.startTime)}{e.inpatient ? ` – ${e.endTime ? fmtDate(e.endTime) : 'present'}` : ''}</div>
+          <div className="w-full shrink-0 text-[12.5px] text-navy-500 sm:w-[170px]">{fmtDate(e.startTime)}{e.inpatient ? ` – ${e.endTime ? fmtDate(e.endTime) : 'present'}` : ''}</div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2 text-[13.5px] font-medium text-navy-900">
               {e.encounterType}{e.ongoing && <Badge tone="coral">Current stay</Badge>}
@@ -451,9 +463,16 @@ function Stays({ patientId, encounters, loading }: { patientId: string; encounte
             </div>
             <div className="text-[12.5px] text-navy-600">{e.orgName} · {e.department} · {e.reason}</div>
           </div>
-          {e.monitoring && (
-            <Link to={`/patients/${patientId}/encounters/${e.encounterId}/monitoring?from=stays`} className="text-[12.5px] font-medium text-coral-700 hover:text-coral-800">View Monitoring Details →</Link>
-          )}
+          <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1">
+            {can('UPLOAD_DOCUMENTS') && (
+              <button type="button" onClick={() => onUpload(e.encounterId)} className="inline-flex items-center gap-1 text-[12.5px] font-medium text-navy-600 hover:text-coral-700">
+                <Upload className="h-3.5 w-3.5" />Upload document
+              </button>
+            )}
+            {e.monitoring && (
+              <Link to={`/patients/${patientId}/encounters/${e.encounterId}/monitoring?from=stays`} className="text-[12.5px] font-medium text-coral-700 hover:text-coral-800">View Monitoring Details →</Link>
+            )}
+          </div>
         </li>
       ))}
     </ul>

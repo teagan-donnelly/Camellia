@@ -509,3 +509,30 @@ conversation store, Gemini gateway, Snowflake access layer and UI components. Ne
 `BriefingService`, `ElevenLabsClient`, `MonitoringService` (+ repositories). Tradeoffs: synchronous simulator writes;
 audio on local disk; nursing scope inherits the prototype's broad network access; ElevenLabs could not be called live
 without a key (see IMPLEMENTATION_STATUS.md).
+
+## 32. Obesity traits come from coded diagnoses
+
+Traits live in their own table (`PATIENT_TRAITS`) instead of being search keywords, so they are exact, structured and
+filterable. A trait is created only from an ICD-10-CM diagnosis (`TraitService.CODE_TO_TRAIT`): E66.01/E66.2/E66.813 →
+*morbid obesity*; other E66 obesity codes → *obesity*; E66.3 (overweight) and BMI Z-codes → nothing. The trait id is
+`TRT-<condition id>`, so seeding and imports can run repeatedly without duplicates. FHIR `Condition.encounter` is now
+normalized, so a diagnosis documented during a stay keeps its `ENCOUNTER_ID`. A trait filter matches only its own code;
+a general "obesity" question maps to both, because morbid obesity is a subset of obesity. Traits are visible only to
+clinical roles within their patient scope and never feed alerts, monitoring or the nursing queue.
+
+## 33. Uploaded documents stay out of Gemini
+
+Uploaded files are not clinical records: they are stored in `PATIENT_DOCUMENTS` (metadata and extracted text) plus a
+non-public folder (bytes, under a generated name), and never in `CLINICAL_RECORDS`. Every Gemini path (assistant,
+summaries, briefings, extraction) reads only clinical records, so documents cannot reach the model without a deliberate
+change. Type is decided from the content (PDF header, OOXML `word/document.xml` without macros, OLE2 `WordDocument`
+without a `Macros` storage) and must agree with the extension. Text comes from PDFBox and Apache POI; extraction failures
+never block an upload. Search results return document matches in a separate list, so the AI summary and "Discuss with
+Gemini" only ever receive record ids. Every file request re-checks the caller's access to the document's patient.
+
+## 34. A separate unit roster for the dashboard
+
+`PROVIDER_SHIFTS` holds briefing shifts with patient assignments; adding open shifts there would have required a
+nullable user and would have offered empty shifts in the briefing picker. `UNIT_SHIFT_SCHEDULE` holds the dashboard
+roster (own shifts later in the week, open shifts, staffed/target counts) and links to a briefing shift where one exists.
+Open shifts are shown only for the user's own units.

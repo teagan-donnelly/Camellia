@@ -20,6 +20,7 @@ public class CamelliaProperties {
     private Monitoring monitoring = new Monitoring();
     private Briefing briefing = new Briefing();
     private ElevenLabs elevenlabs = new ElevenLabs();
+    private Documents documents = new Documents();
     private Rules rules = new Rules();
 
     public String getCorsOrigins() { return corsOrigins; }
@@ -38,6 +39,8 @@ public class CamelliaProperties {
     public Briefing getBriefing() { return briefing; }
     public void setBriefing(Briefing briefing) { this.briefing = briefing; }
     public ElevenLabs getElevenlabs() { return elevenlabs; }
+    public Documents getDocuments() { return documents; }
+    public void setDocuments(Documents v) { this.documents = v; }
     public void setElevenlabs(ElevenLabs elevenlabs) { this.elevenlabs = elevenlabs; }
     public void setJobs(Jobs jobs) { this.jobs = jobs; }
     public Rules getRules() { return rules; }
@@ -176,6 +179,20 @@ public class CamelliaProperties {
         public void setMaxScriptAttempts(int v) { this.maxScriptAttempts = v; }
         public String getAudioDir() { return audioDir; }
         public void setAudioDir(String v) { this.audioDir = v; }
+    }
+
+    /** Uploaded patient documents (PDF, DOCX, DOC). Stored outside any public directory. */
+    public static class Documents {
+        private String storageDir = "./data/documents";
+        private int maxUploadMb = 10;
+        private int maxExtractedChars = 200_000;
+
+        public String getStorageDir() { return storageDir; }
+        public void setStorageDir(String v) { this.storageDir = v; }
+        public int getMaxUploadMb() { return maxUploadMb; }
+        public void setMaxUploadMb(int v) { this.maxUploadMb = v; }
+        public int getMaxExtractedChars() { return maxExtractedChars; }
+        public void setMaxExtractedChars(int v) { this.maxExtractedChars = v; }
     }
 
     /** ElevenLabs text-to-speech. The key stays on the server. */

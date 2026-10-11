@@ -20,6 +20,16 @@ public class WorkforceRepository {
 
     public record Assignment(String shiftId, String patientId, String role, String note) {}
 
+    /** A unit roster entry (UNIT_SHIFT_SCHEDULE). {@code userId == null} is an open shift. */
+    public record RosterShift(String scheduleId, String userId, String linkedShiftId, String orgId, String department,
+                              String unit, String label, LocalDateTime startAt, LocalDateTime endAt, String status,
+                              Integer staffed, Integer target, String note) {}
+
+    private static final RowMapper<RosterShift> ROSTER_MAPPER = (rs, i) -> new RosterShift(rs.getString("SCHEDULE_ID"),
+            rs.getString("USER_ID"), rs.getString("LINKED_SHIFT_ID"), rs.getString("ORG_ID"), rs.getString("DEPARTMENT"),
+            rs.getString("UNIT"), rs.getString("SHIFT_LABEL"), ldt(rs, "START_AT"), ldt(rs, "END_AT"), rs.getString("STATUS"),
+            integer(rs, "STAFFED_COUNT"), integer(rs, "TARGET_COUNT"), rs.getString("NOTE"));
+
     private static final RowMapper<Shift> SHIFT_MAPPER = (rs, i) -> new Shift(rs.getString("SHIFT_ID"), rs.getString("USER_ID"),
             ld(rs, "SHIFT_DATE"), ldt(rs, "START_AT"), ldt(rs, "END_AT"), rs.getString("ORG_ID"), rs.getString("DEPARTMENT"),
             rs.getString("LOCATION"), rs.getString("SHIFT_LABEL"));
@@ -100,5 +110,33 @@ public class WorkforceRepository {
 
     public List<Assignment> assignments(String shiftId) {
         return jdbc.query("SELECT * FROM SHIFT_PATIENT_ASSIGNMENTS WHERE SHIFT_ID = ? ORDER BY PATIENT_ID", ASSIGNMENT_MAPPER, shiftId);
+    }
+
+    // ------------------------------------------------------------ unit roster (dashboard schedule)
+
+    public Set<String> existingRosterIds() {
+        return new HashSet<>(jdbc.queryForList("SELECT SCHEDULE_ID FROM UNIT_SHIFT_SCHEDULE", String.class));
+    }
+
+    public void insertRoster(List<RosterShift> rows) {
+        LocalDateTime now = LocalDateTime.now();
+        batch(jdbc, """
+                INSERT INTO UNIT_SHIFT_SCHEDULE (SCHEDULE_ID, USER_ID, LINKED_SHIFT_ID, ORG_ID, DEPARTMENT, UNIT, SHIFT_LABEL,
+                    START_AT, END_AT, STATUS, STAFFED_COUNT, TARGET_COUNT, NOTE, CREATED_AT)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                rows.stream().map(r -> new Object[]{r.scheduleId(), r.userId(), r.linkedShiftId(), r.orgId(), r.department(),
+                        r.unit(), r.label(), ts(r.startAt()), ts(r.endAt()), r.status(), r.staffed(), r.target(), r.note(),
+                        ts(now)}).toList(),
+                S, S, S, S, S, S, S, TS, TS, S, I, I, S, TS);
+    }
+
+    public List<RosterShift> rosterForUser(String userId) {
+        return jdbc.query("SELECT * FROM UNIT_SHIFT_SCHEDULE WHERE USER_ID = ? ORDER BY START_AT", ROSTER_MAPPER, userId);
+    }
+
+    /** Open shifts in one organization's department. */
+    public List<RosterShift> openShifts(String orgId, String department) {
+        return jdbc.query("SELECT * FROM UNIT_SHIFT_SCHEDULE WHERE USER_ID IS NULL AND ORG_ID = ? AND DEPARTMENT = ? ORDER BY START_AT",
+                ROSTER_MAPPER, orgId, department);
     }
 }

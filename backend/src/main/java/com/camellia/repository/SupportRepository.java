@@ -127,7 +127,8 @@ public class SupportRepository {
 
     /** Removes all demo data (synthetic) so it can be re-seeded with a fresh date anchor. */
     public void deleteAllDemoData() {
-        for (String table : List.of("BRIEFING_SOURCE_REFERENCES", "BRIEFINGS", "SHIFT_PATIENT_ASSIGNMENTS", "PROVIDER_SHIFTS",
+        for (String table : List.of("PATIENT_TRAITS", "PATIENT_DOCUMENTS", "UNIT_SHIFT_SCHEDULE",
+                "BRIEFING_SOURCE_REFERENCES", "BRIEFINGS", "SHIFT_PATIENT_ASSIGNMENTS", "PROVIDER_SHIFTS",
                 "SENSOR_OBSERVATIONS", "ACTIVITY_EVENTS", "MONITORING_ALERTS", "NURSING_INTERVENTIONS", "MONITORING_CARE_PLANS",
                 "MONITORING_SESSIONS", "MONITORING_DEVICES", "IMPORT_BATCHES", "CLINICIAN_PRACTICES", "CLINICIANS",
                 "AI_CONVERSATION_TURNS", "COORDINATION_NOTES", "ALERT_EVIDENCE", "COORDINATION_ALERTS", "FLAG_EVIDENCE",

@@ -9,6 +9,8 @@ import com.camellia.repository.PracticeRepository;
 import com.camellia.repository.SupportRepository;
 import com.camellia.repository.WorkforceRepository;
 import com.camellia.monitoring.MonitoringService;
+import com.camellia.traits.TraitService;
+import com.camellia.documents.DocumentService;
 import com.camellia.security.DemoDirectory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,10 +62,15 @@ public class DemoDataService {
     private final CamelliaProperties props;
     private final WorkforceRepository workforce;
     private final MonitoringService monitoring;
+    private final TraitService traits;
+    private final DocumentService documents;
 
     public DemoDataService(OrganizationRepository orgs, PatientRepository patients, ClinicalDataRepository clinical,
                            SupportRepository support, PracticeRepository practices, CamelliaProperties props,
-                           WorkforceRepository workforce, MonitoringService monitoring) {
+                           WorkforceRepository workforce, MonitoringService monitoring, TraitService traits,
+                           DocumentService documents) {
+        this.traits = traits;
+        this.documents = documents;
         this.workforce = workforce;
         this.monitoring = monitoring;
         this.orgs = orgs;
@@ -112,6 +119,7 @@ public class DemoDataService {
         SourceContext ctx = new SourceContext(anchor, ps.index(), LocalDateTime.now());
         for (Source s : SOURCES) all.addAll(normalize(s, ctx));
         int[] inserted = persistMissing(all);
+        traits.deriveFromConditions();   // also covers databases whose diagnoses predate the traits table
         monitoring.seedBaseline(anchor);
 
         support.putMeta(META_ANCHOR, anchor.toString());
@@ -125,6 +133,7 @@ public class DemoDataService {
     /** Deletes all synthetic demo data and workflow state, then re-seeds anchored to today. */
     public synchronized SeedResult resetAndReseed() {
         support.deleteAllDemoData();
+        documents.deleteAllFiles();
         return seed();
     }
 
@@ -172,6 +181,8 @@ public class DemoDataService {
         clinical.insertConditions(b.conditions.stream().filter(c -> isNew.test(c.recordId())).toList());
         clinical.insertMedications(b.medications.stream().filter(m -> isNew.test(m.recordId())).toList());
         clinical.insertAppointments(b.appointments.stream().filter(a -> isNew.test(a.recordId())).toList());
+        // Coded obesity diagnoses become structured, searchable traits (idempotent).
+        if (b.conditions.stream().anyMatch(c -> isNew.test(c.recordId()))) traits.deriveFromConditions();
         return new int[]{records.size(), b.records.size() - records.size()};
     }
 
@@ -205,6 +216,20 @@ public class DemoDataService {
         }
         workforce.insertShifts(newShifts);
         workforce.insertAssignments(newAssignments);
+
+        // Unit roster for the dashboard: later shifts in the week, open shifts and staffing coverage.
+        Set<String> roster = workforce.existingRosterIds();
+        List<WorkforceRepository.RosterShift> newRoster = new ArrayList<>();
+        for (JsonNode n : Json.parse(read("seed/unit-schedule.json"))) {
+            String id = text(n.path("scheduleId"));
+            if (roster.contains(id)) continue;
+            newRoster.add(new WorkforceRepository.RosterShift(id, text(n.path("userId")), text(n.path("linkedShiftId")),
+                    text(n.path("orgId")), text(n.path("department")), text(n.path("unit")), text(n.path("label")),
+                    RelativeDates.dateTime(text(n.path("start")), anchor), RelativeDates.dateTime(text(n.path("end")), anchor),
+                    text(n.path("status")), n.path("staffed").isNumber() ? n.path("staffed").asInt() : null,
+                    n.path("target").isNumber() ? n.path("target").asInt() : null, text(n.path("note"))));
+        }
+        workforce.insertRoster(newRoster);
     }
 
     private LocalDate resolveAnchor() {

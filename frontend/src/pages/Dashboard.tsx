@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import type { Dashboard as DashboardDto } from '../api/types'
 import { Link, useNavigate } from 'react-router-dom'
 import { useDashboard, useNursingQueue, useRunAnalysis, useShifts } from '../api/hooks'
+import { ShiftSchedulePanel } from '../components/schedule'
 import { AlertStatusBadge, PriorityBadge } from '../components/status'
 import { Badge, Button, Card, CardHeader, EmptyState, ErrorBox, Loading, PageHeader, SynMrn } from '../components/ui'
 import { cx, fmtDate, relative } from '../lib/format'
@@ -68,6 +69,8 @@ export default function Dashboard() {
                 hint="Scheduled in the next 60 days" onClick={() => navigate('/patients')} />
             </>}
           </div>
+
+          <ShiftSchedulePanel />
 
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.6fr_1fr]">
             {!data.anesthesiaAccess ? <UpcomingEncounters data={data} /> : <Card padded={false}>
@@ -245,6 +248,7 @@ function actionLabel(action: string) {
     AI_SEARCH_SUMMARY: 'Gemini search summary',
     AI_EXTRACTION: 'Gemini extraction',
     DB_CHECK: 'Database check',
+    DOCUMENT_UPLOADED: 'Document uploaded',
   }
   return map[action] ?? action
 }
