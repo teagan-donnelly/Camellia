@@ -241,3 +241,26 @@ Monitoring**), possible-fall alerts (fall detection is deliberately out of scope
 walks". Remaining lint: 8 React style warnings (intentional state resets in effects, `Date` in render), no errors.
 
 Tests: **80 backend tests pass** (`./mvnw clean test`); frontend type-check and `npm run build` pass; `oxlint`: 0 errors.
+
+## Hosting and fixes (2026-10-11, afternoon)
+
+The backend moved from a laptop behind a Cloudflare quick tunnel to Render, so https://camellia-snowy.vercel.app works
+with no computer on. See the README's *Hosted demo* section and [deploy/render/README.md](deploy/render/README.md).
+
+| Issue | Root cause | Fix | Verified |
+|---|---|---|---|
+| The public link broke whenever the laptop slept or the tunnel closed | The backend ran on the laptop | Render web service from `backend/Dockerfile` (free plan, JVM sized for 512 MB); Vercel's `/api` proxy points at Render | Live: 7 demo users sign in, every role check matches, pages and assets load, Snowflake connected |
+| Render deploys could not find the Snowflake key | The secret file was not attached yet, and a non-root container user may not read `/etc/secrets` | Entrypoint uses the first `.p8`/`.pem` secret file (or `SNOWFLAKE_PRIVATE_KEY`), logs the secret file names when none is found, and runs as root | Deploy logs; health reports `SNOWFLAKE` |
+| Briefing audio answered "not available to your account" on Render | Briefings were reused although their audio file was on another machine or erased by a restart; the path check answered 403 | 410 with a regenerate hint; generating makes a new briefing when the audio is not stored on this server | `CamelliaV3IntegrationTest` (deleted audio → 410, then a fresh briefing); live 410 |
+| Gemini failed with HTTP 401 | The committed key was disabled after the repository became public: it worked until 06:04 UTC and was rejected from 10:58 UTC, with Google returning "API key not valid" on both Gemini endpoints | New key kept out of the repository (Render environment variable, `backend/.env.local` locally); dead key removed from `backend/.env`; the error names the likely cause | Live: Gemini check and AI search through the UI. Isolated copy with the new key: search, alert chat with a follow-up, patient chat, flag explanation, extraction, search summary and briefing script all pass with cited records |
+| The header said "Gemini live" while every call failed | The badge reflected configuration only | Shows "Gemini error" with the reason until a call succeeds | Browser check |
+| Anesthesia alert cards and the coordination board looked unclickable | Tailwind v4 gives buttons the arrow cursor; a board card click only updated a summary below the fold | Pointer cursor for enabled buttons app-wide; a board card click scrolls its summary into view; hover highlight | Live browser runs as the CRNA, L&D nurse and anesthesiologist: queue rows, *Review*, board cards, *Open review workspace*, dashboard cards |
+
+Demo risks:
+- **Gemini latency:** Google's main model (`gemini-3.8-flash`) answered in 6–60 s under high demand; the backup
+  (`gemini-3.5-flash-lite`) answered in 1–3 s. Setting `GEMINI_MODEL=gemini-3.5-flash-lite` on Render trades some
+  capability for speed.
+- **ElevenLabs quota:** 8,863 of 10,000 free characters used; it resets on 2026-11-10. When it runs out, briefings
+  still show their transcript, with a note that the audio failed.
+- **ElevenLabs key** is still in the committed `backend/.env`, so it is public and could be disabled like the Gemini key.
+- **Render free plan:** sleeps when idle and keeps uploads and briefing audio only until it restarts.

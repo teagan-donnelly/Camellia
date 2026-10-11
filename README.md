@@ -30,11 +30,12 @@
 10. [Snowflake setup](#snowflake-setup)
 11. [Gemini setup](#gemini-setup)
 12. [Running the app](#running-the-app)
-13. [Demo patient scenarios](#demo-patient-scenarios)
-14. [Testing](#testing)
-15. [Known limitations](#known-limitations)
-16. [Future development](#future-development)
-17. [Documentation map](#documentation-map)
+13. [Hosted demo (Vercel + Render)](#hosted-demo-vercel--render)
+14. [Demo patient scenarios](#demo-patient-scenarios)
+15. [Testing](#testing)
+16. [Known limitations](#known-limitations)
+17. [Future development](#future-development)
+18. [Documentation map](#documentation-map)
 
 ---
 
@@ -329,6 +330,30 @@ Useful extras:
 - **Demo & integrations → Simulate incoming lab result**: a new HL7 platelet result for Patient A, used to demonstrate
   re-evaluation without duplicate alerts.
 
+## Hosted demo (Vercel + Render)
+
+**Public link: https://camellia-snowy.vercel.app.** It runs without anyone's computer being on.
+
+| Part | Where it runs | How it is set up |
+|---|---|---|
+| Frontend | Vercel (static build) | `deploy/vercel/deploy.sh <backend-url>` builds it and proxies `/api` to the backend, so the session cookie stays same-site |
+| Backend | Render web service `camellia-backend` (Docker, free plan): https://camellia-backend-cw24.onrender.com | `backend/Dockerfile`, deploying branch `feature/camellia-v3`; settings and secrets in [deploy/render/README.md](deploy/render/README.md) |
+| Data and AI | Snowflake, Gemini, ElevenLabs | Same Snowflake database as local runs |
+
+The Snowflake private key is a Render secret file, and `GEMINI_API_KEY`, `CAMELLIA_DEMO_SESSION_SECRET` and
+`CAMELLIA_CORS_ORIGINS` are Render environment variables. Locally, the Gemini key goes in the git-ignored
+`backend/.env.local`. Never commit a Gemini key: Google disables keys published in a public repository.
+
+After pushing changes:
+
+1. **Backend:** in the Render dashboard, open `camellia-backend` → **Manual Deploy → Deploy latest commit**. Render reads
+   the public repository without its GitHub app, so a push alone does not redeploy it.
+2. **Frontend:** `deploy/vercel/deploy.sh https://camellia-backend-cw24.onrender.com`.
+
+On the free plan the backend sleeps after 15 minutes without requests, and the next request waits about a minute while
+it starts. Its disk is temporary, so uploaded documents and briefing audio are lost when it restarts or sleeps (their
+Snowflake rows remain; downloads report that the file is gone, and briefings are regenerated).
+
 ## Demo patient scenarios
 
 All patients, organizations and providers are fictional. Dates are relative to the demo anchor date.
@@ -412,6 +437,8 @@ npm run build          # type-check + production build
   virus scanning, versioning or delete. *Reset demo data* keeps uploads and imported records.
 - **Obesity traits** come only from coded diagnoses in the synthetic records (no BMI calculation or free-text inference).
 - **Shift schedule** is synthetic and read-only (no shift requests or trades).
+- **Hosted backend** runs on Render's free plan: it sleeps when idle (about a minute to wake) and keeps uploaded
+  documents and briefing audio only until it restarts. See [Hosted demo](#hosted-demo-vercel--render).
 
 ## Future development
 

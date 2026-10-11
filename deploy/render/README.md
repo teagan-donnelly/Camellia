@@ -33,13 +33,14 @@ secret file, the key's contents can go in a `SNOWFLAKE_PRIVATE_KEY` environment 
 ## Point the frontend at it
 
 ```bash
-deploy/vercel/deploy.sh https://<service-name>.onrender.com
+deploy/vercel/deploy.sh https://camellia-backend-cw24.onrender.com   # service camellia-backend
 ```
 
 ## Free-plan behaviour
 
 - The service sleeps after 15 minutes without requests. The next request starts it again, which takes about a minute,
   so open the site a minute or two before presenting.
-- The disk is temporary: uploaded documents are lost when the service restarts or redeploys. Snowflake data is kept.
+- The disk is temporary: uploaded documents and briefing audio are lost when the service restarts, sleeps or redeploys.
+  Snowflake data is kept; downloads report that the file is gone, and briefings are regenerated.
 - The service reads the public repository without Render's GitHub app, so pushes do not redeploy it. Start a deploy
   from the Render dashboard (Manual Deploy → Deploy latest commit) after pushing.

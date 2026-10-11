@@ -216,6 +216,12 @@ data** so dates are relative to today (this resets monitoring and workflow state
 switch to Maya. Pre-generate one Full Shift Briefing for
 Maya so playback is instant (generation takes about a minute with ElevenLabs).
 
+**On the hosted link** (https://camellia-snowy.vercel.app): open it a few minutes early, because the free Render backend
+sleeps after 15 idle minutes and takes about a minute to wake. Generate the briefing within 15 minutes of presenting and
+keep the site in use, because its audio file is lost if the backend sleeps. The free ElevenLabs plan has 10,000
+characters a month and a full briefing uses about 2,000, so avoid test generations. If Gemini answers slowly, Google's
+main model is busy: the app retries, then switches to the backup model for three minutes.
+
 1. **The problem (45 s).** An obstetric patient with a serious condition reached the anesthesia team late; the team needed
    history, specialists and a plan, and relied on messages, spreadsheets and watchlists. Camellia finds that information
    first. *(Dashboard as Maya Ellison, CRNA.)*
