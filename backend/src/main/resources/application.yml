@@ -9,6 +9,8 @@ spring:
     import:
       - optional:file:./.env[.properties]
       - optional:file:../.env[.properties]
+      # Personal, git-ignored overrides (e.g. ELEVENLABS_API_KEY). Loaded last, so it wins over the shared .env.
+      - optional:file:./.env.local[.properties]
   # The DataSource is built by com.camellia.config.DataSourceConfig (Snowflake, or the labeled local fallback).
   jackson:
     default-property-inclusion: non_null
@@ -96,8 +98,9 @@ camellia:
   elevenlabs:
     api-key: ${ELEVENLABS_API_KEY:}
     base-url: ${ELEVENLABS_BASE_URL:https://api.elevenlabs.io}
-    # Blank = use the first premade voice whose use case matches voice-use-case (looked up through the API once).
-    voice-id: ${ELEVENLABS_VOICE_ID:}
+    # Default: "River - Relaxed, Neutral, Informative", a premade conversational voice every account can use.
+    # Set ELEVENLABS_VOICE_ID blank to use the first premade voice whose use case matches voice-use-case instead.
+    voice-id: ${ELEVENLABS_VOICE_ID:SAz9YHcvj6GT2YYXdXww}
     voice-use-case: ${ELEVENLABS_VOICE_USE_CASE:conversational}
     model-id: ${ELEVENLABS_MODEL_ID:eleven_multilingual_v2}
     output-format: ${ELEVENLABS_OUTPUT_FORMAT:mp3_44100_128}

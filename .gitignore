@@ -2,6 +2,7 @@
 .env
 *.env
 !.env.example
+.env.local
 *.p8
 *.pem
 rsa_key*
