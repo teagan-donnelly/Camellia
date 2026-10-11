@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Publishes the built frontend to Vercel as a static site (project "camellia").
 # The browser only ever talks to the Vercel domain: /api/* is proxied to the Camellia backend given as $1, so the
-# HttpOnly session cookie and relative /api calls work unchanged (no CORS). Run `npx vercel@60.1.3 login` once first.
+# HttpOnly session cookie and relative /api calls work unchanged. Run `npx vercel@60.1.3 login` once first.
+# The proxy forwards the browser's Origin header, so the backend must allow the Vercel site, e.g. in backend/.env.local:
+#   CAMELLIA_CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,https://camellia-snowy.vercel.app
 #
 #   deploy/vercel/deploy.sh https://<public-backend-host>
 set -euo pipefail
