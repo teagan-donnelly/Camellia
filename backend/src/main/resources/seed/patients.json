@@ -48,6 +48,10 @@
       {
         "practiceId": "PRAC-B",
         "relationship": "Registered patient"
+      },
+      {
+        "practiceId": "PRAC-C",
+        "relationship": "Cardio-oncology follow-up"
       }
     ],
     "demoScenario": "B — Complex obstetric patient (cardio-oncology history)",
@@ -84,6 +88,10 @@
       {
         "practiceId": "PRAC-A",
         "relationship": "Registered patient"
+      },
+      {
+        "practiceId": "PRAC-D",
+        "relationship": "Orthopedic follow-up"
       }
     ],
     "demoScenario": "C — Recurring fractures across organizations",
@@ -120,6 +128,10 @@
       {
         "practiceId": "PRAC-A",
         "relationship": "Registered patient"
+      },
+      {
+        "practiceId": "PRAC-F",
+        "relationship": "Endocrinology consultation"
       }
     ],
     "demoScenario": "D — Repeated out-of-range laboratory results",
@@ -152,6 +164,10 @@
       {
         "practiceId": "PRAC-A",
         "relationship": "Registered patient"
+      },
+      {
+        "practiceId": "PRAC-H",
+        "relationship": "Neurology referral"
       }
     ],
     "demoScenario": "E — Repeated encounters for the same symptom",
@@ -258,6 +274,10 @@
       {
         "orgId": "NDL",
         "mrn": "NDL-640021"
+      },
+      {
+        "orgId": "CHCH",
+        "mrn": "CH-4588120"
       }
     ]
   },

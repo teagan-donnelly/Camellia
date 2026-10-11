@@ -80,6 +80,9 @@ public final class Prompts {
             - Requests about patients who "may need anesthesia to know", "need advance planning", "high-risk" or "complex" histories
               before an upcoming delivery are about DOCUMENTED CONCERNS, not routine anesthesia mentions: set upcomingDeliveryOnly and
               openFlagsOnly, and use concern concepts (LOW_PLATELETS, HEMATOLOGY, CARDIAC, ONCOLOGY, SPINE, ANESTHESIA) with matchMode ANY.
+            - traits are structured patient traits derived from coded diagnoses: OBESITY = documented obesity; MORBID_OBESITY =
+              documented morbid (severe) obesity. For a general "obesity"/"obese" request use both traits; for "morbid", "severe" or
+              "class 3" obesity use MORBID_OBESITY only. Use traits (not keywords or concepts) for these requests.
             - minMatchesPerPatient: 2 or 3 for "repeated", "recurring", "multiple" requests (counts distinct record dates), otherwise 1.
             - recordTypes only when the request asks for a specific kind of record (e.g. medications, lab results, notes).
             - Use patientId only when a specific patient is named or the request is scoped to the current patient.

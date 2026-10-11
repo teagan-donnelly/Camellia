@@ -174,7 +174,7 @@ export function GeminiThinking({ label }: { label: string }) {
 // =====================================================================================================
 
 export type AssistantContext =
-  | { type: 'PATIENT' | 'FLAG' | 'ALERT'; id: string; label: string }
+  | { type: 'PATIENT' | 'FLAG' | 'ALERT' | 'MONITORING'; id: string; label: string }
   | { type: 'SEARCH'; recordIds: string[]; label: string }
 
 interface Msg { role: 'user' | 'assistant'; text: string; answer?: AiAnswer; error?: string }

@@ -1,7 +1,10 @@
 package com.camellia.integration;
 
 import com.camellia.ai.ClinicalAiService;
+import com.camellia.config.CamelliaProperties;
+import com.camellia.integration.elevenlabs.ElevenLabsClient;
 import com.camellia.integration.gemini.GoogleGenAiGateway;
+import com.camellia.integration.snowflake.SnowflakeConnectionSettings;
 import com.camellia.integration.snowflake.DatabaseMode;
 import com.camellia.repository.PatientRepository;
 import com.camellia.repository.SupportRepository;
@@ -22,15 +25,27 @@ public class IntegrationService {
     private final PatientRepository patients;
     private final GoogleGenAiGateway gemini;
     private final ClinicalAiService ai;
+    private final CamelliaProperties props;
+    private final ElevenLabsClient elevenLabs;
+
+    /**
+     * The anchor date only changes on a demo reset, so the status poll reads it at most this often. Otherwise every
+     * open browser tab would query a table each minute and could keep a Snowflake warehouse from suspending.
+     */
+    static final long ANCHOR_CACHE_MS = 5 * 60_000L;
+    private volatile String cachedAnchorDate;
+    private volatile long anchorDateReadAt;
 
     public IntegrationService(DatabaseMode mode, JdbcTemplate jdbc, SupportRepository support, PatientRepository patients,
-                              GoogleGenAiGateway gemini, ClinicalAiService ai) {
+                              GoogleGenAiGateway gemini, ClinicalAiService ai, CamelliaProperties props, ElevenLabsClient elevenLabs) {
+        this.elevenLabs = elevenLabs;
         this.mode = mode;
         this.jdbc = jdbc;
         this.support = support;
         this.patients = patients;
         this.gemini = gemini;
         this.ai = ai;
+        this.props = props;
     }
 
     public DatabaseMode mode() {
@@ -44,13 +59,16 @@ public class IntegrationService {
         db.put("mode", mode.name());
         db.put("label", mode.label());
         db.put("isSnowflake", mode == DatabaseMode.SNOWFLAKE);
+        boolean connected;
         try {
             db.put("session", sessionInfo());
-            db.put("connected", true);
+            connected = true;
         } catch (RuntimeException e) {
-            db.put("connected", false);
+            connected = false;
             db.put("error", rootMessage(e));
         }
+        db.put("connected", connected);
+        describeState(db, connected);
         out.put("database", db);
         GoogleGenAiGateway.Stats s = gemini.stats();
         Map<String, Object> g = new LinkedHashMap<>();
@@ -63,7 +81,19 @@ public class IntegrationService {
         g.put("lastError", s.lastError());
         g.put("lastOperation", s.lastOperation());
         out.put("gemini", g);
-        out.put("anchorDate", support.getMeta("ANCHOR_DATE").orElse(null));
+        ElevenLabsClient.Status el = elevenLabs.status();
+        Map<String, Object> e = new LinkedHashMap<>();
+        e.put("configured", el.configured());
+        e.put("modelId", el.modelId());
+        e.put("voiceId", el.voiceId());
+        e.put("voiceName", el.voiceName());
+        e.put("outputFormat", el.outputFormat());
+        e.put("callsSinceStartup", el.calls());
+        e.put("failuresSinceStartup", el.failures());
+        e.put("lastError", el.lastError());
+        out.put("elevenlabs", e);
+        out.put("anchorDate", anchorDate());
+        out.put("demoAdminEnabled", props.getDemo().isAdminEnabled());
         out.put("syntheticDataNotice", "Demo application using synthetic patient information. Not for clinical use.");
         return out;
     }
@@ -89,6 +119,60 @@ public class IntegrationService {
         out.put("elapsedMs", System.currentTimeMillis() - start);
         support.logActivity("SYSTEM", checkId, null, "DB_CHECK", "Database read/write check passed on " + mode.label(), "System");
         return out;
+    }
+
+    /**
+     * Explains which database is in use and why, distinguishing: Snowflake connected, Snowflake unavailable, local fallback
+     * selected on purpose, and Snowflake configuration missing. Only setting NAMES are reported, never values or paths.
+     */
+    void describeState(Map<String, Object> db, boolean connected) {
+        String requested = props.getDatabase().getMode() == null ? "auto" : props.getDatabase().getMode().trim().toLowerCase(java.util.Locale.ROOT);
+        SnowflakeConnectionSettings sf = new SnowflakeConnectionSettings(props.getSnowflake());
+        java.util.List<String> missing = sf.problems().stream()
+                .map(m -> { var mt = java.util.regex.Pattern.compile("SNOWFLAKE_[A-Z_]+").matcher(m); return mt.find() ? mt.group() : "SNOWFLAKE settings"; })
+                .distinct().toList();
+        db.put("requestedMode", requested);
+        db.put("snowflakeSettingsPresent", sf.isAttempted());
+        String state;
+        String explanation;
+        if (mode == DatabaseMode.SNOWFLAKE) {
+            state = connected ? "SNOWFLAKE_CONNECTED" : "SNOWFLAKE_UNAVAILABLE";
+            explanation = connected ? "Connected to Snowflake; every read and write in this session goes to Snowflake."
+                    : "Snowflake is configured and was reachable at startup, but the latest status query failed. Data is not being served from a fallback.";
+        } else if ("local".equals(requested)) {
+            state = "LOCAL_FALLBACK_SELECTED";
+            explanation = sf.isAttempted()
+                    ? "Snowflake settings are present, but CAMELLIA_DB_MODE=local selects the local H2 database on purpose."
+                    : "CAMELLIA_DB_MODE=local selects the local H2 database.";
+        } else {
+            state = "CONFIGURATION_MISSING";
+            explanation = "Snowflake is not configured (SNOWFLAKE_ACCOUNT is not set), so auto mode uses the local H2 database.";
+            db.put("missingSettings", missing);
+        }
+        db.put("state", state);
+        db.put("explanation", explanation);
+        if (mode != DatabaseMode.SNOWFLAKE) {
+            db.put("dataNote", "The local H2 database holds its own copy of the synthetic data. Changes made here do not appear in "
+                    + "Snowflake, and Snowflake changes do not appear here.");
+        }
+    }
+
+    /** Forces the next status call to re-read the anchor date (after a demo reset on this instance). */
+    public void forgetAnchorDate() {
+        anchorDateReadAt = 0;
+    }
+
+    private String anchorDate() {
+        long now = System.currentTimeMillis();
+        if (anchorDateReadAt == 0 || now - anchorDateReadAt > ANCHOR_CACHE_MS) {
+            try {
+                cachedAnchorDate = support.getMeta("ANCHOR_DATE").orElse(null);
+                anchorDateReadAt = now;
+            } catch (RuntimeException e) {
+                return cachedAnchorDate;   // the database badge already reports the failure
+            }
+        }
+        return cachedAnchorDate;
     }
 
     public Map<String, Object> geminiCheck() {

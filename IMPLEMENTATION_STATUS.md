@@ -9,6 +9,36 @@ _Last updated: 2026-10-10 (role-based access iteration)._
 - 🟠 **Partially implemented.**
 - ⛔ **Not implemented.**
 
+## Camellia V3 (branch `feature/camellia-v3`, 2026-10-11)
+
+Rollback point: tag `pre-camellia-v3`.
+
+| Area | Status | How it was verified |
+|---|---|---|
+| Profile dropdown above page content | Done | Browser test (Chromium): 0 of 35 sample points covered on Clinical Search, the coordination board and the alert workspace, at 1440 px and 390 px; Escape closes it; selecting a user switches identity |
+| Coordination actions | Done (feedback fix) | Every action persisted in the browser on H2 and on **live Snowflake** (acknowledge, contact, both toggles, note, Coordination Needed, Plan Documented, Resolved; dismiss with reason on H2). Each Snowflake write took 3.5–6 s — the root cause of the "nothing happens" reports |
+| Database status (4 states) | Done | Integration test + live Snowflake: `SNOWFLAKE_CONNECTED`; real read/write check verified |
+| Synthetic identifiers documented | Done | README "Patient identifiers"; UI labels `MRN SYN-…` |
+| 100 synthetic clinicians | Done | Test: 40/30/15/10/5 + 1 coordinator; re-seeding does not duplicate; 7 demo accounts in the switcher |
+| Patient import (FHIR JSON, Camellia JSON, CSV) | Done | Tests + API run on H2 **and Snowflake**: create, attach, duplicate skip, MRN conflict, invalid file, unauthorized, screening creates an OB flag/alert, imported data in search |
+| Camellia Briefing — shifts, retrieval, scoping, validation, duration loop, caching, privacy | Done | Tests with scripted Gemini + fake ElevenLabs |
+| Camellia Briefing — **live Gemini** scripts | Verified | Live runs (H2 and Snowflake) for Maya (Full), Jordan (Priority), Dr. Kim (Full, 1 excluded patient never mentioned); answers came from the fallback model `gemini-3.5-flash-lite` |
+| Camellia Briefing — **live ElevenLabs** audio | Verified (2026-10-11) | Full Shift briefing for Maya on Snowflake: *Audio ready*, 140 s MP3 (128 kbps, 44.1 kHz) in the *River* voice with 3 timed segments; another user's request for the audio returned 403. A forced Gemini timeout then fell back to `gemini-3.5-flash-lite` and still produced a 53 s audio briefing |
+| Encounter-scoped monitoring, charts, timeline, cards | Done | Tests + API checks on H2 and Snowflake; browser test of card → detail → refresh → back to the same tab |
+| Nursing review rules (mobility, repositioning, connectivity), de-duplication | Done | Tests + API checks on H2 and Snowflake |
+| Simulator (backend, persisted, seeded, own clock) | Done | Tests; persistence confirmed across a backend restart on Snowflake |
+| Gemini monitoring conversations | Done | **Live Gemini**: three questions on Dolores' stay; every citation was a `REC-MON-…` record or a note from the same stay |
+| HARDWARE_ARCHITECTURE.md | Done | Documentation (facts vs. assumptions labeled) |
+
+Test totals: **73 backend tests pass** (`./mvnw test`), frontend `npm run build` passes.
+
+Found and fixed during live testing: an admission with no recorded discharge time (3½ years old) was briefed as a current
+stay; open-ended stays now count as current only within 30 days.
+
+Not done / limitations: ElevenLabs live audio (no key); runtime-role SQL (`10_…sql`) not yet run in Snowflake; briefing
+audio is stored on local disk (needs object storage for serverless); the monitoring REST surface has no device-ingest
+endpoint (the simulator writes rows directly); nurse scope is the prototype's network-wide scope.
+
 ## Live verification (2026-10-10)
 
 Both sponsor integrations have now been verified live against the team's accounts.
@@ -163,3 +193,22 @@ errors in the browser console.
 | Live Snowflake connection, DDL, seed, read/write check | ✅ Passed |
 | Live Gemini API calls (all five capabilities) | ✅ Passed via the fallback model; the primary model is rate limited on the current key |
 | Role-based access iteration: `npm run build`, headless Chrome walkthrough as all six users, logo alpha checks | ✅ Passed (details above). Not yet run against Snowflake. |
+
+## V3.1: traits, documents, schedule, readability (2026-10-11)
+
+| Area | Status | How it was verified |
+|---|---|---|
+| Obesity / morbid obesity traits in Snowflake | Done | `CamelliaV31IntegrationTest`; **live Snowflake**: 4 traits derived on startup (Dolores and Henry: morbid obesity linked to their current stays; Frances: obesity linked to her stay; Caleb: obesity, patient-level), restart did not duplicate |
+| Trait search (filter, keyword, natural language) | Done | Tests; live: trait filters return exactly {Dolores, Henry} and {Caleb, Frances}; **live Gemini** mapped "documented morbid obesity" to `MORBID_OBESITY` and "obese patients" to both traits |
+| Trait access rules | Done | Tests: coordinator 403, out-of-practice physician 403 and empty search, nothing in the nursing queue |
+| PDF / DOCX upload, metadata, view/download, search | Done | Tests; live on Snowflake: PDF (1 page) and DOCX extracted, invalid PDF rejected, anesthesiologist upload 403, out-of-scope file 403, no session 401, downloaded bytes identical, `bariatric` / `walker` found in document results |
+| Legacy `.doc` | Done | Unit-level run of the backend's detection and extraction on a real Word 97 file (not uploaded): detected as DOC, text extracted; the same file named `.docx` is rejected. No `.doc` was uploaded through the API |
+| Dashboard shift schedule | Done | Tests; live for Jordan (5 shifts, 2 open 4 West shifts) and Taylor (4 shifts, 2 open L&D shifts) |
+| Clinical Alerts readability | Done | Same fields and actions, regrouped (title/status, patient/time, reason + details, triggering records + action) |
+| Formatting pass (touched screens) | Done | Browser checks at 1440 px and 390 px: no horizontal scroll on dashboard, profile, search, alerts; labeled form fields; conditions table scrolls inside its card; single monitoring card uses full width |
+| Browser walkthrough | Done | 41/41 Chromium checks (desktop + mobile), including a UI upload, invalid-file message and stay → upload encounter preselection |
+
+Test totals: **79 backend tests pass** (`./mvnw clean test`), frontend `npm run build` passes.
+
+Not done / limitations: no OCR for scanned PDFs; no document delete, versioning or virus scanning; document files live on
+local disk; the runtime-role grants for the two new tables are in `10_…sql` but that script has still not been run.

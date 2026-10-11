@@ -1,6 +1,7 @@
 package com.camellia.controller;
 
 import com.camellia.analysis.AnalysisService;
+import com.camellia.config.CamelliaProperties;
 import com.camellia.coordination.CoordinationService;
 import com.camellia.ingestion.DemoDataService;
 import com.camellia.integration.IntegrationService;
@@ -10,6 +11,8 @@ import com.camellia.search.SearchCriteria;
 import com.camellia.security.AuthorizationService;
 import com.camellia.security.DemoUser;
 import com.camellia.security.DemoDirectory;
+import com.camellia.web.ApiException;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.LinkedHashMap;
@@ -26,10 +29,12 @@ public class SystemController {
     private final AnalysisService analysis;
     private final OrganizationRepository organizations;
     private final AuthorizationService auth;
+    private final CamelliaProperties props;
 
     public SystemController(IntegrationService integrations, DemoDataService demoData, AnalysisService analysis,
-                            OrganizationRepository organizations, AuthorizationService auth) {
+                            OrganizationRepository organizations, AuthorizationService auth, CamelliaProperties props) {
         this.auth = auth;
+        this.props = props;
         this.integrations = integrations;
         this.demoData = demoData;
         this.analysis = analysis;
@@ -41,15 +46,15 @@ public class SystemController {
         return integrations.status();
     }
 
-    /** Real read + real write against the active database (Snowflake when configured). */
+    /** Real read + real write against the active database (Snowflake when configured). Needs a demo session. */
     @PostMapping("/integrations/database/check")
-    public Map<String, Object> databaseCheck() {
+    public Map<String, Object> databaseCheck(DemoUser user) {
         return integrations.databaseCheck();
     }
 
-    /** Real Gemini API call. */
+    /** Real Gemini API call. Needs a demo session, so the check can't be called anonymously to spend quota. */
     @PostMapping("/integrations/gemini/check")
-    public Map<String, Object> geminiCheck() {
+    public Map<String, Object> geminiCheck(DemoUser user) {
         return integrations.geminiCheck();
     }
 
@@ -72,7 +77,9 @@ public class SystemController {
     /** Deletes all demo data and workflow state, re-seeds anchored to today, and re-runs screening. Reports only counts. */
     @PostMapping("/admin/reset-demo")
     public Map<String, Object> reset(DemoUser user) {
+        requireDemoAdmin();
         DemoDataService.SeedResult seed = demoData.resetAndReseed();
+        integrations.forgetAnchorDate();
         AnalysisService.RunResult run = FlagController.scoped(analysis.run(user.name() + " (demo reset)"), auth.scope(user));
         return Map.of("anchorDate", seed.anchorDate().toString(), "recordsInserted", seed.recordsInserted(), "analysis", run);
     }
@@ -80,9 +87,18 @@ public class SystemController {
     /** Simulates a new HL7 lab result for Patient A arriving from the reference lab, then re-runs screening. */
     @PostMapping("/admin/simulate-lab-result")
     public Map<String, Object> simulateLab(DemoUser user) {
+        requireDemoAdmin();
         DemoDataService.IngestResult ingest = demoData.ingestIncomingLabResult();
         AnalysisService.RunResult run = FlagController.scoped(analysis.run(user.name() + " (new lab result)"), auth.scope(user));
         return Map.of("ingest", Map.of("recordsInserted", ingest.recordsInserted(), "recordsAlreadyPresent", ingest.recordsAlreadyPresent()),
                 "analysis", run);
+    }
+
+    /** Demo administration writes source records, so public deployments turn it off and use the jobs function. */
+    private void requireDemoAdmin() {
+        if (!props.getDemo().isAdminEnabled()) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "DEMO_ADMIN_DISABLED",
+                    "Demo data controls are turned off in this deployment. An operator runs them through the jobs function.");
+        }
     }
 }

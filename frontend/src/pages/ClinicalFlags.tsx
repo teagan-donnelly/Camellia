@@ -120,7 +120,7 @@ export default function ClinicalFlags() {
       {isLoading && <Loading />}
       {error && <ErrorBox error={error} />}
       {data && data.results.length === 0 && <Card><EmptyState title="No clinical alerts match these filters" /></Card>}
-      <div className="space-y-3">
+      <div className="space-y-4">
         {data?.results.map((h) => <FlagHitCard key={h.flagId} hit={h} />)}
       </div>
     </div>

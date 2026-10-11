@@ -25,7 +25,7 @@ public class ClinicalDataRepository {
             rs.getString("ENCOUNTER_ID"), rs.getString("RECORD_ID"), rs.getString("PATIENT_ID"), rs.getString("ORG_ID"),
             rs.getString("ENCOUNTER_TYPE"), rs.getString("DEPARTMENT"), rs.getString("SPECIALTY"),
             rs.getString("PROVIDER_NAME"), ldt(rs, "START_TIME"), rs.getString("REASON"),
-            rs.getString("SYMPTOM_CATEGORY"), rs.getBoolean("IS_FRACTURE_RELATED"));
+            rs.getString("SYMPTOM_CATEGORY"), rs.getBoolean("IS_FRACTURE_RELATED"), ldt(rs, "END_TIME"));
 
     private static final RowMapper<LabResult> LAB_MAPPER = (rs, i) -> new LabResult(
             rs.getString("LAB_ID"), rs.getString("RECORD_ID"), rs.getString("PATIENT_ID"), rs.getString("ORG_ID"),
@@ -107,6 +107,10 @@ public class ClinicalDataRepository {
         return jdbc.query("SELECT * FROM ENCOUNTERS WHERE PATIENT_ID = ? ORDER BY START_TIME DESC", ENCOUNTER_MAPPER, patientId);
     }
 
+    public Optional<Encounter> findEncounter(String encounterId) {
+        return jdbc.query("SELECT * FROM ENCOUNTERS WHERE ENCOUNTER_ID = ?", ENCOUNTER_MAPPER, encounterId).stream().findFirst();
+    }
+
     public List<Encounter> allEncounters() {
         return jdbc.query("SELECT * FROM ENCOUNTERS", ENCOUNTER_MAPPER);
     }
@@ -170,12 +174,12 @@ public class ClinicalDataRepository {
         if (encounters.isEmpty()) return;
         batch(jdbc, """
                 INSERT INTO ENCOUNTERS (ENCOUNTER_ID, RECORD_ID, PATIENT_ID, ORG_ID, ENCOUNTER_TYPE, DEPARTMENT, SPECIALTY,
-                    PROVIDER_NAME, START_TIME, REASON, SYMPTOM_CATEGORY, IS_FRACTURE_RELATED)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    PROVIDER_NAME, START_TIME, REASON, SYMPTOM_CATEGORY, IS_FRACTURE_RELATED, END_TIME)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 encounters.stream().map(e -> new Object[]{e.encounterId(), e.recordId(), e.patientId(), e.orgId(),
                         e.encounterType(), e.department(), e.specialty(), e.providerName(), ts(e.startTime()), e.reason(),
-                        e.symptomCategory(), e.fractureRelated()}).toList(),
-                S, S, S, S, S, S, S, S, TS, S, S, B);
+                        e.symptomCategory(), e.fractureRelated(), ts(e.endTime())}).toList(),
+                S, S, S, S, S, S, S, S, TS, S, S, B, TS);
     }
 
     public void insertLabs(List<LabResult> labs) {

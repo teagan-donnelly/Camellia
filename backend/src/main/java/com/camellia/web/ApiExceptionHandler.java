@@ -53,6 +53,22 @@ public class ApiExceptionHandler {
                 "The database request failed. Check the backend log and GET /api/integrations/status.");
     }
 
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiError> tooLarge(Exception e) {
+        return build(HttpStatus.CONTENT_TOO_LARGE, "DOCUMENT_TOO_LARGE", "The file is larger than the upload limit.");
+    }
+
+    @ExceptionHandler({org.springframework.web.multipart.MultipartException.class,
+            org.springframework.web.multipart.support.MissingServletRequestPartException.class})
+    public ResponseEntity<ApiError> badUpload(Exception e) {
+        return build(HttpStatus.BAD_REQUEST, "BAD_UPLOAD", "Choose a PDF or Word document to upload.");
+    }
+
+    @ExceptionHandler(org.springframework.web.bind.MissingServletRequestParameterException.class)
+    public ResponseEntity<ApiError> missingParameter(org.springframework.web.bind.MissingServletRequestParameterException e) {
+        return build(HttpStatus.BAD_REQUEST, "BAD_REQUEST", "Missing request parameter '" + e.getParameterName() + "'.");
+    }
+
     @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
     public ResponseEntity<ApiError> noRoute(Exception e) {
         return build(HttpStatus.NOT_FOUND, "NOT_FOUND", "No such endpoint.");

@@ -37,7 +37,7 @@ public class FhirLikeNormalizer {
             if (patientId == null) continue;
             switch (type) {
                 case "Observation" -> observation(r, orgId, patientId, ctx, out, encountersBySourceId);
-                case "Condition" -> condition(r, orgId, patientId, ctx, out);
+                case "Condition" -> condition(r, orgId, patientId, ctx, out, encountersBySourceId);
                 case "MedicationStatement" -> medication(r, orgId, patientId, ctx, out);
                 case "DocumentReference" -> document(r, orgId, patientId, ctx, out, encountersBySourceId);
                 case "DiagnosticReport" -> diagnosticReport(r, orgId, patientId, ctx, out, encountersBySourceId);
@@ -69,11 +69,13 @@ public class FhirLikeNormalizer {
         String dept = text(r.path("department"));
         String cls = textAt(r, "class.code");
         LocalDateTime start = ctx.dateTime(textAt(r, "period.start"));
+        String endToken = textAt(r, "period.end");
+        LocalDateTime end = endToken == null ? null : ctx.dateTime(endToken);
         String symptom = ClinicalTagger.symptomCategory(reason);
         boolean fracture = ClinicalTagger.fractureRelated(reason);
 
         Encounter e = new Encounter(encId, recId, pid, orgId, encounterClass(cls, type), dept, specialty, provider, start,
-                reason, symptom, fracture);
+                reason, symptom, fracture, end);
         out.encounters.add(e);
         Set<String> tags = new TreeSet<>();
         if (fracture) tags.add("FRACTURE");
@@ -116,7 +118,8 @@ public class FhirLikeNormalizer {
                 name, when, performer, "Laboratory", LabText.describe(lab), FORMAT, srcId, write(r), LabText.tags(lab)));
     }
 
-    private void condition(JsonNode r, String orgId, String pid, SourceContext ctx, NormalizedBatch out) {
+    private void condition(JsonNode r, String orgId, String pid, SourceContext ctx, NormalizedBatch out,
+                           Map<String, Encounter> encs) {
         String srcId = text(r.path("id"));
         String code = textAt(r, "code.coding.0.code");
         String system = textAt(r, "code.coding.0.system");
@@ -126,13 +129,15 @@ public class FhirLikeNormalizer {
         String recorder = textAt(r, "recorder.display");
         String specialty = text(r.path("specialty"));
         String recId = SourceContext.id("REC", orgId, srcId);
+        // A diagnosis documented during a specific stay keeps that link (FHIR Condition.encounter).
+        Encounter enc = linked(r, encs);
         out.conditions.add(new Condition(SourceContext.id("CND", orgId, srcId), recId, pid, orgId, code, system, display,
                 status, onset, recorder));
         Set<String> tags = new TreeSet<>();
         if (ClinicalTagger.fractureRelated(display)) tags.add("FRACTURE");
         String content = "Condition: %s (%s %s). Clinical status: %s. Onset: %s. Recorded by %s.".formatted(
                 display, system, code, status, onset, recorder);
-        out.records.add(ctx.record(recId, pid, orgId, null, RecordType.CONDITION, display,
+        out.records.add(ctx.record(recId, pid, orgId, enc == null ? null : enc.encounterId(), RecordType.CONDITION, display,
                 onset == null ? null : onset.atStartOfDay(), recorder, specialty, content, FORMAT, srcId, write(r), tags));
     }
 

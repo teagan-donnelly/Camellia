@@ -1,13 +1,13 @@
-import { ArrowRight, Bell, Building2, Database, Filter, MessageSquareText, Search, Sparkles, Type, X } from 'lucide-react'
+import { ArrowRight, Bell, Building2, Database, Download, Eye, FileText, Filter, Lock, MessageSquareText, Search, Sparkles, Type, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { get } from '../api/client'
-import { executeFlagSearch, executeSearch, interpretSearch, summarizeSearch, useMeta, usePatients } from '../api/hooks'
-import type { AiAnswer, FlagSearchResult, Interpretation, SearchCriteria, SearchResult } from '../api/types'
+import { documentFileUrl, executeFlagSearch, executeSearch, interpretSearch, summarizeSearch, useMeta, usePatients } from '../api/hooks'
+import type { AiAnswer, DocumentHit, FlagSearchResult, Interpretation, SearchCriteria, SearchResult, TraitCode } from '../api/types'
 import { AiAnswerView, AssistantPanel, GeminiThinking } from '../components/ai'
 import { FlagHitCard } from '../components/flags'
 import { RecordTypeIcon } from '../components/records'
-import { Badge, Button, Card, CardHeader, EmptyState, ErrorBox, PageHeader } from '../components/ui'
+import { Badge, Button, Card, CardHeader, EmptyState, ErrorBox, PageHeader, SynMrn } from '../components/ui'
 import { RECORD_TYPE_LABEL, RULE_LABEL, cx, fmtDate, titleCase } from '../lib/format'
 import { useApp } from '../state/AppContext'
 
@@ -19,7 +19,11 @@ const EXAMPLES = [
   'Show all patients with multiple abnormal calcium tests',
   'Which patients have records from more than one hospital?',
   'Find repeated visits involving the same symptom',
+  'Which patients have documented morbid obesity?',
 ]
+
+/** Structured patient traits (derived from coded diagnoses). Each filter matches its own trait only. */
+const TRAIT_LABEL: Record<TraitCode, string> = { OBESITY: 'Obesity', MORBID_OBESITY: 'Morbid (severe) obesity' }
 
 /** Natural-language questions about clinical alerts (flags) rather than records. */
 const FLAG_EXAMPLES = [
@@ -29,8 +33,8 @@ const FLAG_EXAMPLES = [
 ]
 
 type Mode = 'ai' | 'keyword'
-interface Filters { patientId: string; orgId: string; recordType: string; from: string; to: string }
-const EMPTY_FILTERS: Filters = { patientId: '', orgId: '', recordType: '', from: '', to: '' }
+interface Filters { patientId: string; orgId: string; recordType: string; from: string; to: string; trait: string }
+const EMPTY_FILTERS: Filters = { patientId: '', orgId: '', recordType: '', from: '', to: '', trait: '' }
 
 export default function ClinicalSearch() {
   const [params, setParams] = useSearchParams()
@@ -69,6 +73,7 @@ export default function ClinicalSearch() {
       recordTypes: filters.recordType ? [filters.recordType] : c.recordTypes,
       dateFrom: filters.from || c.dateFrom || null,
       dateTo: filters.to || c.dateTo || null,
+      traits: filters.trait ? [filters.trait as TraitCode] : c.traits,
     }
   }
 
@@ -166,6 +171,8 @@ export default function ClinicalSearch() {
               options={(meta.data?.organizations ?? []).map((o) => [o.orgId, o.name])} />
             <Select label="Record type" value={filters.recordType} onChange={(v) => setFilters((f) => ({ ...f, recordType: v }))}
               options={Object.entries(RECORD_TYPE_LABEL)} />
+            <Select label="Patient trait" value={filters.trait} onChange={(v) => setFilters((f) => ({ ...f, trait: v }))}
+              options={Object.entries(TRAIT_LABEL)} />
             <DateInput label="From" value={filters.from} onChange={(v) => setFilters((f) => ({ ...f, from: v }))} />
             <DateInput label="To" value={filters.to} onChange={(v) => setFilters((f) => ({ ...f, to: v }))} />
             {Object.values(filters).some(Boolean) && (
@@ -238,6 +245,7 @@ export default function ClinicalSearch() {
             {result.warnings.length > 0 && <div className="rounded-lg bg-amber-50 px-3 py-2 text-[12.5px] text-amber-700">{result.warnings.join(' · ')}</div>}
             {result.patients.length === 0 && <Card><EmptyState title="No matching records">Try different wording or remove filters. No results does not mean a condition is absent.</EmptyState></Card>}
             {result.patients.map((g) => <PatientResults key={g.patientId} group={g} />)}
+            {(result.documents?.length ?? 0) > 0 && <DocumentResults hits={result.documents!} />}
           </div>
           {discuss && recordIds.length > 0 && (
             <div className="xl:sticky xl:top-0 xl:self-start">
@@ -274,6 +282,7 @@ function InterpretationCard({ interp }: { interp: Interpretation }) {
     ...c.keywords.map((x) => ['Keyword', x] as [string, string]),
     ...c.recordTypes.map((x) => ['Record type', RECORD_TYPE_LABEL[x as keyof typeof RECORD_TYPE_LABEL] ?? x] as [string, string]),
     ...c.organizationIds.map((x) => ['Organization', x] as [string, string]),
+    ...(c.traits ?? []).map((x) => ['Patient trait', TRAIT_LABEL[x] ?? x] as [string, string]),
   ]
   if (!isFlags) addRecordChips(c, chips)
   return <InterpretationView interp={interp} chips={chips} isFlags={isFlags} />
@@ -324,7 +333,7 @@ function PatientResults({ group }: { group: SearchResult['patients'][number] }) 
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3">
         <div>
           <Link to={`/patients/${group.patientId}`} className="text-[14.5px] font-semibold text-navy-900 hover:text-coral-700">{group.patientName}</Link>
-          <span className="ml-2 text-[12px] text-navy-400">{group.displayId}</span>
+          <SynMrn id={group.displayId} className="ml-2 text-navy-400" />
           <div className="mt-0.5 text-[12px] text-navy-500">{group.matchCount} records on {group.distinctDates} separate dates</div>
         </div>
         <div className="flex flex-wrap gap-1">{group.organizations.map((o) => <Badge key={o} tone="outline"><Building2 className="h-3 w-3" />{o}</Badge>)}</div>
@@ -354,6 +363,41 @@ function PatientResults({ group }: { group: SearchResult['patients'][number] }) 
           {expanded ? 'Show fewer' : `Show all ${group.records.length} records`}
         </button>
       )}
+    </Card>
+  )
+}
+
+/** Keyword matches in uploaded documents. Shown separately: documents are never part of the Gemini summary or chat. */
+function DocumentResults({ hits }: { hits: DocumentHit[] }) {
+  return (
+    <Card padded={false}>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3">
+        <div>
+          <div className="flex items-center gap-1.5 text-[14.5px] font-semibold text-navy-900"><FileText className="h-4 w-4 text-navy-400" />Uploaded documents</div>
+          <div className="mt-0.5 text-[12px] text-navy-500">{hits.length} document{hits.length === 1 ? '' : 's'} with matching text, title or file name</div>
+        </div>
+        <Badge tone="outline"><Lock className="h-3 w-3" />Not sent to Gemini</Badge>
+      </div>
+      <ul className="divide-y divide-line">
+        {hits.map((d) => (
+          <li key={d.documentId} className="flex flex-col gap-2 px-4 py-2.5 sm:flex-row sm:items-start">
+            <span className="mt-0.5 w-10 shrink-0 text-[10px] font-bold text-navy-500">{d.fileType}</span>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="break-words text-[13.5px] font-medium text-navy-900">{d.title}</span>
+                <Link to={`/patients/${d.patientId}?tab=documents`} className="text-[12px] text-navy-500 hover:text-coral-700">{d.patientName}</Link>
+                <SynMrn id={d.patientDisplayId} className="text-navy-400" />
+              </div>
+              {d.snippet && <div className="mt-0.5 line-clamp-2 text-[12.5px] text-navy-600">{d.snippet}</div>}
+              <div className="mt-1 break-all text-[11.5px] text-navy-400">{d.fileName} · uploaded {fmtDate(d.uploadedAt)} by {d.uploadedBy}</div>
+            </div>
+            <div className="flex shrink-0 gap-3 text-[12.5px] font-medium">
+              {d.fileType === 'PDF' && <a href={documentFileUrl(d.documentId)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-coral-700 hover:text-coral-800"><Eye className="h-3.5 w-3.5" />View</a>}
+              <a href={documentFileUrl(d.documentId, true)} className="inline-flex items-center gap-1 text-navy-600 hover:text-coral-700"><Download className="h-3.5 w-3.5" />Download</a>
+            </div>
+          </li>
+        ))}
+      </ul>
     </Card>
   )
 }

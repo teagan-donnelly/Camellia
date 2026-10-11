@@ -86,10 +86,18 @@ additional safeguard, not a replacement for existing communication or for clinic
 | ✦ | **Gemini clinical assistant** | Multi-turn chat on patient profiles, flags, alerts and search results. Each answer separates *documented facts*, *AI interpretation* and *missing information*. Every citation is checked against the records that were actually retrieved, and fabricated ones are removed. |
 | ✦ | **Clinical document interpretation** | Gemini extracts structured observations from notes. An observation is stored only if it quotes its source record verbatim. |
 | ✦ | **Source verification** | Every citation opens the original record, showing normalized content, source organization and system, and the raw HL7/FHIR/legacy/text payload exactly as received. |
+| **V3** | **Camellia Briefing** *(clinical roles)* | A short spoken shift handoff. Simulated shift assignments in Snowflake → the patients the user may access → Gemini writes a cited script (Full Shift or Priority Alerts Only) → **ElevenLabs** text-to-speech → in-app player with transcript and source citations. Audio is capped at 8 minutes using the measured duration; over-long scripts are rewritten, never cut off. |
+| **V3** | **Wearable patient monitoring** *(simulated)* | A Java simulator stands in for a proposed smart wristband (see [HARDWARE_ARCHITECTURE.md](HARDWARE_ARCHITECTURE.md)). Observations always belong to one hospital encounter. Patient profiles show a Patient Monitoring card only for monitored stays; the encounter page has charts, a timeline, device status and Gemini Q&A limited to that stay. Nursing reviews: mobility (only with a configured mobility plan), repositioning (only confirmed nursing documentation counts) and device connectivity (missing data is never treated as inactivity). |
+| **V3.1** | **Obesity traits** *(clinical roles)* | Coded ICD-10-CM diagnoses (E66.9 obesity, E66.01 morbid obesity, and related codes) become structured, searchable patient traits in Snowflake (`PATIENT_TRAITS`), linked to the hospital stay when the diagnosis was documented during one. Find patients with the **Patient trait** filter or by asking (*"patients with morbid obesity"*). Traits are never inferred from free text or wearable data and never create alerts. |
+| **V3.1** | **Patient documents (PDF, Word)** | Upload `.pdf`, `.docx` and `.doc` files to a patient or a specific encounter. The backend checks type (by content, not just the name) and size, stores the file outside any public folder, and serves it only through an access-checked link. Text is extracted for Clinical Search; documents are never sent to Gemini. |
+| **V3.1** | **Shift schedule** *(nurses)* | The dashboard shows the current and next shift, later shifts this week, open shifts in the nurse's own units and staffing coverage (synthetic). |
+| **V3** | **Patient record import** *(Clinical Data Coordinator)* | Preview and import synthetic FHIR R4 JSON, Camellia JSON or CSV files from simulated organizations. Possible patient matches are shown, but records are attached only after an explicit choice. Duplicates are skipped by source id, and imported records flow into profiles, search, screening and Gemini. |
 
 ## Roles and access
 
-Camellia ships with six **simulated demo users**. Pick one from the user switcher in the top-right corner; switching is
+Camellia ships with seven **simulated demo users** (shown in the switcher) inside a synthetic workforce of **100
+clinicians** (40 physicians across ten practices, 30 RNs, 15 L&D nurses, 10 CRNAs, 5 anesthesiologists) plus one
+administrative account, stored in the `CLINICIANS` table. Pick one from the user switcher in the top-right corner; switching is
 one click and resets everything cached in the browser. The backend enforces every rule below on every endpoint, including
 search, dashboards and Gemini retrieval, so a restricted record is never read, shown or sent to Gemini.
 
@@ -101,6 +109,15 @@ search, dashboards and Gemini retrieval, so a restricted record is never read, s
 | Taylor Morgan, RN | Labor & Delivery Nurse | All 9 | ✓ view | — | Add notes |
 | Maya Ellison, CRNA *(default)* | Nurse Anesthetist | All 9 | ✓ | ✓ | Full (acknowledge, status, contact, notes) |
 | Dr. Daniel Brooks | Anesthesiologist | All 9 | ✓ | ✓ | Full |
+| Riley Okafor | Clinical Data Coordinator (admin demo role) | All (to match imports) | — | — | — (imports records only; no AI or alerts) |
+
+V3 permissions: **Camellia Briefing** — all five clinical roles, own shifts only. **Monitoring data** — all clinical roles
+within their patient scope (physicians: their practices). **Nursing Monitoring queue, documenting repositioning and the
+device simulator** — RN and L&D nurse. **Import** — Clinical Data Coordinator only.
+
+V3.1 permissions: **Obesity traits** — the five clinical roles, within their patient scope (not the data coordinator).
+**Upload documents** — physicians, RNs, L&D nurses and the data coordinator; **view/download documents** — anyone who can
+see the patient. **Shift schedule** — each user sees only their own shifts and open shifts in their own units.
 
 - **Navigation follows the role.** Everyone sees Dashboard, Patients, Clinical Search and Clinical Alerts. Only L&D
   nurses, CRNAs and anesthesiologists see **Anesthesia OB Alerts** (work queue + coordination board).
@@ -226,6 +243,14 @@ quotes. **Use forward slashes in file paths, even on Windows** (for example `C:/
 | `SNOWFLAKE_CREATE_DATABASE` | `true` lets the app run `CREATE DATABASE/SCHEMA IF NOT EXISTS` |
 | `CAMELLIA_DB_MODE` | `auto` (default), `snowflake` (require Snowflake) or `local` (labeled fallback only) |
 | `CAMELLIA_DEMO_ANCHOR_DATE` | Optional fixed anchor for synthetic dates (`YYYY-MM-DD`) |
+| `ELEVENLABS_API_KEY` | ElevenLabs API key for Camellia Briefing audio (server-side only). Without it, briefings are transcript-only and say so. |
+| `ELEVENLABS_VOICE_ID` | Optional. Unset = *River* (`SAz9YHcvj6GT2YYXdXww`, a premade conversational voice). Set it blank to use the first premade voice tagged *conversational* in your account. |
+| `ELEVENLABS_MODEL_ID` | Default `eleven_multilingual_v2` (10,000 characters per request); `eleven_v4` also fits |
+| `CAMELLIA_BRIEFING_AUDIO_DIR` | Non-public folder for generated audio (default `./data/briefings`, git-ignored). Audio is served only through the authorized API. |
+| `CAMELLIA_DOCUMENTS_DIR` | Non-public folder for uploaded patient documents (default `./data/documents`, git-ignored). Files are served only through the authorized API. |
+| `CAMELLIA_DOCUMENTS_MAX_MB` | Upload size limit in MB (default `10`) |
+| `CAMELLIA_HOSPITAL_TIME_ZONE` | Display zone for monitoring data (default `America/New_York`; storage is UTC) |
+| `CAMELLIA_SIMULATOR_ENABLED` | `true` (default) shows the wristband simulator controls to nursing roles |
 | `CAMELLIA_DEMO_SESSION_SECRET` | Optional (16+ characters). Signs demo-session cookies. If unset, a random secret is generated at startup, and the browser silently re-selects its demo user after a backend restart. |
 
 With nothing configured, the app still runs. The UI shows **"Local fallback DB"** and **"Gemini not configured"**
@@ -325,7 +350,7 @@ cd backend
 .\mvnw.cmd test        # Git Bash: ./mvnw test
 ```
 
-51 tests cover patient retrieval, search filtering and SQL safety, the screening rules, alert generation, duplicate
+79 tests cover patient retrieval, search filtering and SQL safety, the screening rules, alert generation, duplicate
 prevention, re-evaluation, status persistence and transition rules, evidence and citation validation, AI response
 parsing, Gemini grounding (with a scripted gateway), missing Gemini configuration, missing or partial Snowflake
 configuration, and multi-format normalization.
@@ -334,6 +359,21 @@ configuration, and multi-format normalization.
 403s for restricted and missing ids, the anesthesia workflow restriction, coordination permissions per role, flag search
 scoping, per-user dashboards, missing and tampered sessions, and proof that **no Gemini request is made** for a denied
 context and that Gemini prompts never contain patients outside the user's scope.
+
+`CamelliaV3IntegrationTest` (9 tests) covers the V3 features with a scripted Gemini and a fake ElevenLabs client (no
+network): 100 seeded clinicians and idempotent re-seeding; encounter isolation of monitoring data and practice scoping;
+the mobility rule with de-duplication; a disconnected device producing only a device alert; repositioning that counts only
+nurse documentation; import create/attach/duplicate/invalid/unauthorized/screening; briefings that exclude out-of-scope
+patients from the Gemini prompt, are private to their owner, are reused instead of re-synthesized, and are rewritten when
+audio runs over 8 minutes; and scripts naming unassigned patients being rejected. Live Gemini, Snowflake and ElevenLabs
+status is recorded in IMPLEMENTATION_STATUS.md.
+
+`CamelliaV31IntegrationTest` (6 tests) covers obesity traits (derived only from coded diagnoses, linked to their
+encounter, not duplicated by re-seeding, exact per-trait search, keyword and natural-language search, hidden from the data
+coordinator and outside practice scope, absent from the nursing queue), document uploads (PDF and DOCX extraction,
+content-based type checks, size limit, foreign encounters rejected, duplicates kept as separate uploads, inline vs.
+download, 403 outside scope and for unknown ids, upload permission) and the shift schedule (own shifts, open shifts only
+in the user's units, coverage, current/next timing).
 
 ```bash
 cd frontend
@@ -353,11 +393,21 @@ npm run build          # type-check + production build
 - **No real integrations.** No connection to Epic or any production EHR, and no real notifications. Alerts exist only in
   the in-app queue.
 - **Synthetic data only.** Not HIPAA compliant. Gemini receives synthetic records over the public API.
-- **Conversation memory** for the assistant is in memory on the server (2-hour TTL) and is not persisted. Flag
-  explanations and AI observations *are* persisted.
+- **Conversation memory** for the assistant is stored in `AI_CONVERSATION_TURNS` (2-hour TTL), so it survives restarts.
+- **Wearable monitoring is simulated.** No hardware exists; values are synthetic device estimates, not validated
+  measurements. The prototype does not detect falls or emergencies and cannot confirm repositioning from wrist movement.
+- **Briefings** use simulated shifts. Generated audio is stored on the backend's disk (not in Snowflake); in a
+  multi-instance or serverless deployment it would need object storage. Listening to identifiable patient information in
+  public or while driving would require privacy safeguards in a real deployment.
+- **Imports** accept only the three documented synthetic formats; there is no EHR connectivity.
 - **Snowflake uniqueness** is enforced by the application. Snowflake primary keys are informational, and the backend
   assumes a single instance.
 - **Search** uses keyword and concept matching (no semantic or vector search yet).
+- **Uploaded documents** are stored on the backend's disk (not in Snowflake; metadata and extracted text are). Scanned
+  PDFs have no selectable text and are not OCR-processed, so they are stored and viewable but not searchable. There is no
+  virus scanning, versioning or delete. *Reset demo data* removes all uploads.
+- **Obesity traits** come only from coded diagnoses in the synthetic records (no BMI calculation or free-text inference).
+- **Shift schedule** is synthetic and read-only (no shift requests or trades).
 
 ## Future development
 
@@ -377,3 +427,18 @@ npm run build          # type-check + production build
 | [DEMO_SCRIPT.md](DEMO_SCRIPT.md) | Live hackathon presentation script |
 | [ARCHITECTURE_DECISIONS.md](ARCHITECTURE_DECISIONS.md) | Why things are built the way they are |
 | [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) | What is done, tested or blocked |
+| [HARDWARE_ARCHITECTURE.md](HARDWARE_ARCHITECTURE.md) | Proposed four-layer wristband design (simulated today) |
+| [SERVERLESS_ARCHITECTURE.md](SERVERLESS_ARCHITECTURE.md) | Proposed AWS Lambda + Snowflake deployment |
+
+## Patient identifiers
+
+Three identifiers appear in the UI, and all are synthetic:
+
+| Identifier | Example | Meaning |
+|---|---|---|
+| Camellia patient id | `CAM-P-1001` | Internal database key that every table joins on. Imported patients get `CAM-P-2001`, `CAM-P-2002`, … |
+| Synthetic MRN | `SYN-204871` | Human-facing enterprise record number shown as "MRN SYN-…". Written by hand in `seed/patients.json` for seeded patients and generated (unique, deterministic) for imported ones. It tells apart patients with similar names; it is not a real MRN. |
+| Source MRN | `BW-77120` (Bellwether) | Each organization's own record number, kept in `PATIENT_SOURCE_IDENTIFIERS`. The import matcher uses organization + source MRN for exact matches. |
+
+Names are never used as identifiers: two patients can share a name, so matching on names only produces a *possible*
+match that a person must confirm.

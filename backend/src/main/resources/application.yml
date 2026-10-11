@@ -9,9 +9,17 @@ spring:
     import:
       - optional:file:./.env[.properties]
       - optional:file:../.env[.properties]
+      # Personal, git-ignored overrides (e.g. ELEVENLABS_API_KEY). Loaded last, so it wins over the shared .env.
+      - optional:file:./.env.local[.properties]
   # The DataSource is built by com.camellia.config.DataSourceConfig (Snowflake, or the labeled local fallback).
   jackson:
     default-property-inclusion: non_null
+  # Uploaded patient documents. Slightly above camellia.documents.max-upload-mb so the application's own size check
+  # (with a clear message) runs first; anything larger is rejected by the servlet container with HTTP 413.
+  servlet:
+    multipart:
+      max-file-size: 12MB
+      max-request-size: 13MB
 
 server:
   port: ${PORT:8080}
@@ -65,12 +73,63 @@ camellia:
     # minimal | low | medium | high | blank (model default). Lower = faster answers.
     thinking-level: ${GEMINI_THINKING_LEVEL:low}
     max-retries: ${GEMINI_MAX_RETRIES:2}
+    # Total time one request may spend on Gemini across retries and the fallback model; an attempt only starts when a
+    # full timeout still fits. 0 = no bound. Set it below the API gateway's limit in the cloud (e.g. 25 for a 30 s limit).
+    request-budget-seconds: ${GEMINI_REQUEST_BUDGET_SECONDS:0}
 
   demo:
     # Synthetic dates are stored relative to this anchor. Blank = the date the demo data is seeded.
     anchor-date: ${CAMELLIA_DEMO_ANCHOR_DATE:}
     # Signs the SIMULATED demo-identity cookie. Blank = random per startup (users re-select after a restart).
     session-secret: ${CAMELLIA_DEMO_SESSION_SECRET:}
+    # "Reset demo data" and "Simulate lab result" in the UI. Turn off for any public deployment; the camellia-jobs
+    # function performs those operations instead (see SERVERLESS_ARCHITECTURE.md).
+    admin-enabled: ${CAMELLIA_DEMO_ADMIN_ENABLED:true}
+
+  monitoring:
+    # Simulated wearable data is stored in UTC and shown in hospital-local time.
+    hospital-time-zone: ${CAMELLIA_HOSPITAL_TIME_ZONE:America/New_York}
+    stale-data-minutes: ${CAMELLIA_MONITORING_STALE_MINUTES:30}
+    # The clearly labeled wristband simulator controls (synthetic data only).
+    simulator-enabled: ${CAMELLIA_SIMULATOR_ENABLED:true}
+
+  briefing:
+    # Hard upper bound on briefing audio. The script is estimated first, then the real audio duration is verified.
+    max-audio-seconds: 480
+    words-per-minute: 150
+    max-script-attempts: 3
+    # Non-public storage for generated audio (served only through the authorized /api/briefings/{id}/audio endpoint).
+    audio-dir: ${CAMELLIA_BRIEFING_AUDIO_DIR:./data/briefings}
+
+  elevenlabs:
+    api-key: ${ELEVENLABS_API_KEY:}
+    base-url: ${ELEVENLABS_BASE_URL:https://api.elevenlabs.io}
+    # Default: "River - Relaxed, Neutral, Informative", a premade conversational voice every account can use.
+    # Set ELEVENLABS_VOICE_ID blank to use the first premade voice whose use case matches voice-use-case instead.
+    voice-id: ${ELEVENLABS_VOICE_ID:SAz9YHcvj6GT2YYXdXww}
+    voice-use-case: ${ELEVENLABS_VOICE_USE_CASE:conversational}
+    model-id: ${ELEVENLABS_MODEL_ID:eleven_multilingual_v2}
+    output-format: ${ELEVENLABS_OUTPUT_FORMAT:mp3_44100_128}
+    # Characters per request; eleven_multilingual_v2 accepts up to 10,000.
+    max-characters: ${ELEVENLABS_MAX_CHARACTERS:9500}
+    stability: 0.55
+    similarity-boost: 0.75
+    style: 0.0
+    speed: 1.0
+    timeout-seconds: ${ELEVENLABS_TIMEOUT_SECONDS:180}
+    max-retries: ${ELEVENLABS_MAX_RETRIES:2}
+
+  documents:
+    # Non-public storage for uploaded PDF/DOCX/DOC files (served only through the authorized /api/documents/{id}/file).
+    storage-dir: ${CAMELLIA_DOCUMENTS_DIR:./data/documents}
+    max-upload-mb: ${CAMELLIA_DOCUMENTS_MAX_MB:10}
+    # Extracted text kept for authorized clinical search (never sent to Gemini).
+    max-extracted-chars: 200000
+
+  jobs:
+    # Enables POST /events, the non-HTTP entry point for scheduled and operator jobs (seeding, screening, demo reset).
+    # Only for the camellia-jobs function, which has no public route. Never enable it on the internet-facing API.
+    enabled: ${CAMELLIA_JOBS_ENABLED:false}
 
   # ---------------------------------------------------------------------------
   # PROTOTYPE SCREENING HEURISTICS — NOT VALIDATED CLINICAL THRESHOLDS.

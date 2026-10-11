@@ -66,8 +66,14 @@ public class SessionController {
     }
 
     SessionView session(DemoUser user) {
-        List<String> nav = new ArrayList<>(List.of("DASHBOARD", "PATIENTS", "CLINICAL_SEARCH", "CLINICAL_ALERTS"));
+        // Sidebar entries follow permissions; the backend enforces the same permissions on every endpoint.
+        List<String> nav = new ArrayList<>(List.of("DASHBOARD"));
+        if (user.has(Permission.CLINICAL_BRIEFING)) nav.add("BRIEFING");
+        if (user.has(Permission.VIEW_PATIENTS)) nav.add("PATIENTS");
+        if (user.has(Permission.CLINICAL_SEARCH)) nav.add("CLINICAL_SEARCH");
+        if (user.has(Permission.CLINICAL_ALERTS)) nav.add("CLINICAL_ALERTS");
         if (user.has(Permission.ANESTHESIA_OB_ALERTS)) nav.add("ANESTHESIA_OB_ALERTS");
+        if (user.has(Permission.NURSING_MONITORING)) nav.add("NURSING_MONITORING");
         List<String> perms = user.role().permissions().stream().map(Enum::name).sorted().toList();
         return new SessionView(view(user, practiceNames()), perms, nav, true, NOTICE);
     }

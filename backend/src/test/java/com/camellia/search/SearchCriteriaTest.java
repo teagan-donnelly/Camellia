@@ -37,7 +37,7 @@ class SearchCriteriaTest {
         List<String> warnings = new ArrayList<>();
         SearchCriteria c = new SearchCriteria(null, List.of("o'brien"), List.of("LOW_PLATELETS"), List.of(), List.of(), null, null, null,
                 true, true, true, false, 1, "ANY").sanitize(Set.of(), Set.of(), warnings);
-        SearchService.Query q = new SearchService(null, null, null).buildQuery(c, LocalDateTime.of(2026, 10, 10, 0, 0));
+        SearchService.Query q = new SearchService(null, null, null, null).buildQuery(c, LocalDateTime.of(2026, 10, 10, 0, 0));
         assertThat(q.sql()).doesNotContain("brien").doesNotContain("LOW_PLATELETS");
         assertThat(q.sql()).contains("LIKE ?").contains("IS_OBSTETRIC = TRUE").contains("COUNT(DISTINCT m.ORG_ID) > 1");
         assertThat(q.params()).contains("%|LOW_PLATELETS|%", "%|DELIVERY|%");

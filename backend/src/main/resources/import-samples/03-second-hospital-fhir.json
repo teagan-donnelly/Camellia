@@ -1,0 +1,121 @@
+{
+  "resourceType": "Bundle",
+  "type": "collection",
+  "meta": {
+    "source": "MBMC",
+    "tag": [
+      {
+        "display": "SYNTHETIC DEMO DATA — NOT REAL PATIENTS"
+      }
+    ]
+  },
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Organization",
+        "id": "org-mbmc",
+        "identifier": [
+          {
+            "value": "MBMC"
+          }
+        ],
+        "name": "Magnolia Bay Medical Center"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "pt-552019",
+        "identifier": [
+          {
+            "system": "urn:mbmc:mrn",
+            "value": "MB-552019"
+          }
+        ],
+        "name": [
+          {
+            "family": "Navarro",
+            "given": [
+              "Elias"
+            ]
+          }
+        ],
+        "gender": "male",
+        "birthDate": "1990-04-09"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Encounter",
+        "id": "MB-E-3301",
+        "subject": {
+          "reference": "Patient/pt-552019"
+        },
+        "class": {
+          "code": "EMER"
+        },
+        "type": [
+          {
+            "text": "Emergency department visit"
+          }
+        ],
+        "serviceType": {
+          "text": "Emergency Medicine"
+        },
+        "period": {
+          "start": "@D-6T22:15",
+          "end": "@D-6T23:59"
+        },
+        "participant": [
+          {
+            "individual": {
+              "display": "Dr. Corinne Vale, MD"
+            }
+          }
+        ],
+        "reasonCode": [
+          {
+            "text": "Headache with light sensitivity"
+          }
+        ],
+        "department": "Emergency Department"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "DocumentReference",
+        "id": "MB-D-3302",
+        "subject": {
+          "reference": "Patient/pt-552019"
+        },
+        "type": {
+          "text": "Emergency department note"
+        },
+        "date": "@D-6T23:40",
+        "author": [
+          {
+            "display": "Dr. Corinne Vale, MD"
+          }
+        ],
+        "context": {
+          "encounter": [
+            {
+              "reference": "Encounter/MB-E-3301"
+            }
+          ],
+          "practiceSetting": {
+            "text": "Emergency Medicine"
+          }
+        },
+        "content": [
+          {
+            "attachment": {
+              "contentType": "text/plain",
+              "text": "Third visit this year for headache per patient report. Neurologic examination normal. Treated and discharged. Advised follow-up with primary care and neurology."
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

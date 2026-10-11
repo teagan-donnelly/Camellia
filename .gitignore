@@ -2,6 +2,7 @@
 .env
 *.env
 !.env.example
+.env.local
 *.p8
 *.pem
 rsa_key*
@@ -23,3 +24,9 @@ frontend/dist/
 *.iml
 .DS_Store
 Thumbs.db
+
+# Lambda deployment package (built by deploy/lambda/package.sh)
+deploy/lambda/dist/
+
+# Vercel staging folder and project link (deploy/vercel/deploy.sh)
+deploy/vercel/.stage/

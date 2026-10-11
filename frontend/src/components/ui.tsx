@@ -169,3 +169,15 @@ export function KeyValue({ label, children }: { label: string; children: ReactNo
     </div>
   )
 }
+
+/**
+ * Synthetic enterprise medical record number (SYN-…). A human-facing identifier that tells apart patients with similar
+ * names; the internal database key is CAM-P-…. Neither is a real MRN — all patients are synthetic.
+ */
+export function SynMrn({ id, className }: { id?: string | null; className?: string }) {
+  if (!id) return null
+  return (
+    <span title="Synthetic medical record number (demo only, not a real MRN). Unique per patient — use it to tell apart patients with similar names."
+      className={cx('whitespace-nowrap font-mono text-[11.5px] text-navy-500', className)}>MRN {id}</span>
+  )
+}

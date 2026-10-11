@@ -1,11 +1,13 @@
-import { Baby, Building2, Search } from 'lucide-react'
+import { Baby, Building2, Search, FileUp } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { usePatients } from '../api/hooks'
-import { Badge, Card, EmptyState, ErrorBox, Loading, PageHeader } from '../components/ui'
+import { Badge, Button, Card, EmptyState, ErrorBox, Loading, PageHeader, SynMrn } from '../components/ui'
+import { useApp } from '../state/AppContext'
 import { cx, daysLabel, fmtDate } from '../lib/format'
 
 export default function Patients() {
+  const { can } = useApp()
   const { data, isLoading, error } = usePatients()
   const [q, setQ] = useState('')
   const [filter, setFilter] = useState<'all' | 'ob' | 'review'>('all')
@@ -25,6 +27,7 @@ export default function Patients() {
         eyebrow="Directory"
         title="Patients"
         subtitle="Synthetic patients with records normalized from multiple fictional healthcare organizations."
+        actions={can('IMPORT_RECORDS') ? <Link to="/patients/import"><Button variant="primary" size="sm"><FileUp className="h-3.5 w-3.5" />Import records</Button></Link> : undefined}
       />
       <Card padded={false}>
         <div className="flex flex-wrap items-center gap-3 border-b border-line px-4 py-3">
@@ -65,7 +68,7 @@ export default function Patients() {
                         <span className="font-medium text-navy-900">{p.name}</span>
                         {p.obstetric && <Badge tone="coral" title="Obstetric patient"><Baby className="h-3 w-3" />OB</Badge>}
                       </div>
-                      <div className="mt-0.5 text-[12px] text-navy-500">{p.displayId} · {p.age}y {p.sex}{p.estimatedDueDate ? ` · EDD ${fmtDate(p.estimatedDueDate)} (est.)` : ''}</div>
+                      <div className="mt-0.5 text-[12px] text-navy-500"><SynMrn id={p.displayId} /> · {p.age}y {p.sex}{p.estimatedDueDate ? ` · EDD ${fmtDate(p.estimatedDueDate)} (est.)` : ''}</div>
                       {p.demoScenario && <div className="mt-1 text-[11.5px] text-navy-400">Demo scenario {p.demoScenario}</div>}
                     </td>
                     <td className="px-4 py-3">

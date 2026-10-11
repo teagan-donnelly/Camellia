@@ -5,6 +5,7 @@ import com.camellia.model.ClinicalRecord;
 import com.camellia.model.Organization;
 import com.camellia.model.Patient;
 import com.camellia.repository.ClinicalDataRepository;
+import com.camellia.repository.DocumentRepository;
 import com.camellia.repository.OrganizationRepository;
 import com.camellia.repository.PatientRepository;
 import com.camellia.security.AuthorizationService;
@@ -30,8 +31,11 @@ public class SearchService {
     private final ClinicalDataRepository clinical;
     private final PatientRepository patients;
     private final OrganizationRepository organizations;
+    private final DocumentRepository documents;
 
-    public SearchService(ClinicalDataRepository clinical, PatientRepository patients, OrganizationRepository organizations) {
+    public SearchService(ClinicalDataRepository clinical, PatientRepository patients, OrganizationRepository organizations,
+                         DocumentRepository documents) {
+        this.documents = documents;
         this.clinical = clinical;
         this.patients = patients;
         this.organizations = organizations;
@@ -44,8 +48,15 @@ public class SearchService {
     public record PatientGroup(String patientId, String patientName, String displayId, int matchCount, int distinctDates,
                                List<String> organizations, List<RecordHit> records) {}
 
+    /** A keyword match in an uploaded document (PDF / Word). Kept apart from records: never part of a Gemini context. */
+    public record DocumentHit(String documentId, String patientId, String patientName, String patientDisplayId, String title,
+                              String fileName, String fileType, LocalDateTime uploadedAt, String uploadedBy,
+                              String encounterId, String snippet) {}
+
     public record SearchResult(SearchCriteria criteria, List<String> warnings, int totalRecords, int totalPatients,
-                               List<PatientGroup> patients, boolean truncated) {}
+                               List<PatientGroup> patients, boolean truncated, List<DocumentHit> documents) {}
+
+    static final int MAX_DOCUMENT_HITS = 25;
 
     public Set<String> knownOrgIds() {
         return organizations.findAll().stream().map(Organization::orgId).collect(Collectors.toSet());
@@ -83,7 +94,30 @@ public class SearchService {
         }
         groups.sort(Comparator.comparingInt(PatientGroup::matchCount).reversed());
         int total = groups.stream().mapToInt(PatientGroup::matchCount).sum();
-        return new SearchResult(c, warnings, total, groups.size(), groups, truncated);
+        return new SearchResult(c, warnings, total, groups.size(), groups, truncated, documentHits(c, scope, pById));
+    }
+
+    /**
+     * Plain keyword search over uploaded documents, inside the same patient scope. Record-specific filters (record type,
+     * organization, dates, populations) do not apply to documents, so documents are searched only without them.
+     */
+    private List<DocumentHit> documentHits(SearchCriteria c, AccessScope scope, Map<String, Patient> pById) {
+        boolean recordOnlyFilters = !c.recordTypes().isEmpty() || !c.organizationIds().isEmpty() || c.dateFrom() != null
+                || c.dateTo() != null || Boolean.TRUE.equals(c.obstetricOnly()) || Boolean.TRUE.equals(c.upcomingDeliveryOnly())
+                || Boolean.TRUE.equals(c.multipleOrganizationsOnly()) || Boolean.TRUE.equals(c.openFlagsOnly());
+        if (c.keywords().isEmpty() || recordOnlyFilters) return List.of();
+        Collection<String> ids = scope.networkWide() ? null : scope.patientIds();
+        return documents.search(c.keywords(), "ALL".equals(c.matchMode()), ids, c.patientId(), c.traits(), MAX_DOCUMENT_HITS)
+                .stream()
+                .filter(m -> scope.allowsPatient(m.meta().patientId()))
+                .map(m -> {
+                    var d = m.meta();
+                    Patient p = pById.get(d.patientId());
+                    return new DocumentHit(d.documentId(), d.patientId(), p == null ? d.patientId() : p.fullName(),
+                            p == null ? null : p.displayId(), d.title(), d.originalFilename(), d.fileType(), d.uploadedAt(),
+                            d.uploadedBy(), d.encounterId(), snippet(m.text(), c));
+                })
+                .toList();
     }
 
     record Query(String sql, List<Object> params) {}
@@ -121,6 +155,20 @@ public class SearchService {
             String joiner = "ANY".equals(c.matchMode()) ? " OR " : " AND ";
             sql.append(" AND (").append(String.join(joiner, termClauses)).append(")");
             params.addAll(termParams);
+        }
+        List<String> traits = c.traits() == null ? List.of() : c.traits();
+        if (!traits.isEmpty()) {
+            // Patient-level filter on structured traits (derived from coded diagnoses, never from free text).
+            String in = placeholders(traits.size());
+            sql.append(" AND r.PATIENT_ID IN (SELECT t.PATIENT_ID FROM PATIENT_TRAITS t WHERE t.STATUS = 'ACTIVE' AND t.TRAIT_CODE IN (")
+               .append(in).append("))");
+            params.addAll(traits);
+            if (termClauses.isEmpty() && c.recordTypes().isEmpty()) {
+                // Trait-only search: list the diagnoses that establish the trait, not every record of those patients.
+                sql.append(" AND r.RECORD_ID IN (SELECT t2.SOURCE_RECORD_ID FROM PATIENT_TRAITS t2 WHERE t2.STATUS = 'ACTIVE' AND t2.TRAIT_CODE IN (")
+                   .append(in).append("))");
+                params.addAll(traits);
+            }
         }
         if (!c.recordTypes().isEmpty()) {
             sql.append(" AND r.RECORD_TYPE IN (").append(placeholders(c.recordTypes().size())).append(")");

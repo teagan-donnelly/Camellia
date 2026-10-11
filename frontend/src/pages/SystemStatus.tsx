@@ -1,4 +1,4 @@
-import { CircleCheck, Database, FlaskConical, RotateCcw, ShieldAlert, Sparkles, TriangleAlert } from 'lucide-react'
+import { AudioLines, CircleCheck, Database, FlaskConical, RotateCcw, ShieldAlert, Sparkles, TriangleAlert } from 'lucide-react'
 import { useState } from 'react'
 import { post } from '../api/client'
 import { useIntegrationStatus, useInvalidateWorkflow, keys } from '../api/hooks'
@@ -6,6 +6,8 @@ import { Badge, Button, Card, CardHeader, ErrorBox, KeyValue, Loading, PageHeade
 import { fmtDate, fmtDateTime } from '../lib/format'
 import { useApp } from '../state/AppContext'
 import { useQueryClient } from '@tanstack/react-query'
+import type { IntegrationStatus } from '../api/types'
+import { cx } from '../lib/format'
 
 export default function SystemStatus() {
   const { data, isLoading, error, refetch } = useIntegrationStatus()
@@ -31,13 +33,19 @@ export default function SystemStatus() {
       {data && (
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
           <Card>
-            <CardHeader icon={<Database className="h-4 w-4" />} title="Database — Snowflake"
-              actions={data.database.isSnowflake ? <Badge tone="sage"><CircleCheck className="h-3 w-3" />Snowflake connected</Badge>
-                : <Badge tone="amber"><TriangleAlert className="h-3 w-3" />Local fallback — NOT Snowflake</Badge>} />
-            {!data.database.isSnowflake && (
-              <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-[13px] text-amber-800">
-                Snowflake is not configured, so the backend is using the clearly labeled local development database (H2). Set the SNOWFLAKE_* values in
-                <code className="mx-1 rounded bg-white px-1">backend/.env</code> (see <code className="rounded bg-white px-1">.env.example</code>) and restart to use Snowflake.
+            <CardHeader icon={<Database className="h-4 w-4" />} title="Database — Snowflake" actions={<DatabaseStateBadge db={data.database} />} />
+            {data.database.state !== 'SNOWFLAKE_CONNECTED' && (
+              <div className={cx('mb-4 space-y-1.5 rounded-lg border p-3 text-[13px]',
+                data.database.state === 'SNOWFLAKE_UNAVAILABLE' ? 'border-critical-100 bg-critical-50 text-critical-700' : 'border-amber-200 bg-amber-50 text-amber-800')}>
+                <p>{data.database.explanation}</p>
+                {data.database.state === 'CONFIGURATION_MISSING' && (
+                  <p>Set the SNOWFLAKE_* values in <code className="rounded bg-white px-1">backend/.env</code> (see <code className="rounded bg-white px-1">.env.example</code>) and restart to use Snowflake.
+                    {data.database.missingSettings?.length ? <> Missing: {data.database.missingSettings.map((m) => <code key={m} className="mx-0.5 rounded bg-white px-1">{m}</code>)}</> : null}</p>
+                )}
+                {data.database.state === 'LOCAL_FALLBACK_SELECTED' && (
+                  <p>Remove <code className="rounded bg-white px-1">CAMELLIA_DB_MODE=local</code> (or set it to <code className="rounded bg-white px-1">auto</code>) and restart to use Snowflake.</p>
+                )}
+                {data.database.dataNote && <p className="text-[12px] opacity-90">{data.database.dataNote}</p>}
               </div>
             )}
             <div className="grid grid-cols-2 gap-3">
@@ -50,7 +58,7 @@ export default function SystemStatus() {
               <Button variant="navy" loading={busy === 'db'} onClick={() => act('db', async () => { setDbCheck(await post('/integrations/database/check')); refetch() })}>
                 Run read / write check
               </Button>
-              <p className="mt-2 text-[12px] text-navy-500">Reads a demo patient with a JOIN, inserts a row into INTEGRATION_CHECKS, and reads it back.</p>
+              <p className="mt-2 text-[12px] text-navy-500">Reads reference data with a JOIN, inserts a row into INTEGRATION_CHECKS, and reads it back — on whichever database is active.</p>
               {err?.where === 'db' && <div className="mt-3"><ErrorBox error={err.e} /></div>}
               {dbCheck && <pre className="scroll-thin mt-3 max-h-72 overflow-auto rounded-lg bg-navy-950 p-3 font-mono text-[11.5px] text-navy-100">{JSON.stringify(dbCheck, null, 2)}</pre>}
             </div>
@@ -86,33 +94,59 @@ export default function SystemStatus() {
           </Card>
 
           <Card>
-            <CardHeader icon={<FlaskConical className="h-4 w-4" />} title="Demo data" subtitle={`Synthetic dates are anchored to ${fmtDate(data.anchorDate)}.`} />
-            <div className="space-y-4">
-              <div>
-                <Button loading={busy === 'lab'} onClick={() => act('lab', async () => {
-                  const r = await post<{ ingest: { recordsInserted: number }; analysis: { flagsUpdated: number; flagsCreated: number } }>('/admin/simulate-lab-result')
-                  invalidate()
-                  toast({ tone: 'success', title: 'New HL7 result ingested', body: `${r.ingest.recordsInserted} records added; re-evaluation updated ${r.analysis.flagsUpdated} and created ${r.analysis.flagsCreated} flag(s).` })
-                })}>
-                  <FlaskConical className="h-4 w-4" /> Simulate incoming lab result (Ava Marlowe)
-                </Button>
-                <p className="mt-1.5 text-[12px] text-navy-500">Ingests a new Northgate HL7 platelet result dated yesterday and re-runs screening. The existing alert is updated with the new evidence — no duplicate alert is created. Running it again inserts nothing.</p>
+            <CardHeader icon={<AudioLines className="h-4 w-4 text-coral-500" />} title="Voice — ElevenLabs"
+              actions={data.elevenlabs?.configured ? <Badge tone="coral"><CircleCheck className="h-3 w-3" />API key configured</Badge>
+                : <Badge tone="amber"><TriangleAlert className="h-3 w-3" />Not configured</Badge>} />
+            {!data.elevenlabs?.configured && (
+              <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-[13px] text-amber-800">
+                ELEVENLABS_API_KEY is not set, so Camellia Briefing produces the Gemini script and transcript without audio. Browser speech is never
+                substituted for ElevenLabs. Add the key to <code className="rounded bg-white px-1">backend/.env</code> and restart.
               </div>
-              <div className="border-t border-line pt-4">
-                <Button variant="danger" loading={busy === 'reset'} onClick={() => {
-                  if (!window.confirm('Delete all demo data, workflow statuses and notes, then re-seed anchored to today?')) return
-                  act('reset', async () => {
-                    await post('/admin/reset-demo')
-                    invalidate(); qc.invalidateQueries({ queryKey: keys.status })
-                    toast({ tone: 'success', title: 'Demo data reset', body: 'Re-seeded and re-screened with today as the anchor date.' })
-                  })
-                }}>
-                  <RotateCcw className="h-4 w-4" /> Reset demo data
-                </Button>
-                <p className="mt-1.5 text-[12px] text-navy-500">Use before a presentation so upcoming encounters are relative to today. This removes all notes and status changes.</p>
-              </div>
-              {(err?.where === 'lab' || err?.where === 'reset') && <ErrorBox error={err.e} />}
+            )}
+            <div className="grid grid-cols-2 gap-3">
+              <KeyValue label="Model">{data.elevenlabs?.modelId ?? '—'}</KeyValue>
+              <KeyValue label="Voice">{data.elevenlabs?.voiceName ?? data.elevenlabs?.voiceId ?? 'Chosen on first use (conversational)'}</KeyValue>
+              <KeyValue label="Output">{data.elevenlabs?.outputFormat ?? '—'}</KeyValue>
+              <KeyValue label="Calls / failures">{data.elevenlabs ? `${data.elevenlabs.callsSinceStartup} / ${data.elevenlabs.failuresSinceStartup}` : '—'}</KeyValue>
             </div>
+            {data.elevenlabs?.lastError && <div className="mt-3 text-[12.5px] text-critical-700">Last error: {data.elevenlabs.lastError}</div>}
+          </Card>
+
+          <Card>
+            <CardHeader icon={<FlaskConical className="h-4 w-4" />} title="Demo data" subtitle={`Synthetic dates are anchored to ${fmtDate(data.anchorDate)}.`} />
+            {data.demoAdminEnabled === false ? (
+              <p className="text-[13px] text-navy-700">
+                Demo data controls are turned off in this deployment. An operator resets the demo or simulates a new lab result
+                through the jobs function, so nobody can wipe the shared demo from the browser.
+              </p>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <Button loading={busy === 'lab'} onClick={() => act('lab', async () => {
+                    const r = await post<{ ingest: { recordsInserted: number }; analysis: { flagsUpdated: number; flagsCreated: number } }>('/admin/simulate-lab-result')
+                    invalidate()
+                    toast({ tone: 'success', title: 'New HL7 result ingested', body: `${r.ingest.recordsInserted} records added; re-evaluation updated ${r.analysis.flagsUpdated} and created ${r.analysis.flagsCreated} flag(s).` })
+                  })}>
+                    <FlaskConical className="h-4 w-4" /> Simulate incoming lab result (Ava Marlowe)
+                  </Button>
+                  <p className="mt-1.5 text-[12px] text-navy-500">Ingests a new Northgate HL7 platelet result dated yesterday and re-runs screening. The existing alert is updated with the new evidence — no duplicate alert is created. Running it again inserts nothing.</p>
+                </div>
+                <div className="border-t border-line pt-4">
+                  <Button variant="danger" loading={busy === 'reset'} onClick={() => {
+                    if (!window.confirm('Delete all demo data, workflow statuses and notes, then re-seed anchored to today?')) return
+                    act('reset', async () => {
+                      await post('/admin/reset-demo')
+                      invalidate(); qc.invalidateQueries({ queryKey: keys.status })
+                      toast({ tone: 'success', title: 'Demo data reset', body: 'Re-seeded and re-screened with today as the anchor date.' })
+                    })
+                  }}>
+                    <RotateCcw className="h-4 w-4" /> Reset demo data
+                  </Button>
+                  <p className="mt-1.5 text-[12px] text-navy-500">Use before a presentation so upcoming encounters are relative to today. This removes all notes and status changes.</p>
+                </div>
+                {(err?.where === 'lab' || err?.where === 'reset') && <ErrorBox error={err.e} />}
+              </div>
+            )}
           </Card>
 
           <Card>
@@ -130,4 +164,13 @@ export default function SystemStatus() {
       )}
     </div>
   )
+}
+
+function DatabaseStateBadge({ db }: { db: IntegrationStatus['database'] }) {
+  switch (db.state) {
+    case 'SNOWFLAKE_CONNECTED': return <Badge tone="sage"><CircleCheck className="h-3 w-3" />Snowflake connected</Badge>
+    case 'SNOWFLAKE_UNAVAILABLE': return <Badge tone="critical"><TriangleAlert className="h-3 w-3" />Snowflake unavailable</Badge>
+    case 'LOCAL_FALLBACK_SELECTED': return <Badge tone="amber"><TriangleAlert className="h-3 w-3" />Local fallback active — NOT Snowflake</Badge>
+    default: return <Badge tone="amber"><TriangleAlert className="h-3 w-3" />Snowflake configuration missing</Badge>
+  }
 }

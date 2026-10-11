@@ -16,7 +16,7 @@ export function RecordDrawer() {
   if (!recordId) return null
   const r = data?.record
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
+    <div className="fixed inset-0 z-[var(--layer-drawer)] flex justify-end">
       <div className="absolute inset-0 bg-navy-950/30 backdrop-blur-[1px]" onClick={closeRecord} />
       <aside className="relative flex h-full w-full max-w-[640px] flex-col bg-white shadow-2xl animate-fade-up">
         <div className="flex items-start justify-between gap-3 border-b border-line px-6 py-4">

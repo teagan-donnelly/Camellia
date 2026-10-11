@@ -54,7 +54,7 @@ public final class AiSchemas {
             "required", List.of("observations"));
 
     public static Map<String, Object> searchCriteria(List<String> concepts, List<String> recordTypes, List<String> orgIds,
-                                                     List<String> patientIds, List<String> flagCategories) {
+                                                     List<String> patientIds, List<String> flagCategories, List<String> traits) {
         List<String> patientEnum = new java.util.ArrayList<>(patientIds);
         patientEnum.add("");
         return Map.of(
@@ -71,6 +71,7 @@ public final class AiSchemas {
                         Map.entry("upcomingDeliveryOnly", Map.of("type", "boolean")),
                         Map.entry("multipleOrganizationsOnly", Map.of("type", "boolean")),
                         Map.entry("openFlagsOnly", Map.of("type", "boolean")),
+                        Map.entry("traits", Map.of("type", "array", "items", Map.of("type", "string", "enum", traits))),
                         Map.entry("minMatchesPerPatient", Map.of("type", "integer", "description", "1 normally; 2 or 3 for 'repeated/recurring/multiple' requests.")),
                         Map.entry("matchMode", Map.of("type", "string", "enum", List.of("ANY", "ALL"))),
                         Map.entry("searchTarget", Map.of("type", "string", "enum", List.of("RECORDS", "FLAGS"),
@@ -82,7 +83,7 @@ public final class AiSchemas {
                         Map.entry("flagSpecialties", strArray("Specialties of the evidence (e.g. Cardiology, Hematology, Obstetrics), only if requested.")),
                         Map.entry("explanation", str("One sentence describing how the request was interpreted."))),
                 "required", List.of("keywords", "concepts", "recordTypes", "organizationIds", "patientId", "dateFrom", "dateTo",
-                        "obstetricOnly", "upcomingDeliveryOnly", "multipleOrganizationsOnly", "openFlagsOnly",
+                        "obstetricOnly", "upcomingDeliveryOnly", "multipleOrganizationsOnly", "openFlagsOnly", "traits",
                         "minMatchesPerPatient", "matchMode", "searchTarget", "flagCategories", "flagStatusGroup",
                         "flagPriorities", "flagSpecialties", "explanation"));
     }

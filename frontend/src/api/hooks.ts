@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { get, patch, post } from './client'
+import { api, get, patch, post } from './client'
 import type {
   AiAnswer, AlertDetail, AlertSummary, CoordinationNote, Dashboard, ExtractionResult, Facets, FlagDto, FlagSearchCriteria,
   FlagSearchResult, IntegrationStatus, Interpretation, Meta, PatientProfile, PatientSummary, RecordDetail, RuleDescriptor, RunResult,
   SearchCriteria, SearchResult, Session, SessionUser,
+  PatientDocument, PatientTrait, ShiftSchedule,
+  BriefingView, EncounterView, ImportBatch, ImportSample, MonitoringDetail, NursingQueue, ObservationSeries, ShiftView, TimelineItem,
 } from './types'
 
 export const keys = {
@@ -45,8 +47,10 @@ export const useFlagSearch = (params: string) =>
 export const useFlagFacets = () => useQuery({ queryKey: keys.facets, queryFn: () => get<Facets>('/flags/facets'), staleTime: Infinity })
 export const executeFlagSearch = (criteria: FlagSearchCriteria) => post<FlagSearchResult>('/flags/search', criteria)
 export const useMeta = () => useQuery({ queryKey: keys.meta, queryFn: () => get<Meta>('/meta'), staleTime: Infinity })
+// Header badges. Polled slowly: every poll reaches the database, and frequent polls from open tabs would keep a
+// Snowflake warehouse from suspending. Actions that change status (checks, demo reset) refetch it immediately.
 export const useIntegrationStatus = () =>
-  useQuery({ queryKey: keys.status, queryFn: () => get<IntegrationStatus>('/integrations/status'), refetchInterval: 60_000 })
+  useQuery({ queryKey: keys.status, queryFn: () => get<IntegrationStatus>('/integrations/status'), refetchInterval: 5 * 60_000 })
 
 /** Invalidate everything that reflects workflow state after a write. */
 export function useInvalidateWorkflow() {
@@ -78,9 +82,12 @@ export interface AlertUpdate {
 
 export function useUpdateAlert(alertId: string) {
   const invalidate = useInvalidateWorkflow()
+  const qc = useQueryClient()
   return useMutation({
     mutationFn: (u: AlertUpdate) => patch<AlertDetail>(`/coordination-alerts/${alertId}/status`, u),
-    onSuccess: invalidate,
+    // The PATCH returns the saved alert: show it immediately (a Snowflake round trip already took a few seconds),
+    // then refresh the lists and boards that summarize it.
+    onSuccess: (detail) => { qc.setQueryData(keys.alert(alertId), detail); invalidate() },
   })
 }
 
@@ -122,3 +129,92 @@ export function useExtraction(patientId: string) {
 export const interpretSearch = (query: string, patientId?: string) => post<Interpretation>('/search/interpret', { query, patientId })
 export const executeSearch = (criteria: SearchCriteria) => post<SearchResult>('/search/execute', criteria)
 export const summarizeSearch = (query: string, recordIds: string[]) => post<AiAnswer>('/ai/search-summary', { query, recordIds })
+
+// ===================================================================================== Camellia V3
+
+export const useEncounters = (patientId?: string) =>
+  useQuery({ queryKey: ['encounters', patientId], queryFn: () => get<EncounterView[]>(`/patients/${patientId}/encounters`), enabled: !!patientId })
+
+export const useMonitoring = (patientId?: string, encounterId?: string) =>
+  useQuery({
+    queryKey: ['monitoring', patientId, encounterId],
+    queryFn: () => get<MonitoringDetail>(`/patients/${patientId}/encounters/${encounterId}/monitoring`),
+    enabled: !!patientId && !!encounterId,
+  })
+
+export const useObservations = (patientId?: string, encounterId?: string, range = '24h') =>
+  useQuery({
+    queryKey: ['monitoring-obs', patientId, encounterId, range],
+    queryFn: () => get<ObservationSeries>(`/patients/${patientId}/encounters/${encounterId}/monitoring/observations?range=${range}`),
+    enabled: !!patientId && !!encounterId,
+    placeholderData: (prev) => prev,
+  })
+
+export const useTimeline = (patientId?: string, encounterId?: string) =>
+  useQuery({
+    queryKey: ['monitoring-events', patientId, encounterId],
+    queryFn: () => get<TimelineItem[]>(`/patients/${patientId}/encounters/${encounterId}/monitoring/events`),
+    enabled: !!patientId && !!encounterId,
+  })
+
+export const useNursingQueue = (enabled = true) =>
+  useQuery({ queryKey: ['nursing-queue'], queryFn: () => get<NursingQueue>('/monitoring/alerts'), enabled })
+
+/** Everything that shows monitoring state (cards, detail, charts, timeline, queue). */
+export function useInvalidateMonitoring() {
+  const qc = useQueryClient()
+  return () => {
+    for (const k of ['encounters', 'monitoring', 'monitoring-obs', 'monitoring-events', 'nursing-queue']) qc.invalidateQueries({ queryKey: [k] })
+  }
+}
+
+export const useShifts = (enabled = true) =>
+  useQuery({ queryKey: ['briefing-shifts'], queryFn: () => get<ShiftView[]>('/briefings/shifts'), enabled })
+
+export const useBriefing = (id?: string) =>
+  useQuery({
+    queryKey: ['briefing', id],
+    queryFn: () => get<BriefingView>(`/briefings/${id}`),
+    enabled: !!id,
+    // Poll while Gemini / ElevenLabs are working.
+    refetchInterval: (q) => (q.state.data && ['QUEUED', 'SCRIPTING', 'SYNTHESIZING'].includes(q.state.data.status) ? 1500 : false),
+  })
+
+export const useImportSamples = (enabled = true) =>
+  useQuery({ queryKey: ['import-samples'], queryFn: () => get<ImportSample[]>('/import/samples'), enabled, staleTime: Infinity })
+
+export const useImportHistory = (enabled = true) =>
+  useQuery({ queryKey: ['import-history'], queryFn: () => get<ImportBatch[]>('/import/history'), enabled })
+
+// ---------------------------------------------------------------- V3.1
+
+/** Diagnosis-derived traits. Only requested for clinical roles (the server enforces the same rule). */
+export const usePatientTraits = (patientId: string, enabled: boolean) =>
+  useQuery({ queryKey: ['patient-traits', patientId], queryFn: () => get<PatientTrait[]>(`/patients/${patientId}/traits`), enabled })
+
+export const usePatientDocuments = (patientId: string) =>
+  useQuery({ queryKey: ['patient-documents', patientId], queryFn: () => get<PatientDocument[]>(`/patients/${patientId}/documents`) })
+
+export function useUploadDocument(patientId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ file, title, encounterId }: { file: File; title?: string; encounterId?: string }) => {
+      const form = new FormData()
+      form.append('file', file)
+      if (title) form.append('title', title)
+      if (encounterId) form.append('encounterId', encounterId)
+      return api<PatientDocument>(`/patients/${patientId}/documents`, { method: 'POST', body: form })
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['patient-documents', patientId] })
+      qc.invalidateQueries({ queryKey: keys.dashboard })
+    },
+  })
+}
+
+/** Authorized file URL (the server re-checks access on every request; nothing is cached). */
+export const documentFileUrl = (documentId: string, download = false) =>
+  `/api/documents/${encodeURIComponent(documentId)}/file${download ? '?download=true' : ''}`
+
+export const useShiftSchedule = () =>
+  useQuery({ queryKey: ['shift-schedule'], queryFn: () => get<ShiftSchedule>('/shifts/schedule'), staleTime: 5 * 60_000 })

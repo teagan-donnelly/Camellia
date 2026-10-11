@@ -1,0 +1,58 @@
+{
+  "resourceType": "Bundle",
+  "type": "collection",
+  "meta": {
+    "source": "LRMC",
+    "tag": [
+      {
+        "display": "SYNTHETIC DEMO DATA — NOT REAL PATIENTS"
+      }
+    ]
+  },
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "pt-x",
+        "name": [
+          {
+            "family": "Example",
+            "given": [
+              "Invalid"
+            ]
+          }
+        ],
+        "gender": "female"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "BAD-L-1",
+        "subject": {
+          "reference": "Patient/pt-x"
+        },
+        "code": {
+          "coding": [
+            {
+              "code": "777-3",
+              "display": "Platelet count"
+            }
+          ]
+        },
+        "valueQuantity": {
+          "value": 120,
+          "unit": "10*3/uL"
+        },
+        "effectiveDateTime": "2026-13-45T25:61"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Claim",
+        "id": "BAD-CLAIM-1",
+        "status": "active"
+      }
+    }
+  ]
+}

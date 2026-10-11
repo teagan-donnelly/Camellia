@@ -1,17 +1,18 @@
-import { Activity as ActivityIcon, ArrowRight, Bell, CalendarClock, ClipboardList, Flag, PlayCircle, ShieldCheck, Sparkles, Users } from 'lucide-react'
+import { Activity as ActivityIcon, ArrowRight, AudioLines, Bell, CalendarClock, ClipboardList, Flag, PlayCircle, ShieldCheck, Sparkles, Users } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { Dashboard as DashboardDto } from '../api/types'
 import { Link, useNavigate } from 'react-router-dom'
-import { useDashboard, useRunAnalysis } from '../api/hooks'
+import { useDashboard, useNursingQueue, useRunAnalysis, useShifts } from '../api/hooks'
+import { ShiftSchedulePanel } from '../components/schedule'
 import { AlertStatusBadge, PriorityBadge } from '../components/status'
-import { Badge, Button, Card, CardHeader, EmptyState, ErrorBox, Loading, PageHeader } from '../components/ui'
+import { Badge, Button, Card, CardHeader, EmptyState, ErrorBox, Loading, PageHeader, SynMrn } from '../components/ui'
 import { cx, fmtDate, relative } from '../lib/format'
 import { useApp } from '../state/AppContext'
 
 export default function Dashboard() {
   const { data, isLoading, error } = useDashboard()
   const run = useRunAnalysis()
-  const { user, toast } = useApp()
+  const { user, toast, can } = useApp()
   const navigate = useNavigate()
 
   const hour = new Date().getHours()
@@ -30,7 +31,7 @@ export default function Dashboard() {
             Viewing as <span className="font-medium text-navy-700">{user.name}</span> — scope: {user.patientScope} <span className="text-navy-400">(simulated demo identity)</span>
           </span>
         </>}
-        actions={
+        actions={can('CLINICAL_ALERTS') &&
           <Button
             variant="navy"
             loading={run.isPending}
@@ -51,6 +52,7 @@ export default function Dashboard() {
       {error && <ErrorBox error={error} title="Could not load the dashboard" />}
       {data && (
         <div className="space-y-6">
+          {(can('CLINICAL_BRIEFING') || can('NURSING_MONITORING') || can('IMPORT_RECORDS')) && <TodayStrip />}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <Metric icon={<Users className="h-4 w-4" />} label={data.anesthesiaAccess ? 'Total patients' : 'Accessible patients'} value={data.totalPatients}
               hint={user.practices.length ? 'Registered to your practice' : 'Synthetic, across 5 organizations'} onClick={() => navigate('/patients')} />
@@ -67,6 +69,8 @@ export default function Dashboard() {
                 hint="Scheduled in the next 60 days" onClick={() => navigate('/patients')} />
             </>}
           </div>
+
+          <ShiftSchedulePanel />
 
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.6fr_1fr]">
             {!data.anesthesiaAccess ? <UpcomingEncounters data={data} /> : <Card padded={false}>
@@ -202,7 +206,7 @@ function UpcomingEncounters({ data }: { data: DashboardDto }) {
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium text-navy-900">{e.patientName}</span>
-                    <span className="text-[12px] text-navy-400">{e.displayId}</span>
+                    <SynMrn id={e.displayId} className="text-navy-400" />
                   </div>
                   <div className="mt-0.5 truncate text-[13px] text-navy-600">{e.appointment.type} · {fmtDate(e.appointment.scheduledStart)}</div>
                   <div className="mt-0.5 truncate text-[12.5px] text-navy-500">{e.appointment.orgName}{e.appointment.department ? ` — ${e.appointment.department}` : ''}</div>
@@ -244,7 +248,51 @@ function actionLabel(action: string) {
     AI_SEARCH_SUMMARY: 'Gemini search summary',
     AI_EXTRACTION: 'Gemini extraction',
     DB_CHECK: 'Database check',
+    DOCUMENT_UPLOADED: 'Document uploaded',
   }
   return map[action] ?? action
 }
 
+/** Entry points for the V3 workflows: the next shift's briefing, nursing monitoring reviews, record import. */
+function TodayStrip() {
+  const { can } = useApp()
+  const shifts = useShifts(can('CLINICAL_BRIEFING'))
+  const queue = useNursingQueue(can('NURSING_MONITORING'))
+  const next = shifts.data?.[0]
+  const openReviews = queue.data?.alerts.filter((a) => a.alert.status !== 'RESOLVED').length ?? 0
+  return (
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      {can('CLINICAL_BRIEFING') && (
+        <Link to="/briefing" className="flex items-center gap-4 rounded-xl border border-coral-200 bg-gradient-to-r from-coral-50 to-white p-4 hover:shadow-sm">
+          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-coral-600 text-white"><AudioLines className="h-5 w-5" /></span>
+          <div className="min-w-0 flex-1">
+            <div className="text-[14.5px] font-semibold text-navy-950">Camellia Briefing</div>
+            <div className="text-[12.5px] text-navy-600">{next ? `${next.label} · ${fmtDate(next.startAt)} · ${next.authorizedPatients} patients · ${next.openItems} open items`
+              : shifts.isLoading ? 'Loading your shifts…' : 'No simulated shifts for this user.'}</div>
+          </div>
+          <ArrowRight className="h-4 w-4 text-coral-600" />
+        </Link>
+      )}
+      {can('NURSING_MONITORING') && (
+        <Link to="/monitoring" className="flex items-center gap-4 rounded-xl border border-line bg-white p-4 hover:shadow-sm">
+          <span className={cx('flex h-11 w-11 items-center justify-center rounded-xl', openReviews ? 'bg-amber-100 text-amber-700' : 'bg-sage-50 text-sage-700')}><ActivityIcon className="h-5 w-5" /></span>
+          <div className="min-w-0 flex-1">
+            <div className="text-[14.5px] font-semibold text-navy-950">Nursing Monitoring</div>
+            <div className="text-[12.5px] text-navy-600">{queue.data ? `${queue.data.patients.length} monitored stays · ${openReviews} open review${openReviews === 1 ? '' : 's'} (simulated wristbands)` : 'Loading…'}</div>
+          </div>
+          <ArrowRight className="h-4 w-4 text-navy-400" />
+        </Link>
+      )}
+      {can('IMPORT_RECORDS') && (
+        <Link to="/patients/import" className="flex items-center gap-4 rounded-xl border border-line bg-white p-4 hover:shadow-sm">
+          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-navy-800 text-white"><Users className="h-5 w-5" /></span>
+          <div className="min-w-0 flex-1">
+            <div className="text-[14.5px] font-semibold text-navy-950">Import Patient Records</div>
+            <div className="text-[12.5px] text-navy-600">Preview and import synthetic FHIR, Camellia JSON or CSV files.</div>
+          </div>
+          <ArrowRight className="h-4 w-4 text-navy-400" />
+        </Link>
+      )}
+    </div>
+  )
+}
