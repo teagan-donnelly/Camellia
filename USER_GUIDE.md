@@ -451,9 +451,10 @@ staff the encounter but didn't build the plan.
   - **Simulate incoming lab result (Ava Marlowe)** ingests a new HL7 platelet result dated yesterday from Northgate and
     re-runs screening. The existing alert is updated (*New evidence*, plus a system note); no duplicate alert is
     created. Running it again inserts nothing.
-  - **Reset demo data** (asks for confirmation) deletes all demo data, notes and statuses, re-seeds the dataset
-    anchored to today, and re-runs screening. Use it before a presentation. The screening summary shown afterwards
-    counts only what your role may see.
+  - **Reset demo data** (Clinical Data Coordinator only; asks for confirmation) restores the seeded demo data anchored
+    to today, clears notes, statuses, alerts, briefings and monitoring changes, and re-runs screening. Imported records
+    and uploaded documents are kept. Use it before a presentation. Other roles see a note that reset is limited to the
+    coordinator.
 - **Safety & access:** a summary of what the prototype is and isn't.
 
 ## 16. Switching the simulated user and what each role sees

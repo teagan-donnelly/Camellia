@@ -115,6 +115,9 @@ V3 permissions: **Camellia Briefing** — all five clinical roles, own shifts on
 within their patient scope (physicians: their practices). **Nursing Monitoring queue, documenting repositioning and the
 device simulator** — RN and L&D nurse. **Import** — Clinical Data Coordinator only.
 
+**Reset demo data** is limited to the Clinical Data Coordinator (Riley Okafor). Because every demo identity can be
+selected by anyone, a shared or public deployment should also set `CAMELLIA_DEMO_ADMIN_ENABLED=false`.
+
 V3.1 permissions: **Obesity traits** — the five clinical roles, within their patient scope (not the data coordinator).
 **Upload documents** — physicians, RNs, L&D nurses and the data coordinator; **view/download documents** — anyone who can
 see the patient. **Shift schedule** — each user sees only their own shifts and open shifts in their own units.
@@ -320,8 +323,9 @@ Open **http://localhost:5173**. The Vite dev server proxies `/api` to the backen
 Useful extras:
 
 - `GET http://localhost:8080/api/integrations/status`: which database and AI mode is active
-- **Demo & integrations → Reset demo data**: re-seeds with today as the date anchor. Run this before presenting so
-  upcoming encounters are relative to the demo day.
+- **Demo & integrations → Reset demo data** *(Riley Okafor, Clinical Data Coordinator, only)*: restores the seeded
+  demo data with today as the date anchor and clears workflow state. Imported records and uploaded documents are kept.
+  Run this before presenting so upcoming encounters are relative to the demo day.
 - **Demo & integrations → Simulate incoming lab result**: a new HL7 platelet result for Patient A, used to demonstrate
   re-evaluation without duplicate alerts.
 
@@ -405,7 +409,7 @@ npm run build          # type-check + production build
 - **Search** uses keyword and concept matching (no semantic or vector search yet).
 - **Uploaded documents** are stored on the backend's disk (not in Snowflake; metadata and extracted text are). Scanned
   PDFs have no selectable text and are not OCR-processed, so they are stored and viewable but not searchable. There is no
-  virus scanning, versioning or delete. *Reset demo data* removes all uploads.
+  virus scanning, versioning or delete. *Reset demo data* keeps uploads and imported records.
 - **Obesity traits** come only from coded diagnoses in the synthetic records (no BMI calculation or free-text inference).
 - **Shift schedule** is synthetic and read-only (no shift requests or trades).
 
