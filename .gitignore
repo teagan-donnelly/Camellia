@@ -27,3 +27,6 @@ Thumbs.db
 
 # Lambda deployment package (built by deploy/lambda/package.sh)
 deploy/lambda/dist/
+
+# Vercel staging folder and project link (deploy/vercel/deploy.sh)
+deploy/vercel/.stage/
