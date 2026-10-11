@@ -148,6 +148,11 @@ public class ElevenLabsClient {
                 }
                 boolean transient_ = code == 429 || code >= 500;
                 String detail = detail(res.body());
+                // ElevenLabs answers an exhausted character quota with HTTP 401, which is not a key problem.
+                if ("quota_exceeded".equals(detailStatus(res.body()))) {
+                    throw failure(HttpStatus.TOO_MANY_REQUESTS, "ELEVENLABS_QUOTA_EXCEEDED",
+                            "ElevenLabs character quota is used up (the API key works): " + detail);
+                }
                 if (transient_ && attempt < attempts) {
                     long backoff = 2000L * attempt;
                     log.warn("ElevenLabs {} returned HTTP {} ({}); retrying in {} ms", operation, code, detail, backoff);
@@ -193,6 +198,16 @@ public class ElevenLabsClient {
             // not JSON
         }
         return body.length() > 200 ? body.substring(0, 200) : body;
+    }
+
+    /** The machine-readable {@code detail.status} of an ElevenLabs error body (e.g. {@code quota_exceeded}), if any. */
+    static String detailStatus(String body) {
+        if (body == null || body.isBlank()) return null;
+        try {
+            return Json.text(Json.parse(body).path("detail").path("status"));
+        } catch (RuntimeException e) {
+            return null;
+        }
     }
 
     private String contentType() {

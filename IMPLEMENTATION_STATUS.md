@@ -254,13 +254,15 @@ with no computer on. See the README's *Hosted demo* section and [deploy/render/R
 | Briefing audio answered "not available to your account" on Render | Briefings were reused although their audio file was on another machine or erased by a restart; the path check answered 403 | 410 with a regenerate hint; generating makes a new briefing when the audio is not stored on this server | `CamelliaV3IntegrationTest` (deleted audio → 410, then a fresh briefing); live 410 |
 | Gemini failed with HTTP 401 | The committed key was disabled after the repository became public: it worked until 06:04 UTC and was rejected from 10:58 UTC, with Google returning "API key not valid" on both Gemini endpoints | New key kept out of the repository (Render environment variable, `backend/.env.local` locally); dead key removed from `backend/.env`; the error names the likely cause | Live: Gemini check and AI search through the UI. Isolated copy with the new key: search, alert chat with a follow-up, patient chat, flag explanation, extraction, search summary and briefing script all pass with cited records |
 | The header said "Gemini live" while every call failed | The badge reflected configuration only | Shows "Gemini error" with the reason until a call succeeds | Browser check |
+| Briefing audio failed with "ElevenLabs rejected the API key" | The key was valid; the free quota was nearly used up (1,137 credits left, 1,580 needed). ElevenLabs answers that with HTTP 401, which the app reported as a key problem | Quota exhaustion is reported as such; the default voice model is now `eleven_flash_v2_5`, which costs half a credit per character (`character-cost` header: 20 credits for 40 characters) and supports the timestamped endpoint the player needs | `ElevenLabsErrorMappingTest`; live request with the app's exact payload on Flash (HTTP 200, timings returned) |
 | Anesthesia alert cards and the coordination board looked unclickable | Tailwind v4 gives buttons the arrow cursor; a board card click only updated a summary below the fold | Pointer cursor for enabled buttons app-wide; a board card click scrolls its summary into view; hover highlight | Live browser runs as the CRNA, L&D nurse and anesthesiologist: queue rows, *Review*, board cards, *Open review workspace*, dashboard cards |
 
 Demo risks:
 - **Gemini latency:** Google's main model (`gemini-3.8-flash`) answered in 6–60 s under high demand; the backup
   (`gemini-3.5-flash-lite`) answered in 1–3 s. Setting `GEMINI_MODEL=gemini-3.5-flash-lite` on Render trades some
   capability for speed.
-- **ElevenLabs quota:** 8,863 of 10,000 free characters used; it resets on 2026-11-10. When it runs out, briefings
-  still show their transcript, with a note that the audio failed.
+- **ElevenLabs quota:** about 1,100 of 10,000 free credits left, enough for one full briefing on Flash v2.5 (about 800
+  credits); it resets on 2026-11-10. More credits need a paid plan or another account's key set as `ELEVENLABS_API_KEY`
+  on Render. When the quota runs out, briefings still show their transcript, with a note that the audio failed.
 - **ElevenLabs key** is still in the committed `backend/.env`, so it is public and could be disabled like the Gemini key.
 - **Render free plan:** sleeps when idle and keeps uploads and briefing audio only until it restarts.

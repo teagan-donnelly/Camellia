@@ -108,9 +108,10 @@ camellia:
     # Set ELEVENLABS_VOICE_ID blank to use the first premade voice whose use case matches voice-use-case instead.
     voice-id: ${ELEVENLABS_VOICE_ID:SAz9YHcvj6GT2YYXdXww}
     voice-use-case: ${ELEVENLABS_VOICE_USE_CASE:conversational}
-    model-id: ${ELEVENLABS_MODEL_ID:eleven_multilingual_v2}
+    # Flash v2.5 costs half a credit per character (Multilingual v2: one) and is faster; measured 2026-10-11.
+    model-id: ${ELEVENLABS_MODEL_ID:eleven_flash_v2_5}
     output-format: ${ELEVENLABS_OUTPUT_FORMAT:mp3_44100_128}
-    # Characters per request; eleven_multilingual_v2 accepts up to 10,000.
+    # Characters per request; kept below eleven_multilingual_v2's 10,000 so either model works.
     max-characters: ${ELEVENLABS_MAX_CHARACTERS:9500}
     stability: 0.55
     similarity-boost: 0.75

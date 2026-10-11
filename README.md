@@ -249,7 +249,7 @@ quotes. **Use forward slashes in file paths, even on Windows** (for example `C:/
 | `CAMELLIA_DEMO_ANCHOR_DATE` | Optional fixed anchor for synthetic dates (`YYYY-MM-DD`) |
 | `ELEVENLABS_API_KEY` | ElevenLabs API key for Camellia Briefing audio (server-side only). Without it, briefings are transcript-only and say so. |
 | `ELEVENLABS_VOICE_ID` | Optional. Unset = *River* (`SAz9YHcvj6GT2YYXdXww`, a premade conversational voice). Set it blank to use the first premade voice tagged *conversational* in your account. |
-| `ELEVENLABS_MODEL_ID` | Default `eleven_multilingual_v2` (10,000 characters per request); `eleven_v4` also fits |
+| `ELEVENLABS_MODEL_ID` | Default `eleven_flash_v2_5`: half a credit per character and faster. `eleven_multilingual_v2` costs one credit per character. A full briefing is about 1,600 characters. |
 | `CAMELLIA_BRIEFING_AUDIO_DIR` | Non-public folder for generated audio (default `./data/briefings`, git-ignored). Audio is served only through the authorized API. |
 | `CAMELLIA_DOCUMENTS_DIR` | Non-public folder for uploaded patient documents (default `./data/documents`, git-ignored). Files are served only through the authorized API. |
 | `CAMELLIA_DOCUMENTS_MAX_MB` | Upload size limit in MB (default `10`) |

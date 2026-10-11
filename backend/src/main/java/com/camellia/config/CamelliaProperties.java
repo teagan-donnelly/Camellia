@@ -201,7 +201,7 @@ public class CamelliaProperties {
         private String baseUrl = "https://api.elevenlabs.io";
         private String voiceId = "";
         private String voiceUseCase = "conversational";
-        private String modelId = "eleven_multilingual_v2";
+        private String modelId = "eleven_flash_v2_5";
         private String outputFormat = "mp3_44100_128";
         private int maxCharacters = 9500;
         private double stability = 0.55;
