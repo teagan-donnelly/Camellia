@@ -65,12 +65,23 @@ camellia:
     # minimal | low | medium | high | blank (model default). Lower = faster answers.
     thinking-level: ${GEMINI_THINKING_LEVEL:low}
     max-retries: ${GEMINI_MAX_RETRIES:2}
+    # Total time one request may spend on Gemini across retries and the fallback model; an attempt only starts when a
+    # full timeout still fits. 0 = no bound. Set it below the API gateway's limit in the cloud (e.g. 25 for a 30 s limit).
+    request-budget-seconds: ${GEMINI_REQUEST_BUDGET_SECONDS:0}
 
   demo:
     # Synthetic dates are stored relative to this anchor. Blank = the date the demo data is seeded.
     anchor-date: ${CAMELLIA_DEMO_ANCHOR_DATE:}
     # Signs the SIMULATED demo-identity cookie. Blank = random per startup (users re-select after a restart).
     session-secret: ${CAMELLIA_DEMO_SESSION_SECRET:}
+    # "Reset demo data" and "Simulate lab result" in the UI. Turn off for any public deployment; the camellia-jobs
+    # function performs those operations instead (see SERVERLESS_ARCHITECTURE.md).
+    admin-enabled: ${CAMELLIA_DEMO_ADMIN_ENABLED:true}
+
+  jobs:
+    # Enables POST /events, the non-HTTP entry point for scheduled and operator jobs (seeding, screening, demo reset).
+    # Only for the camellia-jobs function, which has no public route. Never enable it on the internet-facing API.
+    enabled: ${CAMELLIA_JOBS_ENABLED:false}
 
   # ---------------------------------------------------------------------------
   # PROTOTYPE SCREENING HEURISTICS — NOT VALIDATED CLINICAL THRESHOLDS.

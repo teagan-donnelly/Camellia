@@ -99,9 +99,16 @@ public class GoogleGenAiGateway implements GeminiGateway {
         if (models.size() > 1 && System.currentTimeMillis() < primaryCooldownUntil) {
             models.removeFirst();   // primary recently overloaded / rate limited: go straight to the fallback
         }
+        Budget budget = new Budget(System.currentTimeMillis(), cfg.getRequestBudgetSeconds());
+        long attemptMs = cfg.getTimeoutSeconds() * 1000L;
         GeminiException last = null;
         for (String model : models) {
             for (int attempt = 0; attempt <= Math.max(0, cfg.getMaxRetries()); attempt++) {
+                if (last != null && !budget.fits(System.currentTimeMillis(), attemptMs)) {
+                    log.warn("Gemini {}: request budget of {} s used up; not starting another attempt",
+                            request.operation(), cfg.getRequestBudgetSeconds());
+                    throw last;
+                }
                 try {
                     return callOnce(c, model, contents, request);
                 } catch (GeminiException e) {
@@ -110,6 +117,7 @@ public class GoogleGenAiGateway implements GeminiGateway {
                     if (!isTransient(e)) throw e;
                     if (attempt < cfg.getMaxRetries()) {
                         long backoff = 1500L * (1L << attempt);
+                        if (!budget.fits(System.currentTimeMillis(), backoff + attemptMs)) break;   // no time to retry: try the fallback
                         log.warn("Gemini {} on {} ({}); retrying in {} ms", request.operation(), model, e.code(), backoff);
                         sleep(backoff);
                     }
@@ -163,6 +171,23 @@ public class GoogleGenAiGateway implements GeminiGateway {
             throw e;
         } catch (RuntimeException e) {
             throw new GeminiException(HttpStatus.BAD_GATEWAY, "GEMINI_ERROR", "Gemini request failed: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Time accounting for one request (all retries and the fallback model). An attempt only starts while a full
+     * per-attempt timeout still fits, so the request ends before an API gateway in front of it gives up.
+     * The first attempt always runs.
+     */
+    static final class Budget {
+        private final long deadlineMs;
+
+        Budget(long nowMs, int budgetSeconds) {
+            this.deadlineMs = budgetSeconds > 0 ? nowMs + budgetSeconds * 1000L : Long.MAX_VALUE;
+        }
+
+        boolean fits(long nowMs, long neededMs) {
+            return deadlineMs == Long.MAX_VALUE || nowMs + neededMs <= deadlineMs;
         }
     }
 

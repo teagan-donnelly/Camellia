@@ -281,3 +281,15 @@ CREATE TABLE IF NOT EXISTS DEMO_METADATA (
     META_VALUE   VARCHAR(500),
     UPDATED_AT   TIMESTAMP_NTZ
 );
+
+-- Assistant conversation history: the clinician's question and the validated answer text, one row per turn.
+-- Every row carries the user + context key, so a conversation can never be continued for another user or patient.
+-- Stored here (not in memory) so follow-up questions work across stateless API instances; rows expire after 2 hours.
+CREATE TABLE IF NOT EXISTS AI_CONVERSATION_TURNS (
+    CONVERSATION_ID  VARCHAR(48)  NOT NULL,
+    TURN_NO          NUMBER(10,0) NOT NULL,
+    CONTEXT_KEY      VARCHAR(300) NOT NULL,
+    SPEAKER          VARCHAR(16)  NOT NULL,
+    MESSAGE_TEXT     VARCHAR,
+    CREATED_AT       TIMESTAMP_NTZ
+);

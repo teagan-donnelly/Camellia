@@ -512,6 +512,8 @@ export interface IntegrationStatus {
     lastOperation?: string
   }
   anchorDate?: string
+  /** False in public deployments: demo reset and simulated results are run by an operator instead. */
+  demoAdminEnabled?: boolean
   syntheticDataNotice: string
 }
 

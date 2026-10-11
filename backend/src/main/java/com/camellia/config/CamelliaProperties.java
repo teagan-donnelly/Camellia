@@ -16,6 +16,7 @@ public class CamelliaProperties {
     private Snowflake snowflake = new Snowflake();
     private Gemini gemini = new Gemini();
     private Demo demo = new Demo();
+    private Jobs jobs = new Jobs();
     private Rules rules = new Rules();
 
     public String getCorsOrigins() { return corsOrigins; }
@@ -28,6 +29,8 @@ public class CamelliaProperties {
     public void setGemini(Gemini gemini) { this.gemini = gemini; }
     public Demo getDemo() { return demo; }
     public void setDemo(Demo demo) { this.demo = demo; }
+    public Jobs getJobs() { return jobs; }
+    public void setJobs(Jobs jobs) { this.jobs = jobs; }
     public Rules getRules() { return rules; }
     public void setRules(Rules rules) { this.rules = rules; }
 
@@ -90,7 +93,11 @@ public class CamelliaProperties {
         private String fallbackModel = "";
         private String thinkingLevel = "low";
         private int maxRetries = 2;
+        private int requestBudgetSeconds = 0;
 
+        /** Upper bound on one request's total Gemini time across retries and the fallback model. 0 = no bound. */
+        public int getRequestBudgetSeconds() { return requestBudgetSeconds; }
+        public void setRequestBudgetSeconds(int requestBudgetSeconds) { this.requestBudgetSeconds = requestBudgetSeconds; }
         public String getFallbackModel() { return fallbackModel; }
         public void setFallbackModel(String fallbackModel) { this.fallbackModel = fallbackModel; }
         public String getThinkingLevel() { return thinkingLevel; }
@@ -113,11 +120,22 @@ public class CamelliaProperties {
     public static class Demo {
         private String anchorDate = "";
         private String sessionSecret = "";
+        private boolean adminEnabled = true;
 
+        public boolean isAdminEnabled() { return adminEnabled; }
+        public void setAdminEnabled(boolean adminEnabled) { this.adminEnabled = adminEnabled; }
         public String getSessionSecret() { return sessionSecret; }
         public void setSessionSecret(String sessionSecret) { this.sessionSecret = sessionSecret; }
         public String getAnchorDate() { return anchorDate; }
         public void setAnchorDate(String anchorDate) { this.anchorDate = anchorDate; }
+    }
+
+    /** The non-HTTP job entry point used by the camellia-jobs function (see JobsController). */
+    public static class Jobs {
+        private boolean enabled = false;
+
+        public boolean isEnabled() { return enabled; }
+        public void setEnabled(boolean enabled) { this.enabled = enabled; }
     }
 
     public static class Rules {

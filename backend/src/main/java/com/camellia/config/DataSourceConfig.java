@@ -67,7 +67,9 @@ public class DataSourceConfig {
         hc.setPoolName("camellia-" + mode.name().toLowerCase(Locale.ROOT));
         if (mode == DatabaseMode.SNOWFLAKE) {
             SnowflakeConnectionSettings sf = new SnowflakeConnectionSettings(props.getSnowflake());
-            bootstrapSnowflake(sf);
+            // Creating the database needs a session without one, so that case keeps a separate bootstrap login.
+            // Otherwise the pool's first connection does the check, saving a login on every (cold) start.
+            if (sf.createDatabaseIfMissing()) bootstrapSnowflake(sf);
             hc.setJdbcUrl(sf.jdbcUrl());
             hc.setDataSourceProperties(sf.connectionProperties(true));
             hc.setMaximumPoolSize(6);
@@ -75,6 +77,7 @@ public class DataSourceConfig {
             hc.setMaxLifetime(30 * 60_000L);
             hc.setConnectionTimeout(60_000L);
             log.info("Using Snowflake: {}", sf.describe());
+            return openVerified(hc, sf);
         } else {
             hc.setJdbcUrl(props.getDatabase().getLocalUrl());
             hc.setUsername("sa");
@@ -106,6 +109,21 @@ public class DataSourceConfig {
         }
     }
 
+    /** Starts the pool and confirms the configured schema is usable on its first connection. */
+    private static HikariDataSource openVerified(HikariConfig hc, SnowflakeConnectionSettings sf) {
+        HikariDataSource ds = null;
+        try {
+            ds = new HikariDataSource(hc);
+            try (Connection c = ds.getConnection(); Statement st = c.createStatement()) {
+                st.execute("USE SCHEMA " + sf.database() + "." + sf.schema());
+            }
+            return ds;
+        } catch (SQLException | RuntimeException e) {
+            if (ds != null) ds.close();
+            throw connectionFailure(sf, e);
+        }
+    }
+
     /** Opens one session without a database so the demo database and schema can be created when allowed. */
     private static void bootstrapSnowflake(SnowflakeConnectionSettings sf) {
         try (Connection c = DriverManager.getConnection(sf.jdbcUrl(), sf.connectionProperties(false));
@@ -123,13 +141,19 @@ public class DataSourceConfig {
                 st.execute("USE SCHEMA " + qualified);
             }
         } catch (SQLException e) {
-            throw new SnowflakeConfigurationException("""
-                    Could not connect to Snowflake (%s).
-                    Driver message: %s
-                    Common causes: wrong account identifier, public key not registered on the user (ALTER USER ... SET RSA_PUBLIC_KEY),
-                    encrypted key without SNOWFLAKE_PRIVATE_KEY_PASSPHRASE, warehouse/role not granted, or missing CREATE DATABASE privilege
-                    (set SNOWFLAKE_CREATE_DATABASE=false if the database and schema already exist)."""
-                    .formatted(sf.describe(), e.getMessage()), e);
+            throw connectionFailure(sf, e);
         }
+    }
+
+    private static SnowflakeConfigurationException connectionFailure(SnowflakeConnectionSettings sf, Exception e) {
+        Throwable root = e;
+        while (root.getCause() != null && root.getCause() != root) root = root.getCause();
+        return new SnowflakeConfigurationException("""
+                Could not connect to Snowflake (%s).
+                Driver message: %s
+                Common causes: wrong account identifier, public key not registered on the user (ALTER USER ... SET RSA_PUBLIC_KEY),
+                encrypted key without SNOWFLAKE_PRIVATE_KEY_PASSPHRASE, warehouse/role not granted, schema missing or not granted,
+                or missing CREATE DATABASE privilege (set SNOWFLAKE_CREATE_DATABASE=false if the database and schema already exist)."""
+                .formatted(sf.describe(), root.getMessage()), e);
     }
 }

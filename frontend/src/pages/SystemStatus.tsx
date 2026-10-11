@@ -87,32 +87,39 @@ export default function SystemStatus() {
 
           <Card>
             <CardHeader icon={<FlaskConical className="h-4 w-4" />} title="Demo data" subtitle={`Synthetic dates are anchored to ${fmtDate(data.anchorDate)}.`} />
-            <div className="space-y-4">
-              <div>
-                <Button loading={busy === 'lab'} onClick={() => act('lab', async () => {
-                  const r = await post<{ ingest: { recordsInserted: number }; analysis: { flagsUpdated: number; flagsCreated: number } }>('/admin/simulate-lab-result')
-                  invalidate()
-                  toast({ tone: 'success', title: 'New HL7 result ingested', body: `${r.ingest.recordsInserted} records added; re-evaluation updated ${r.analysis.flagsUpdated} and created ${r.analysis.flagsCreated} flag(s).` })
-                })}>
-                  <FlaskConical className="h-4 w-4" /> Simulate incoming lab result (Ava Marlowe)
-                </Button>
-                <p className="mt-1.5 text-[12px] text-navy-500">Ingests a new Northgate HL7 platelet result dated yesterday and re-runs screening. The existing alert is updated with the new evidence — no duplicate alert is created. Running it again inserts nothing.</p>
+            {data.demoAdminEnabled === false ? (
+              <p className="text-[13px] text-navy-700">
+                Demo data controls are turned off in this deployment. An operator resets the demo or simulates a new lab result
+                through the jobs function, so nobody can wipe the shared demo from the browser.
+              </p>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <Button loading={busy === 'lab'} onClick={() => act('lab', async () => {
+                    const r = await post<{ ingest: { recordsInserted: number }; analysis: { flagsUpdated: number; flagsCreated: number } }>('/admin/simulate-lab-result')
+                    invalidate()
+                    toast({ tone: 'success', title: 'New HL7 result ingested', body: `${r.ingest.recordsInserted} records added; re-evaluation updated ${r.analysis.flagsUpdated} and created ${r.analysis.flagsCreated} flag(s).` })
+                  })}>
+                    <FlaskConical className="h-4 w-4" /> Simulate incoming lab result (Ava Marlowe)
+                  </Button>
+                  <p className="mt-1.5 text-[12px] text-navy-500">Ingests a new Northgate HL7 platelet result dated yesterday and re-runs screening. The existing alert is updated with the new evidence — no duplicate alert is created. Running it again inserts nothing.</p>
+                </div>
+                <div className="border-t border-line pt-4">
+                  <Button variant="danger" loading={busy === 'reset'} onClick={() => {
+                    if (!window.confirm('Delete all demo data, workflow statuses and notes, then re-seed anchored to today?')) return
+                    act('reset', async () => {
+                      await post('/admin/reset-demo')
+                      invalidate(); qc.invalidateQueries({ queryKey: keys.status })
+                      toast({ tone: 'success', title: 'Demo data reset', body: 'Re-seeded and re-screened with today as the anchor date.' })
+                    })
+                  }}>
+                    <RotateCcw className="h-4 w-4" /> Reset demo data
+                  </Button>
+                  <p className="mt-1.5 text-[12px] text-navy-500">Use before a presentation so upcoming encounters are relative to today. This removes all notes and status changes.</p>
+                </div>
+                {(err?.where === 'lab' || err?.where === 'reset') && <ErrorBox error={err.e} />}
               </div>
-              <div className="border-t border-line pt-4">
-                <Button variant="danger" loading={busy === 'reset'} onClick={() => {
-                  if (!window.confirm('Delete all demo data, workflow statuses and notes, then re-seed anchored to today?')) return
-                  act('reset', async () => {
-                    await post('/admin/reset-demo')
-                    invalidate(); qc.invalidateQueries({ queryKey: keys.status })
-                    toast({ tone: 'success', title: 'Demo data reset', body: 'Re-seeded and re-screened with today as the anchor date.' })
-                  })
-                }}>
-                  <RotateCcw className="h-4 w-4" /> Reset demo data
-                </Button>
-                <p className="mt-1.5 text-[12px] text-navy-500">Use before a presentation so upcoming encounters are relative to today. This removes all notes and status changes.</p>
-              </div>
-              {(err?.where === 'lab' || err?.where === 'reset') && <ErrorBox error={err.e} />}
-            </div>
+            )}
           </Card>
 
           <Card>

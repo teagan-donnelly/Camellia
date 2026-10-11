@@ -1,6 +1,7 @@
 package com.camellia.integration;
 
 import com.camellia.ai.ClinicalAiService;
+import com.camellia.config.CamelliaProperties;
 import com.camellia.integration.gemini.GoogleGenAiGateway;
 import com.camellia.integration.snowflake.DatabaseMode;
 import com.camellia.repository.PatientRepository;
@@ -22,15 +23,25 @@ public class IntegrationService {
     private final PatientRepository patients;
     private final GoogleGenAiGateway gemini;
     private final ClinicalAiService ai;
+    private final CamelliaProperties props;
+
+    /**
+     * The anchor date only changes on a demo reset, so the status poll reads it at most this often. Otherwise every
+     * open browser tab would query a table each minute and could keep a Snowflake warehouse from suspending.
+     */
+    static final long ANCHOR_CACHE_MS = 5 * 60_000L;
+    private volatile String cachedAnchorDate;
+    private volatile long anchorDateReadAt;
 
     public IntegrationService(DatabaseMode mode, JdbcTemplate jdbc, SupportRepository support, PatientRepository patients,
-                              GoogleGenAiGateway gemini, ClinicalAiService ai) {
+                              GoogleGenAiGateway gemini, ClinicalAiService ai, CamelliaProperties props) {
         this.mode = mode;
         this.jdbc = jdbc;
         this.support = support;
         this.patients = patients;
         this.gemini = gemini;
         this.ai = ai;
+        this.props = props;
     }
 
     public DatabaseMode mode() {
@@ -63,7 +74,8 @@ public class IntegrationService {
         g.put("lastError", s.lastError());
         g.put("lastOperation", s.lastOperation());
         out.put("gemini", g);
-        out.put("anchorDate", support.getMeta("ANCHOR_DATE").orElse(null));
+        out.put("anchorDate", anchorDate());
+        out.put("demoAdminEnabled", props.getDemo().isAdminEnabled());
         out.put("syntheticDataNotice", "Demo application using synthetic patient information. Not for clinical use.");
         return out;
     }
@@ -89,6 +101,24 @@ public class IntegrationService {
         out.put("elapsedMs", System.currentTimeMillis() - start);
         support.logActivity("SYSTEM", checkId, null, "DB_CHECK", "Database read/write check passed on " + mode.label(), "System");
         return out;
+    }
+
+    /** Forces the next status call to re-read the anchor date (after a demo reset on this instance). */
+    public void forgetAnchorDate() {
+        anchorDateReadAt = 0;
+    }
+
+    private String anchorDate() {
+        long now = System.currentTimeMillis();
+        if (anchorDateReadAt == 0 || now - anchorDateReadAt > ANCHOR_CACHE_MS) {
+            try {
+                cachedAnchorDate = support.getMeta("ANCHOR_DATE").orElse(null);
+                anchorDateReadAt = now;
+            } catch (RuntimeException e) {
+                return cachedAnchorDate;   // the database badge already reports the failure
+            }
+        }
+        return cachedAnchorDate;
     }
 
     public Map<String, Object> geminiCheck() {

@@ -45,8 +45,10 @@ export const useFlagSearch = (params: string) =>
 export const useFlagFacets = () => useQuery({ queryKey: keys.facets, queryFn: () => get<Facets>('/flags/facets'), staleTime: Infinity })
 export const executeFlagSearch = (criteria: FlagSearchCriteria) => post<FlagSearchResult>('/flags/search', criteria)
 export const useMeta = () => useQuery({ queryKey: keys.meta, queryFn: () => get<Meta>('/meta'), staleTime: Infinity })
+// Header badges. Polled slowly: every poll reaches the database, and frequent polls from open tabs would keep a
+// Snowflake warehouse from suspending. Actions that change status (checks, demo reset) refetch it immediately.
 export const useIntegrationStatus = () =>
-  useQuery({ queryKey: keys.status, queryFn: () => get<IntegrationStatus>('/integrations/status'), refetchInterval: 60_000 })
+  useQuery({ queryKey: keys.status, queryFn: () => get<IntegrationStatus>('/integrations/status'), refetchInterval: 5 * 60_000 })
 
 /** Invalidate everything that reflects workflow state after a write. */
 export function useInvalidateWorkflow() {
