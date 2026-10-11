@@ -3,6 +3,7 @@ package com.camellia.v3;
 import com.camellia.TestSessions;
 import com.camellia.config.CamelliaProperties;
 import com.camellia.ingestion.DemoDataService;
+import com.camellia.repository.BriefingRepository;
 import com.camellia.integration.elevenlabs.ElevenLabsClient;
 import com.camellia.integration.gemini.GeminiGateway;
 import com.camellia.repository.WorkforceRepository;
@@ -25,6 +26,8 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -126,6 +129,7 @@ class CamelliaV3IntegrationTest {
     @Autowired MockMvc mvc;
     @Autowired WorkforceRepository workforce;
     @Autowired DemoDataService demoData;
+    @Autowired BriefingRepository briefingRepo;
 
     @org.junit.jupiter.api.BeforeAll
     static void cleanAudioCache() throws Exception {
@@ -347,6 +351,15 @@ class CamelliaV3IntegrationTest {
         assertThat(reused.get("reused").asBoolean()).isTrue();
         assertThat(reused.get("briefingId").asString()).isEqualTo(id);
         assertThat(TTS_CALLS.get()).isEqualTo(calls);
+
+        // Audio no longer on this server (made elsewhere, or temporary storage cleared): a clear 410, and a new briefing
+        // is generated instead of reusing one that cannot play.
+        Files.delete(Path.of(briefingRepo.find(id).orElseThrow().audioPath()));
+        as("alex.kim", get("/api/briefings/" + id + "/audio")).andExpect(status().isGone());
+        JsonNode fresh = generateAndWait("alex.kim", "SH-AKIM-D0", "FULL", false);
+        assertThat(fresh.get("reused").asBoolean()).isFalse();
+        assertThat(fresh.get("briefingId").asString()).isNotEqualTo(id);
+        as("alex.kim", get("/api/briefings/" + fresh.get("briefingId").asString() + "/audio")).andExpect(status().isOk());
     }
 
     @Test

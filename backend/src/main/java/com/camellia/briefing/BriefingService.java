@@ -270,7 +270,7 @@ public class BriefingService {
         String fingerprint = sha256(mode + "|" + ctx.fingerprint() + "|" + tts.isConfigured());
         if (!Boolean.TRUE.equals(req.regenerate())) {
             Optional<Briefing> reuse = briefings.reusable(user.id(), shift.shiftId(), mode, fingerprint);
-            if (reuse.isPresent()) return view(user, reuse.get(), true);
+            if (reuse.isPresent() && audioStoredHere(reuse.get())) return view(user, reuse.get(), true);
         }
         Briefing b = new Briefing("BRF-" + UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase(Locale.ROOT),
                 shift.shiftId(), user.id(), mode, "QUEUED", "Waiting to start", fingerprint, sc.authorized().size(), ctx.openItems(),
@@ -627,13 +627,26 @@ public class BriefingService {
         if (!"READY".equals(b.status()) || b.audioPath() == null) {
             throw new ApiException(HttpStatus.NOT_FOUND, "AUDIO_NOT_AVAILABLE", "This briefing has no audio.");
         }
-        Path p = Path.of(b.audioPath()).toAbsolutePath().normalize();
-        if (!p.startsWith(audioDir())) throw AuthorizationService.denied(null);
+        if (!audioStoredHere(b)) throw audioMissing();
         try {
-            return new Audio(Files.readAllBytes(p), b.audioContentType());
+            return new Audio(Files.readAllBytes(Path.of(b.audioPath()).toAbsolutePath().normalize()), b.audioContentType());
         } catch (IOException e) {
-            throw new ApiException(HttpStatus.GONE, "AUDIO_MISSING", "The audio file is no longer stored on this server. Regenerate the briefing.");
+            throw audioMissing();
         }
+    }
+
+    /**
+     * False when the briefing's audio file is not in this server's audio directory: it was generated on another server,
+     * or a restart cleared temporary storage (as on hosted free tiers). Such a briefing is regenerated, not reused.
+     */
+    boolean audioStoredHere(Briefing b) {
+        if (b.audioPath() == null) return true;
+        Path p = Path.of(b.audioPath()).toAbsolutePath().normalize();
+        return p.startsWith(audioDir()) && Files.isRegularFile(p);
+    }
+
+    private static ApiException audioMissing() {
+        return new ApiException(HttpStatus.GONE, "AUDIO_MISSING", "The audio file is no longer stored on this server. Regenerate the briefing.");
     }
 
     /** Only the clinician who generated a briefing can read it, its transcript or its audio. */
