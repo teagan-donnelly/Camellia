@@ -25,7 +25,8 @@ variables set on Render override it.
 | `CAMELLIA_CORS_ORIGINS` | Environment variable | `https://camellia-snowy.vercel.app` |
 | `CAMELLIA_DEMO_SESSION_SECRET` | Environment variable | Any long random string, so demo sign-ins survive restarts |
 
-`docker-entrypoint.sh` points `SNOWFLAKE_PRIVATE_KEY_FILE` at `/etc/secrets/snowflake_key.p8`. As an alternative to the
+`docker-entrypoint.sh` points `SNOWFLAKE_PRIVATE_KEY_FILE` at `/etc/secrets/snowflake_key.p8` (or the first `.p8`/`.pem`
+secret file it finds) and logs the secret file names when none is found. As an alternative to the
 secret file, the key's contents can go in a `SNOWFLAKE_PRIVATE_KEY` environment variable.
 
 ## Point the frontend at it
@@ -39,4 +40,5 @@ deploy/vercel/deploy.sh https://<service-name>.onrender.com
 - The service sleeps after 15 minutes without requests. The next request starts it again, which takes about a minute,
   so open the site a minute or two before presenting.
 - The disk is temporary: uploaded documents are lost when the service restarts or redeploys. Snowflake data is kept.
-- Pushing to the deployed branch redeploys automatically.
+- The service reads the public repository without Render's GitHub app, so pushes do not redeploy it. Start a deploy
+  from the Render dashboard (Manual Deploy → Deploy latest commit) after pushing.
